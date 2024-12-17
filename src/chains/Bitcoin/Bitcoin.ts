@@ -104,22 +104,24 @@ export class Bitcoin
     return rawSignature
   }
 
-  private async createPSBT({
-    address,
-    data,
+  async createPSBT({
+    transactionRequest,
   }: {
-    address: string
-    data: BTCTransactionRequest
+    transactionRequest: BTCTransactionRequest
   }): Promise<bitcoin.Psbt> {
     const { inputs, outputs } =
-      data.inputs && data.outputs
-        ? data
-        : await fetchBTCFeeProperties(this.providerUrl, address, [
-            {
-              address: data.to,
-              value: parseFloat(data.value),
-            },
-          ])
+      transactionRequest.inputs && transactionRequest.outputs
+        ? transactionRequest
+        : await fetchBTCFeeProperties(
+            this.providerUrl,
+            transactionRequest.from,
+            [
+              {
+                address: transactionRequest.to,
+                value: parseFloat(transactionRequest.value),
+              },
+            ]
+          )
 
     const psbt = new bitcoin.Psbt({ network: parseBTCNetwork(this.network) })
 
@@ -157,7 +159,7 @@ export class Bitcoin
         })
       } else {
         psbt.addOutput({
-          address,
+          address: transactionRequest.from,
           value: out.value,
         })
       }
@@ -249,8 +251,7 @@ export class Bitcoin
   }> {
     const publicKeyBuffer = Buffer.from(transactionRequest.publicKey, 'hex')
     const psbt = await this.createPSBT({
-      address: transactionRequest.from,
-      data: transactionRequest,
+      transactionRequest,
     })
 
     // We can't double sign a PSBT, therefore we serialize the payload before to return it
