@@ -13,11 +13,7 @@ import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 import { ripemd160, sha256 } from '@cosmjs/crypto'
 
 import { fetchChainInfo } from './utils'
-import {
-  type MPCPayloads,
-  type ChainSignatureContracts,
-  type NearNetworkIds,
-} from '../types'
+import { type ChainSignatureContract, type MPCPayloads } from '../types'
 import {
   type BalanceResponse,
   type CosmosNetworkIds,
@@ -30,7 +26,6 @@ import {
   type KeyDerivationPath,
 } from '../../signature/types'
 import { toRSV, najToPubKey } from '../../signature/utils'
-import { ChainSignaturesContract } from '../../contracts'
 import { type Chain } from '../Chain'
 import { bech32 } from 'bech32'
 import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
@@ -38,24 +33,20 @@ import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
 export class Cosmos
   implements Chain<CosmosTransactionRequest, CosmosUnsignedTransaction>
 {
-  private readonly nearNetworkId: NearNetworkIds
   private readonly registry: Registry
-  private readonly contract: ChainSignatureContracts
   private readonly chainId: CosmosNetworkIds
+  private readonly contract: ChainSignatureContract
 
   constructor({
-    nearNetworkId,
-    contract,
     chainId,
+    contract,
   }: {
-    nearNetworkId: NearNetworkIds
-    contract: ChainSignatureContracts
+    contract: ChainSignatureContract
     chainId: CosmosNetworkIds
   }) {
-    this.nearNetworkId = nearNetworkId
     this.registry = new Registry()
-    this.contract = contract
     this.chainId = chainId
+    this.contract = contract
   }
 
   private parseRSVSignature(rsvSignature: RSVSignature): Uint8Array {
@@ -99,10 +90,9 @@ export class Cosmos
     publicKey: string
   }> {
     const { prefix } = await fetchChainInfo(this.chainId)
-    const derivedPubKeyNAJ = await ChainSignaturesContract.getDerivedPublicKey({
-      networkId: this.nearNetworkId,
-      contract: this.contract,
-      args: { path, predecessor: signerId },
+    const derivedPubKeyNAJ = await this.contract.derived_public_key({
+      path,
+      predecessor: signerId,
     })
 
     if (!derivedPubKeyNAJ) {

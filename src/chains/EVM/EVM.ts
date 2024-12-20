@@ -1,10 +1,6 @@
 import { ethers, keccak256 } from 'ethers'
 import { fetchEVMFeeProperties } from './utils'
-import {
-  type MPCPayloads,
-  type ChainSignatureContracts,
-  type NearNetworkIds,
-} from '../types'
+import { type MPCPayloads, type ChainSignatureContract } from '../types'
 import {
   type EVMTransactionRequest,
   type EVMUnsignedTransaction,
@@ -15,24 +11,20 @@ import {
   type MPCSignature,
   type KeyDerivationPath,
 } from '../../signature/types'
-import { ChainSignaturesContract } from '../../contracts'
 import { type Chain } from '../Chain'
 
 export class EVM
   implements Chain<EVMTransactionRequest, EVMUnsignedTransaction>
 {
   private readonly provider: ethers.JsonRpcProvider
-  private readonly contract: ChainSignatureContracts
-  private readonly nearNetworkId: NearNetworkIds
+  private readonly contract: ChainSignatureContract
 
   constructor(config: {
     providerUrl: string
-    contract: ChainSignatureContracts
-    nearNetworkId: NearNetworkIds
+    contract: ChainSignatureContract
   }) {
     this.provider = new ethers.JsonRpcProvider(config.providerUrl)
     this.contract = config.contract
-    this.nearNetworkId = config.nearNetworkId
   }
 
   private async attachGasAndNonce(
@@ -74,10 +66,9 @@ export class EVM
     address: string
     publicKey: string
   }> {
-    const derivedPubKeyNAJ = await ChainSignaturesContract.getDerivedPublicKey({
-      networkId: this.nearNetworkId,
-      contract: this.contract,
-      args: { path, predecessor: signerId },
+    const derivedPubKeyNAJ = await this.contract.derived_public_key({
+      path,
+      predecessor: signerId,
     })
 
     if (!derivedPubKeyNAJ) {

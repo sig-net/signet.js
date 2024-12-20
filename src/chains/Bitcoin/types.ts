@@ -1,5 +1,3 @@
-import { type KeyDerivationPath } from '../../signature'
-import { type ChainProvider, type NearAuthentication } from '../types'
 import type * as bitcoin from 'bitcoinjs-lib'
 
 export interface Transaction {
@@ -84,18 +82,6 @@ export type BTCTransactionRequest = {
 export interface BTCUnsignedTransaction {
   psbt: bitcoin.Psbt
   publicKey: string
-}
-
-export type BTCChainConfigWithProviders = ChainProvider & {
-  network: BTCNetworkIds
-}
-
-export interface BitcoinRequest {
-  transaction: BTCTransactionRequest
-  chainConfig: BTCChainConfigWithProviders
-  nearAuthentication: NearAuthentication
-  fastAuthRelayerUrl?: string
-  derivationPath: KeyDerivationPath
 }
 
 export type BTCNetworkIds = 'mainnet' | 'testnet' | 'regtest'

@@ -2,11 +2,7 @@ import axios from 'axios'
 import * as bitcoin from 'bitcoinjs-lib'
 
 import { fetchBTCFeeProperties, parseBTCNetwork } from './utils'
-import {
-  type MPCPayloads,
-  type ChainSignatureContracts,
-  type NearNetworkIds,
-} from '../types'
+import { type ChainSignatureContract, type MPCPayloads } from '../types'
 import {
   type BTCNetworkIds,
   type UTXO,
@@ -22,7 +18,6 @@ import {
   type MPCSignature,
   type KeyDerivationPath,
 } from '../../signature/types'
-import { ChainSignaturesContract } from '../../contracts'
 import { type Chain } from '../Chain'
 
 export class Bitcoin
@@ -30,18 +25,15 @@ export class Bitcoin
 {
   private static readonly SATOSHIS_PER_BTC = 100_000_000
 
-  private readonly nearNetworkId: NearNetworkIds
   private readonly network: BTCNetworkIds
   private readonly providerUrl: string
-  private readonly contract: ChainSignatureContracts
+  private readonly contract: ChainSignatureContract
 
   constructor(config: {
-    nearNetworkId: NearNetworkIds
     network: BTCNetworkIds
     providerUrl: string
-    contract: ChainSignatureContracts
+    contract: ChainSignatureContract
   }) {
-    this.nearNetworkId = config.nearNetworkId
     this.network = config.network
     this.providerUrl = config.providerUrl
     this.contract = config.contract
@@ -181,10 +173,9 @@ export class Bitcoin
     signerId: string,
     path: KeyDerivationPath
   ): Promise<{ address: string; publicKey: string }> {
-    const derivedPubKeyNAJ = await ChainSignaturesContract.getDerivedPublicKey({
-      networkId: this.nearNetworkId,
-      contract: this.contract,
-      args: { path, predecessor: signerId },
+    const derivedPubKeyNAJ = await this.contract.derived_public_key({
+      path,
+      predecessor: signerId,
     })
 
     if (!derivedPubKeyNAJ) {

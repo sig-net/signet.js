@@ -1,11 +1,13 @@
-import { Bitcoin } from '../chains/Bitcoin/Bitcoin'
-import { type BitcoinRequest } from '../chains/Bitcoin/types'
-import { type CosmosRequest } from '../chains/Cosmos/types'
-import { Cosmos } from '../chains/Cosmos/Cosmos'
-import { EVM } from '../chains/EVM/EVM'
-import { type EVMRequest } from '../chains/EVM/types'
-import { type Response } from '../chains/types'
-import { ChainSignaturesContract } from '../contracts'
+import { Bitcoin } from '../../chains/Bitcoin/Bitcoin'
+import {
+  type BitcoinRequest,
+  type CosmosRequest,
+  type EVMRequest,
+} from './types'
+import { Cosmos } from '../../chains/Cosmos/Cosmos'
+import { EVM } from '../../chains/EVM/EVM'
+import { type Response } from '../../chains/types'
+import { ChainSignaturesContract } from './contract'
 import { type KeyPair } from '@near-js/crypto'
 
 export const signAndSendEVMTransaction = async (
