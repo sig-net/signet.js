@@ -1,42 +1,81 @@
 import { type Account, Contract } from '@near-js/accounts'
 import { actionCreators } from '@near-js/transactions'
+import { KeyPair } from '@near-js/crypto'
 
 import BN from 'bn.js'
 
-import { type MPCSignature } from '../../signature/types'
-import { type ChainSignatureContracts } from './types'
-import { parseSignedDelegateForRelayer } from '../../relayer'
-import { NEAR_MAX_GAS } from './constants'
+import { type RSVSignature, type MPCSignature } from '../../signature/types'
+import { type NearNetworkIds, type ChainSignatureContractIds } from './types'
+import { parseSignedDelegateForRelayer } from './relayer'
+import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from './constants'
 import { near } from '..'
 import {
   type SignArgs,
   ChainSignatureContract,
 } from '../../chains/ChainSignatureContract'
+import { base_decode } from 'near-api-js/lib/utils/serialize'
+import { type UncompressedPublicKey } from '../../chains/types'
+import { toRSV } from '../../signature'
+import { getNearAccount } from './account'
 
+type NearContract = Contract & {
+  public_key: () => Promise<string>
+  sign: (args: {
+    args: { request: SignArgs }
+    gas: BN
+    amount: BN
+  }) => Promise<MPCSignature>
+  experimental_signature_deposit: () => Promise<number>
+  derived_public_key: (args: {
+    path: string
+    predecessor: string
+  }) => Promise<string>
+}
+
+const najToUncompressedPubKey = (najPubKey: string): UncompressedPublicKey => {
+  return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`
+}
+
+const requireAccount = (accountId: string): void => {
+  if (accountId === DONT_CARE_ACCOUNT_ID) {
+    throw new Error(
+      'A valid account ID and keypair are required for change methods. Please instantiate a new contract with valid credentials.'
+    )
+  }
+}
+
+/**
+ * This contract will default to view methods only.
+ * If you want to use the change methods, you need to provide an account and keypair.
+ */
 export class ChainSignaturesContract extends ChainSignatureContract {
-  private readonly account: Account
-  private readonly contractId: ChainSignatureContracts
+  private readonly networkId: NearNetworkIds
+  private readonly contractId: ChainSignatureContractIds
+  private readonly accountId: string
+  private readonly keypair: KeyPair
 
-  constructor(account: Account, contractId: ChainSignatureContracts) {
+  constructor(
+    networkId: NearNetworkIds,
+    contractId: ChainSignatureContractIds,
+    accountId = DONT_CARE_ACCOUNT_ID,
+    keypair = KeyPair.fromRandom('ed25519')
+  ) {
     super()
-    this.account = account
+
+    this.networkId = networkId
     this.contractId = contractId
+    this.accountId = accountId
+    this.keypair = keypair
   }
 
-  private getContract(): Contract & {
-    public_key: () => Promise<string>
-    sign: (args: {
-      args: { request: SignArgs }
-      gas: BN
-      amount: BN
-    }) => Promise<MPCSignature>
-    experimental_signature_deposit: () => Promise<number>
-    derived_public_key: (args: {
-      path: string
-      predecessor: string
-    }) => Promise<string>
-  } {
-    return new Contract(this.account, this.contractId, {
+  private async getContract(): Promise<NearContract> {
+    const account = await getNearAccount({
+      networkId: this.networkId,
+      accountId: this.accountId,
+      keypair: this.keypair,
+    })
+
+    return new Contract(account, this.contractId, {
       viewMethods: [
         'public_key',
         'experimental_signature_deposit',
@@ -44,29 +83,34 @@ export class ChainSignaturesContract extends ChainSignatureContract {
       ],
       changeMethods: ['sign'],
       useLocalViewExecution: false,
-    }) as any
+    }) as unknown as NearContract
   }
 
-  async public_key(): Promise<string> {
-    const contract = this.getContract()
-    return await contract.public_key()
+  async public_key(): Promise<UncompressedPublicKey> {
+    const contract = await this.getContract()
+    const najPubKey = await contract.public_key()
+    return najToUncompressedPubKey(najPubKey)
   }
 
   async experimental_signature_deposit(): Promise<number> {
-    const contract = this.getContract()
+    const contract = await this.getContract()
     return await contract.experimental_signature_deposit()
   }
 
   async derived_public_key(args: {
     path: string
     predecessor: string
-  }): Promise<string> {
-    const contract = this.getContract()
-    return await contract.derived_public_key(args)
+  }): Promise<UncompressedPublicKey> {
+    const contract = await this.getContract()
+
+    const najPubKey = await contract.derived_public_key(args)
+    return najToUncompressedPubKey(najPubKey)
   }
 
-  async sign(args: SignArgs): Promise<MPCSignature> {
-    const contract = this.getContract()
+  async sign(args: SignArgs): Promise<RSVSignature> {
+    requireAccount(this.accountId)
+
+    const contract = await this.getContract()
     const deposit = new BN(
       (await this.experimental_signature_deposit()).toLocaleString('fullwide', {
         useGrouping: false,
@@ -79,7 +123,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
       amount: deposit,
     })
 
-    return signature
+    return toRSV(signature)
   }
 
   static async signWithRelayer({
@@ -90,7 +134,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     relayerUrl,
   }: {
     account: Account
-    contract: ChainSignatureContracts
+    contract: ChainSignatureContractIds
     signArgs: SignArgs
     deposit: BN
     relayerUrl: string

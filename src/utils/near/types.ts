@@ -13,7 +13,7 @@ Available ChainSignature contracts:
   - Testnet: v1.signer-prod.testnet
   - Development (unstable): v1.signer-dev.testnet
 */
-export type ChainSignatureContracts = string
+export type ChainSignatureContractIds = string
 
 export type NFTKeysContracts = string
 
@@ -21,7 +21,7 @@ export type NearNetworkIds = 'mainnet' | 'testnet'
 
 export interface ChainProvider {
   providerUrl: string
-  contract: ChainSignatureContracts
+  contract: ChainSignatureContractIds
 }
 
 export interface NearAuthentication {
@@ -52,7 +52,7 @@ export interface BitcoinRequest {
 }
 
 export interface CosmosChainConfig {
-  contract: ChainSignatureContracts
+  contract: ChainSignatureContractIds
   chainId: CosmosNetworkIds
 }
 

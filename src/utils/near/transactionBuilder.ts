@@ -10,8 +10,8 @@ import {
 import { type MPCPayloads } from '../../chains/types'
 import { ChainSignaturesContract } from './contract'
 import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
-import { NEAR_MAX_GAS } from '../../signature/utils'
-import { type NFTKeysContracts, type ChainSignatureContracts } from './types'
+import { NEAR_MAX_GAS } from './constants'
+import { type NFTKeysContracts, type ChainSignatureContractIds } from './types'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -20,17 +20,16 @@ export const mpcPayloadsToChainSigTransaction = async ({
   path,
 }: {
   networkId: NetworkId
-  contractId: ChainSignatureContracts
+  contractId: ChainSignatureContractIds
   mpcPayloads: MPCPayloads
   path: KeyDerivationPath
 }): Promise<{
   receiverId: string
   actions: Action[]
 }> => {
-  const currentContractFee = await ChainSignaturesContract.getCurrentFee({
-    networkId,
-    contract: contractId,
-  })
+  const contract = new ChainSignaturesContract(networkId, contractId)
+
+  const currentContractFee = await contract.experimental_signature_deposit()
 
   return {
     receiverId: contractId,
@@ -61,7 +60,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
   tokenId,
 }: {
   networkId: NetworkId
-  chainSigContract: ChainSignatureContracts
+  chainSigContract: ChainSignatureContractIds
   nftKeysContract: NFTKeysContracts
   mpcPayloads: MPCPayloads
   path: KeyDerivationPath
@@ -70,10 +69,9 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const currentContractFee = await ChainSignaturesContract.getCurrentFee({
-    networkId,
-    contract: chainSigContract,
-  })
+  const contract = new ChainSignaturesContract(networkId, chainSigContract)
+
+  const currentContractFee = await contract.experimental_signature_deposit()
 
   return {
     receiverId: nftKeysContract,

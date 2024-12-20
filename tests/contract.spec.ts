@@ -1,11 +1,9 @@
 import { describe, test, expect } from '@jest/globals'
 import { ethers } from 'ethers'
-import {
-  ChainSignaturesContract
-} from '../src/signature'
+import { ChainSignaturesContract } from '../src/signature'
 import {
   type NearAuthentication,
-  type ChainSignatureContracts,
+  type ChainSignatureContractIds,
 } from '../src/chains/types'
 import dotenv from 'dotenv'
 import { KeyPair } from 'near-api-js'
@@ -29,7 +27,7 @@ describe('Chain Signature', () => {
       ),
       networkId: 'testnet',
     }
-    const contract: ChainSignatureContracts =
+    const contract: ChainSignatureContractIds =
       process.env.NEXT_PUBLIC_CHAIN_SIGNATURE_CONTRACT_DEV_TESTNET || ''
 
     try {
@@ -73,14 +71,15 @@ describe('Chain Signature', () => {
       ),
       networkId: 'testnet',
     }
-    const contract: ChainSignatureContracts =
+    const contract: ChainSignatureContractIds =
       process.env.NEXT_PUBLIC_CHAIN_SIGNATURE_CONTRACT_DEV_TESTNET || ''
 
     try {
-      const deposit = await ChainSignaturesContract.getExperimentalSignatureDeposit(
-        contract,
-        nearAuthentication.networkId
-      )
+      const deposit =
+        await ChainSignaturesContract.getExperimentalSignatureDeposit(
+          contract,
+          nearAuthentication.networkId
+        )
 
       expect(deposit).toBeDefined()
       expect(typeof deposit).toBe('string')

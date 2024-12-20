@@ -1,4 +1,6 @@
-import { type MPCSignature } from '../signature'
+// import { type RSVSignature } from '../signature'
+import { type RSVSignature } from '../signature'
+import { type UncompressedPublicKey } from './types'
 
 export interface SignArgs {
   payload: number[]
@@ -7,16 +9,16 @@ export interface SignArgs {
 }
 
 export abstract class ChainSignatureContract {
-  abstract public_key(): Promise<string>
-
   abstract experimental_signature_deposit(): Promise<number>
+
+  abstract public_key(): Promise<UncompressedPublicKey>
+
+  abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
 
   abstract derived_public_key(
     args: {
       path: string
       predecessor: string
     } & Record<string, unknown>
-  ): Promise<string>
-
-  abstract sign(args: SignArgs & Record<string, unknown>): Promise<MPCSignature>
+  ): Promise<UncompressedPublicKey>
 }

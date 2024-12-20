@@ -9,29 +9,39 @@ import { EVM } from '../../chains/EVM/EVM'
 import { type Response } from '../../chains/types'
 import { ChainSignaturesContract } from './contract'
 import { type KeyPair } from '@near-js/crypto'
+import { getNearAccount } from './account'
 
 export const signAndSendEVMTransaction = async (
   req: EVMRequest,
   keyPair: KeyPair
 ): Promise<Response> => {
   try {
+    const account = await getNearAccount({
+      networkId: req.nearAuthentication.networkId,
+      accountId: req.nearAuthentication.accountId,
+      keypair: keyPair,
+    })
+
+    const contract = new ChainSignaturesContract(
+      req.nearAuthentication.networkId,
+      req.chainConfig.contract,
+      account.accountId,
+      keyPair
+    )
+
     const evm = new EVM({
       providerUrl: req.chainConfig.providerUrl,
-      contract: req.chainConfig.contract,
-      nearNetworkId: req.nearAuthentication.networkId,
+      contract,
     })
 
     const { transaction, mpcPayloads } = await evm.getMPCPayloadAndTransaction(
       req.transaction
     )
 
-    const signature = await ChainSignaturesContract.sign({
-      hashedTx: mpcPayloads[0].payload,
+    const signature = await contract.sign({
+      payload: mpcPayloads[0].payload,
       path: req.derivationPath,
-      nearAuthentication: req.nearAuthentication,
-      contract: req.chainConfig.contract,
-      relayerUrl: req.fastAuthRelayerUrl,
-      keypair: keyPair,
+      key_version: 0,
     })
 
     const txHash = await evm.addSignatureAndBroadcast({
@@ -57,11 +67,23 @@ export const signAndSendBTCTransaction = async (
   keyPair: KeyPair
 ): Promise<Response> => {
   try {
+    const account = await getNearAccount({
+      networkId: req.nearAuthentication.networkId,
+      accountId: req.nearAuthentication.accountId,
+      keypair: keyPair,
+    })
+
+    const contract = new ChainSignaturesContract(
+      req.nearAuthentication.networkId,
+      req.chainConfig.contract,
+      account.accountId,
+      keyPair
+    )
+
     const btc = new Bitcoin({
       providerUrl: req.chainConfig.providerUrl,
-      contract: req.chainConfig.contract,
+      contract,
       network: req.chainConfig.network,
-      nearNetworkId: req.nearAuthentication.networkId,
     })
 
     const { transaction, mpcPayloads } = await btc.getMPCPayloadAndTransaction(
@@ -71,13 +93,10 @@ export const signAndSendBTCTransaction = async (
     const signatures = await Promise.all(
       mpcPayloads.map(
         async ({ payload }) =>
-          await ChainSignaturesContract.sign({
-            hashedTx: payload,
+          await contract.sign({
+            payload,
             path: req.derivationPath,
-            nearAuthentication: req.nearAuthentication,
-            contract: req.chainConfig.contract,
-            relayerUrl: req.fastAuthRelayerUrl,
-            keypair: keyPair,
+            key_version: 0,
           })
       )
     )
@@ -104,10 +123,22 @@ export const signAndSendCosmosTransaction = async (
   keyPair: KeyPair
 ): Promise<Response> => {
   try {
+    const account = await getNearAccount({
+      networkId: req.nearAuthentication.networkId,
+      accountId: req.nearAuthentication.accountId,
+      keypair: keyPair,
+    })
+
+    const contract = new ChainSignaturesContract(
+      req.nearAuthentication.networkId,
+      req.chainConfig.contract,
+      account.accountId,
+      keyPair
+    )
+
     const cosmos = new Cosmos({
-      contract: req.chainConfig.contract,
+      contract,
       chainId: req.chainConfig.chainId,
-      nearNetworkId: req.nearAuthentication.networkId,
     })
 
     const { transaction, mpcPayloads } =
@@ -116,13 +147,10 @@ export const signAndSendCosmosTransaction = async (
     const signatures = await Promise.all(
       mpcPayloads.map(
         async ({ payload }) =>
-          await ChainSignaturesContract.sign({
-            hashedTx: payload,
+          await contract.sign({
+            payload,
             path: req.derivationPath,
-            nearAuthentication: req.nearAuthentication,
-            contract: req.chainConfig.contract,
-            relayerUrl: req.fastAuthRelayerUrl,
-            keypair: keyPair,
+            key_version: 0,
           })
       )
     )

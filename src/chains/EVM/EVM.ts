@@ -1,17 +1,16 @@
 import { ethers, keccak256 } from 'ethers'
 import { fetchEVMFeeProperties } from './utils'
-import { type MPCPayloads, type ChainSignatureContract } from '../types'
+import { type MPCPayloads } from '../types'
 import {
   type EVMTransactionRequest,
   type EVMUnsignedTransaction,
 } from './types'
-import { toRSV, najToPubKey } from '../../signature/utils'
 import {
   type RSVSignature,
-  type MPCSignature,
   type KeyDerivationPath,
 } from '../../signature/types'
 import { type Chain } from '../Chain'
+import { type ChainSignatureContract } from '../ChainSignatureContract'
 
 export class EVM
   implements Chain<EVMTransactionRequest, EVMUnsignedTransaction>
@@ -58,7 +57,6 @@ export class EVM
     })
   }
 
-  // TODO: Should accept a derivedPubKeyNAJ as an argument so we can remove the contract dependency
   async deriveAddressAndPublicKey(
     signerId: string,
     path: KeyDerivationPath
@@ -66,26 +64,24 @@ export class EVM
     address: string
     publicKey: string
   }> {
-    const derivedPubKeyNAJ = await this.contract.derived_public_key({
+    const uncompressedPubKey = await this.contract.derived_public_key({
       path,
       predecessor: signerId,
     })
 
-    if (!derivedPubKeyNAJ) {
+    if (!uncompressedPubKey) {
       throw new Error('Failed to get derived public key')
     }
 
-    const childPublicKey = najToPubKey(derivedPubKeyNAJ, { compress: false })
-
-    const publicKeyNoPrefix = childPublicKey.startsWith('04')
-      ? childPublicKey.substring(2)
-      : childPublicKey
+    const publicKeyNoPrefix = uncompressedPubKey.startsWith('04')
+      ? uncompressedPubKey.substring(2)
+      : uncompressedPubKey
 
     const hash = ethers.keccak256(Buffer.from(publicKeyNoPrefix, 'hex'))
 
     return {
       address: `0x${hash.substring(hash.length - 40)}`,
-      publicKey: childPublicKey,
+      publicKey: uncompressedPubKey,
     }
   }
 
@@ -131,7 +127,7 @@ export class EVM
     const transaction = await this.attachGasAndNonce(transactionRequest)
     const txSerialized = ethers.Transaction.from(transaction).unsignedSerialized
     const transactionHash = keccak256(txSerialized)
-    const txHash = new Uint8Array(ethers.getBytes(transactionHash))
+    const txHash = Array.from(ethers.getBytes(transactionHash))
 
     return {
       transaction,
@@ -149,12 +145,12 @@ export class EVM
     mpcSignatures,
   }: {
     transaction: EVMUnsignedTransaction
-    mpcSignatures: MPCSignature[]
+    mpcSignatures: RSVSignature[]
   }): Promise<string> {
     try {
       const txSerialized = ethers.Transaction.from({
         ...transaction,
-        signature: this.parseSignature(toRSV(mpcSignatures[0])),
+        signature: this.parseSignature(mpcSignatures[0]),
       }).serialized
       const txResponse = await this.provider.broadcastTransaction(txSerialized)
 

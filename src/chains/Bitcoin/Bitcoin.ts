@@ -2,7 +2,7 @@ import axios from 'axios'
 import * as bitcoin from 'bitcoinjs-lib'
 
 import { fetchBTCFeeProperties, parseBTCNetwork } from './utils'
-import { type ChainSignatureContract, type MPCPayloads } from '../types'
+import { type MPCPayloads } from '../types'
 import {
   type BTCNetworkIds,
   type UTXO,
@@ -12,13 +12,13 @@ import {
   type BTCTransactionRequest,
   type BTCUnsignedTransaction,
 } from './types'
-import { toRSV, najToPubKey } from '../../signature/utils'
 import {
   type RSVSignature,
-  type MPCSignature,
   type KeyDerivationPath,
 } from '../../signature/types'
 import { type Chain } from '../Chain'
+import { type ChainSignatureContract } from '../ChainSignatureContract'
+import { compressPubKey } from '../../utils/key'
 
 export class Bitcoin
   implements Chain<BTCTransactionRequest, BTCUnsignedTransaction>
@@ -173,16 +173,16 @@ export class Bitcoin
     signerId: string,
     path: KeyDerivationPath
   ): Promise<{ address: string; publicKey: string }> {
-    const derivedPubKeyNAJ = await this.contract.derived_public_key({
+    const uncompressedPubKey = await this.contract.derived_public_key({
       path,
       predecessor: signerId,
     })
 
-    if (!derivedPubKeyNAJ) {
+    if (!uncompressedPubKey) {
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = najToPubKey(derivedPubKeyNAJ, { compress: true })
+    const derivedKey = compressPubKey(uncompressedPubKey)
     const publicKeyBuffer = Buffer.from(derivedKey, 'hex')
     const network = parseBTCNetwork(this.network)
 
@@ -255,7 +255,7 @@ export class Bitcoin
       sign: (hash: Buffer): Buffer => {
         mpcPayloads.push({
           index,
-          payload: new Uint8Array(hash),
+          payload: Array.from(hash),
         })
         // Return dummy signature to satisfy the interface
         return Buffer.alloc(64)
@@ -280,7 +280,7 @@ export class Bitcoin
     mpcSignatures,
   }: {
     transaction: BTCUnsignedTransaction
-    mpcSignatures: MPCSignature[]
+    mpcSignatures: RSVSignature[]
   }): Promise<string> {
     const publicKeyBuffer = Buffer.from(publicKey, 'hex')
 
@@ -288,7 +288,7 @@ export class Bitcoin
       publicKey: publicKeyBuffer,
       sign: () => {
         const mpcSignature = mpcSignatures[index]
-        return Bitcoin.parseRSVSignature(toRSV(mpcSignature))
+        return Bitcoin.parseRSVSignature(mpcSignature)
       },
     })
 

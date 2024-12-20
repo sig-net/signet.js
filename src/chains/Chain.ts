@@ -1,4 +1,5 @@
-import { type MPCSignature, type KeyDerivationPath } from '../signature/types'
+import { type KeyDerivationPath, type RSVSignature } from '../signature/types'
+import { type MPCPayloads } from './types'
 
 export interface Chain<TransactionRequest, UnsignedTransaction> {
   /**
@@ -39,10 +40,7 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
     transactionRequest: TransactionRequest
   ) => Promise<{
     transaction: UnsignedTransaction
-    mpcPayloads: Array<{
-      index: number
-      payload: Uint8Array
-    }>
+    mpcPayloads: MPCPayloads
   }>
 
   /**
@@ -50,7 +48,7 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    */
   addSignatureAndBroadcast: (params: {
     transaction: UnsignedTransaction
-    mpcSignatures: MPCSignature[]
+    mpcSignatures: RSVSignature[]
     publicKey: string
   }) => Promise<string>
 }

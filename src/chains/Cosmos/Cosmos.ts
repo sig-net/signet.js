@@ -13,7 +13,7 @@ import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 import { ripemd160, sha256 } from '@cosmjs/crypto'
 
 import { fetchChainInfo } from './utils'
-import { type ChainSignatureContract, type MPCPayloads } from '../types'
+import { type MPCPayloads } from '../types'
 import {
   type BalanceResponse,
   type CosmosNetworkIds,
@@ -21,14 +21,14 @@ import {
   type CosmosUnsignedTransaction,
 } from './types'
 import {
-  type MPCSignature,
   type RSVSignature,
   type KeyDerivationPath,
 } from '../../signature/types'
-import { toRSV, najToPubKey } from '../../signature/utils'
 import { type Chain } from '../Chain'
 import { bech32 } from 'bech32'
 import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
+import { type ChainSignatureContract } from '../ChainSignatureContract'
+import { compressPubKey } from '../../utils/key'
 
 export class Cosmos
   implements Chain<CosmosTransactionRequest, CosmosUnsignedTransaction>
@@ -90,16 +90,16 @@ export class Cosmos
     publicKey: string
   }> {
     const { prefix } = await fetchChainInfo(this.chainId)
-    const derivedPubKeyNAJ = await this.contract.derived_public_key({
+    const uncompressedPubKey = await this.contract.derived_public_key({
       path,
       predecessor: signerId,
     })
 
-    if (!derivedPubKeyNAJ) {
+    if (!uncompressedPubKey) {
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = najToPubKey(derivedPubKeyNAJ, { compress: true })
+    const derivedKey = compressPubKey(uncompressedPubKey)
     const pubKeySha256 = sha256(Buffer.from(fromHex(derivedKey)))
     const ripemd160Hash = ripemd160(pubKeySha256)
     const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))
@@ -191,7 +191,7 @@ export class Cosmos
     )
 
     const signBytes = makeSignBytes(signDoc)
-    const payload = sha256(signBytes)
+    const payload = Array.from(sha256(signBytes))
 
     return {
       transaction: TxRaw.fromPartial({
@@ -213,14 +213,14 @@ export class Cosmos
     mpcSignatures,
   }: {
     transaction: CosmosUnsignedTransaction
-    mpcSignatures: MPCSignature[]
+    mpcSignatures: RSVSignature[]
   }): Promise<string> {
     const { rpcUrl } = await fetchChainInfo(this.chainId)
     const client = await StargateClient.connect(rpcUrl)
 
     // Allow support for multi-sig but the package only supports single-sig
     transaction.signatures = mpcSignatures.map((sig) =>
-      this.parseRSVSignature(toRSV(sig))
+      this.parseRSVSignature(sig)
     )
 
     const txBytes = TxRaw.encode(transaction).finish()
