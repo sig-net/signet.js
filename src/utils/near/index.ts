@@ -1,7 +1,9 @@
 import * as transactionBuilder from './transactionBuilder'
-import * as signAndSend from './signAndSend'
+import * as signAndSendKeyPair from './signAndSendKeyPair'
+import * as contract from './contract'
 
 export const near = {
   transactionBuilder,
-  signAndSend,
+  signAndSendKeyPair,
+  contract,
 }

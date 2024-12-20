@@ -8,7 +8,7 @@ import { type RSVSignature, type MPCSignature } from '../../signature/types'
 import { type NearNetworkIds, type ChainSignatureContractIds } from './types'
 import { parseSignedDelegateForRelayer } from './relayer'
 import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from './constants'
-import { near } from '..'
+import { near } from '../..'
 import {
   type SignArgs,
   ChainSignatureContract,
@@ -92,9 +92,16 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     return najToUncompressedPubKey(najPubKey)
   }
 
-  async experimental_signature_deposit(): Promise<number> {
+  async experimental_signature_deposit(): Promise<BN> {
     const contract = await this.getContract()
-    return await contract.experimental_signature_deposit()
+    return new BN(
+      (await contract.experimental_signature_deposit()).toLocaleString(
+        'fullwide',
+        {
+          useGrouping: false,
+        }
+      )
+    )
   }
 
   async derived_public_key(args: {
@@ -111,11 +118,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     requireAccount(this.accountId)
 
     const contract = await this.getContract()
-    const deposit = new BN(
-      (await this.experimental_signature_deposit()).toLocaleString('fullwide', {
-        useGrouping: false,
-      })
-    )
+    const deposit = await this.experimental_signature_deposit()
 
     const signature = await contract.sign({
       args: { request: args },
@@ -138,7 +141,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     signArgs: SignArgs
     deposit: BN
     relayerUrl: string
-  }): Promise<MPCSignature> {
+  }): Promise<RSVSignature> {
     const functionCall = actionCreators.functionCall(
       'sign',
       { request: signArgs },

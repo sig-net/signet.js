@@ -1,6 +1,7 @@
 export type { SLIP044ChainId, KeyDerivationPath } from './signature/types'
-export { near } from './utils'
 export type { Chain } from './chains/Chain'
+export type { ChainSignatureContract } from './chains/ChainSignatureContract'
+export { near } from './utils'
 
 // EVM
 export { EVM } from './chains/EVM/EVM'

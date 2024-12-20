@@ -1,4 +1,5 @@
 // import { type RSVSignature } from '../signature'
+import type BN from 'bn.js'
 import { type RSVSignature } from '../signature'
 import { type UncompressedPublicKey } from './types'
 
@@ -9,7 +10,7 @@ export interface SignArgs {
 }
 
 export abstract class ChainSignatureContract {
-  abstract experimental_signature_deposit(): Promise<number>
+  abstract experimental_signature_deposit(): Promise<BN>
 
   abstract public_key(): Promise<UncompressedPublicKey>
 

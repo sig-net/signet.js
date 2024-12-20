@@ -11,7 +11,7 @@ import { ChainSignaturesContract } from './contract'
 import { type KeyPair } from '@near-js/crypto'
 import { getNearAccount } from './account'
 
-export const signAndSendEVMTransaction = async (
+export const EVMTransaction = async (
   req: EVMRequest,
   keyPair: KeyPair
 ): Promise<Response> => {
@@ -62,7 +62,7 @@ export const signAndSendEVMTransaction = async (
   }
 }
 
-export const signAndSendBTCTransaction = async (
+export const BTCTransaction = async (
   req: BitcoinRequest,
   keyPair: KeyPair
 ): Promise<Response> => {
@@ -118,7 +118,7 @@ export const signAndSendBTCTransaction = async (
   }
 }
 
-export const signAndSendCosmosTransaction = async (
+export const CosmosTransaction = async (
   req: CosmosRequest,
   keyPair: KeyPair
 ): Promise<Response> => {

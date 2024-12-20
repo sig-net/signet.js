@@ -4,6 +4,7 @@ import type {
   NetworkId,
 } from '@near-wallet-selector/core'
 import {
+  type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
 } from '../../signature/types'
@@ -12,6 +13,7 @@ import { ChainSignaturesContract } from './contract'
 import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
 import { NEAR_MAX_GAS } from './constants'
 import { type NFTKeysContracts, type ChainSignatureContractIds } from './types'
+import { toRSV } from '../../signature'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -95,7 +97,7 @@ export const responseToMpcSignature = ({
   response,
 }: {
   response: FinalExecutionOutcome
-}): MPCSignature | undefined => {
+}): RSVSignature | undefined => {
   const signature: string = response.receipts_outcome.reduce<string>(
     (acc: string, curr: ExecutionOutcomeWithId) => {
       if (acc) {
@@ -118,7 +120,7 @@ export const responseToMpcSignature = ({
       Ok: MPCSignature
     }
 
-    return parsedJSONSignature.Ok
+    return toRSV(parsedJSONSignature.Ok)
   } else {
     return undefined
   }
