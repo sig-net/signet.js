@@ -29,9 +29,12 @@ export const mpcPayloadsToChainSigTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new ChainSignaturesContract(networkId, contractId)
+  const contract = new ChainSignaturesContract({
+    networkId,
+    contractId,
+  })
 
-  const currentContractFee = await contract.experimental_signature_deposit()
+  const currentContractFee = await contract.getCurrentSignatureDeposit()
 
   return {
     receiverId: contractId,
@@ -71,9 +74,12 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new ChainSignaturesContract(networkId, chainSigContract)
+  const contract = new ChainSignaturesContract({
+    networkId,
+    contractId: chainSigContract,
+  })
 
-  const currentContractFee = await contract.experimental_signature_deposit()
+  const currentContractFee = await contract.getCurrentSignatureDeposit()
 
   return {
     receiverId: nftKeysContract,

@@ -1,15 +1,15 @@
-import { Bitcoin } from '../../chains/Bitcoin/Bitcoin'
+import { Bitcoin } from '../../../chains/Bitcoin/Bitcoin'
 import {
   type BitcoinRequest,
   type CosmosRequest,
   type EVMRequest,
-} from './types'
-import { Cosmos } from '../../chains/Cosmos/Cosmos'
-import { EVM } from '../../chains/EVM/EVM'
-import { type Response } from '../../chains/types'
-import { ChainSignaturesContract } from './contract'
+} from '../types'
+import { Cosmos } from '../../../chains/Cosmos/Cosmos'
+import { EVM } from '../../../chains/EVM/EVM'
+import { type Response } from '../../../chains/types'
+import { ChainSignaturesContract } from '../contract'
 import { type KeyPair } from '@near-js/crypto'
-import { getNearAccount } from './account'
+import { getNearAccount } from '../account'
 
 export const EVMTransaction = async (
   req: EVMRequest,
@@ -22,12 +22,12 @@ export const EVMTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract(
-      req.nearAuthentication.networkId,
-      req.chainConfig.contract,
-      account.accountId,
-      keyPair
-    )
+    const contract = new ChainSignaturesContract({
+      networkId: req.nearAuthentication.networkId,
+      contractId: req.chainConfig.contract,
+      accountId: account.accountId,
+      keypair: keyPair,
+    })
 
     const evm = new EVM({
       providerUrl: req.chainConfig.providerUrl,
@@ -73,12 +73,12 @@ export const BTCTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract(
-      req.nearAuthentication.networkId,
-      req.chainConfig.contract,
-      account.accountId,
-      keyPair
-    )
+    const contract = new ChainSignaturesContract({
+      networkId: req.nearAuthentication.networkId,
+      contractId: req.chainConfig.contract,
+      accountId: account.accountId,
+      keypair: keyPair,
+    })
 
     const btc = new Bitcoin({
       providerUrl: req.chainConfig.providerUrl,
@@ -129,12 +129,12 @@ export const CosmosTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract(
-      req.nearAuthentication.networkId,
-      req.chainConfig.contract,
-      account.accountId,
-      keyPair
-    )
+    const contract = new ChainSignaturesContract({
+      networkId: req.nearAuthentication.networkId,
+      contractId: req.chainConfig.contract,
+      accountId: account.accountId,
+      keypair: keyPair,
+    })
 
     const cosmos = new Cosmos({
       contract,

@@ -1,1 +1,1 @@
-export { near } from './near'
+export * as near from './near'

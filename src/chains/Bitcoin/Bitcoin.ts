@@ -173,7 +173,7 @@ export class Bitcoin
     signerId: string,
     path: KeyDerivationPath
   ): Promise<{ address: string; publicKey: string }> {
-    const uncompressedPubKey = await this.contract.derived_public_key({
+    const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor: signerId,
     })

@@ -90,7 +90,7 @@ export class Cosmos
     publicKey: string
   }> {
     const { prefix } = await fetchChainInfo(this.chainId)
-    const uncompressedPubKey = await this.contract.derived_public_key({
+    const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor: signerId,
     })

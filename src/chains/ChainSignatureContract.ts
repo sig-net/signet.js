@@ -10,13 +10,13 @@ export interface SignArgs {
 }
 
 export abstract class ChainSignatureContract {
-  abstract experimental_signature_deposit(): Promise<BN>
+  abstract getCurrentSignatureDeposit(): Promise<BN>
 
-  abstract public_key(): Promise<UncompressedPublicKey>
+  abstract getPublicKey(): Promise<UncompressedPublicKey>
 
   abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
 
-  abstract derived_public_key(
+  abstract getDerivedPublicKey(
     args: {
       path: string
       predecessor: string
