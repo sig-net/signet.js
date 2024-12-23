@@ -1,14 +1,11 @@
-import axios from 'axios'
 import * as bitcoin from 'bitcoinjs-lib'
 
-import { fetchBTCFeeProperties, parseBTCNetwork } from './utils'
+import { parseBTCNetwork } from './utils'
 import { type MPCPayloads } from '../types'
 import {
+  type BTCInput,
   type BTCNetworkIds,
-  type UTXO,
   type BTCOutput,
-  type Transaction,
-  type BTCAddressInfo,
   type BTCTransactionRequest,
   type BTCUnsignedTransaction,
 } from './types'
@@ -19,6 +16,8 @@ import {
 import { type Chain } from '../Chain'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
 import { compressPubKey } from '../../utils/key'
+import { type Adapter } from './adapters/Adapter'
+import { Mempool } from './adapters/Mempool'
 
 export class Bitcoin
   implements Chain<BTCTransactionRequest, BTCUnsignedTransaction>
@@ -26,17 +25,18 @@ export class Bitcoin
   private static readonly SATOSHIS_PER_BTC = 100_000_000
 
   private readonly network: BTCNetworkIds
-  private readonly providerUrl: string
   private readonly contract: ChainSignatureContract
+  private readonly adapter: Adapter
 
   constructor(config: {
     network: BTCNetworkIds
     providerUrl: string
     contract: ChainSignatureContract
+    adapter?: Adapter
   }) {
     this.network = config.network
-    this.providerUrl = config.providerUrl
     this.contract = config.contract
+    this.adapter = config.adapter || new Mempool(config.providerUrl)
   }
 
   static toBTC(satoshis: number): number {
@@ -50,34 +50,12 @@ export class Bitcoin
   private async fetchTransaction(
     transactionId: string
   ): Promise<bitcoin.Transaction> {
-    const { data } = await axios.get<Transaction>(
-      `${this.providerUrl}/tx/${transactionId}`
-    )
+    const data = await this.adapter.getTransaction(transactionId)
     const tx = new bitcoin.Transaction()
 
-    tx.version = data.version
-    tx.locktime = data.locktime
-
-    data.vin.forEach((vin) => {
-      const txHash = Buffer.from(vin.txid, 'hex').reverse()
-      const { vout, sequence } = vin
-      const scriptSig = vin.scriptsig
-        ? Buffer.from(vin.scriptsig, 'hex')
-        : undefined
-      tx.addInput(txHash, vout, sequence, scriptSig)
-    })
-
     data.vout.forEach((vout) => {
-      const { value } = vout
       const scriptPubKey = Buffer.from(vout.scriptpubkey, 'hex')
-      tx.addOutput(scriptPubKey, value)
-    })
-
-    data.vin.forEach((vin, index) => {
-      if (vin.witness && vin.witness.length > 0) {
-        const witness = vin.witness.map((w) => Buffer.from(w, 'hex'))
-        tx.setWitness(index, witness)
-      }
+      tx.addOutput(scriptPubKey, vout.value)
     })
 
     return tx
@@ -104,22 +82,18 @@ export class Bitcoin
     const { inputs, outputs } =
       transactionRequest.inputs && transactionRequest.outputs
         ? transactionRequest
-        : await fetchBTCFeeProperties(
-            this.providerUrl,
-            transactionRequest.from,
-            [
-              {
-                address: transactionRequest.to,
-                value: parseFloat(transactionRequest.value),
-              },
-            ]
-          )
+        : await this.adapter.getInputsAndOutputs(transactionRequest.from, [
+            {
+              address: transactionRequest.to,
+              value: parseFloat(transactionRequest.value),
+            },
+          ])
 
     const psbt = new bitcoin.Psbt({ network: parseBTCNetwork(this.network) })
 
     // Since the sender address is always P2WPKH, we can assume all inputs are P2WPKH
     await Promise.all(
-      inputs.map(async (utxo: UTXO) => {
+      inputs.map(async (utxo: BTCInput) => {
         const transaction = await this.fetchTransaction(utxo.txid)
         const prevOut = transaction.outs[utxo.vout]
         const value = utxo.value
@@ -139,34 +113,18 @@ export class Bitcoin
     )
 
     outputs.forEach((out: BTCOutput) => {
-      if ('script' in out && out.script) {
-        psbt.addOutput({
-          script: out.script,
-          value: out.value,
-        })
-      } else if ('address' in out && out.address) {
-        psbt.addOutput({
-          address: out.address,
-          value: out.value,
-        })
-      } else {
-        psbt.addOutput({
-          address: transactionRequest.from,
-          value: out.value,
-        })
-      }
+      psbt.addOutput({
+        address: out.address,
+        value: out.value,
+      })
     })
 
     return psbt
   }
 
   async getBalance(address: string): Promise<string> {
-    const { data } = await axios.get<BTCAddressInfo>(
-      `${this.providerUrl}/address/${address}`
-    )
-    return Bitcoin.toBTC(
-      data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum
-    ).toString()
+    const balance = await this.adapter.getBalance(address)
+    return Bitcoin.toBTC(balance).toString()
   }
 
   async deriveAddressAndPublicKey(
@@ -301,15 +259,6 @@ export class Bitcoin
   }
 
   async broadcast(transactionSerialized: string): Promise<string> {
-    const response = await axios.post<string>(
-      `${this.providerUrl}/tx`,
-      transactionSerialized
-    )
-
-    if (response.status === 200 && response.data) {
-      return response.data
-    }
-
-    throw new Error(`Failed to broadcast transaction: ${response.data}`)
+    return await this.adapter.broadcastTransaction(transactionSerialized)
   }
 }
