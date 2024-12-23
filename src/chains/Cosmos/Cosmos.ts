@@ -208,28 +208,38 @@ export class Cosmos
     }
   }
 
-  async addSignatureAndBroadcast({
+  addSignature({
     transaction,
     mpcSignatures,
   }: {
     transaction: CosmosUnsignedTransaction
     mpcSignatures: RSVSignature[]
-  }): Promise<string> {
-    const { rpcUrl } = await fetchChainInfo(this.chainId)
-    const client = await StargateClient.connect(rpcUrl)
-
+  }): string {
     // Allow support for multi-sig but the package only supports single-sig
     transaction.signatures = mpcSignatures.map((sig) =>
       this.parseRSVSignature(sig)
     )
 
     const txBytes = TxRaw.encode(transaction).finish()
-    const broadcastResponse = await client.broadcastTx(txBytes)
+    return Buffer.from(txBytes).toString('hex')
+  }
 
-    if (broadcastResponse.code !== 0) {
-      throw new Error(`Broadcast error: ${broadcastResponse.rawLog}`)
+  async broadcast(transactionSerialized: string): Promise<string> {
+    try {
+      const { rpcUrl } = await fetchChainInfo(this.chainId)
+      const client = await StargateClient.connect(rpcUrl)
+
+      const txBytes = Buffer.from(transactionSerialized, 'hex')
+      const broadcastResponse = await client.broadcastTx(txBytes)
+
+      if (broadcastResponse.code !== 0) {
+        throw new Error(`Broadcast error: ${broadcastResponse.rawLog}`)
+      }
+
+      return broadcastResponse.transactionHash
+    } catch (error) {
+      console.error('Transaction broadcast failed:', error)
+      throw new Error('Failed to broadcast transaction.')
     }
-
-    return broadcastResponse.transactionHash
   }
 }

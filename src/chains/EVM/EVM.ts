@@ -140,24 +140,28 @@ export class EVM
     }
   }
 
-  async addSignatureAndBroadcast({
+  addSignature({
     transaction,
     mpcSignatures,
   }: {
     transaction: EVMUnsignedTransaction
     mpcSignatures: RSVSignature[]
-  }): Promise<string> {
-    try {
-      const txSerialized = ethers.Transaction.from({
-        ...transaction,
-        signature: this.parseSignature(mpcSignatures[0]),
-      }).serialized
-      const txResponse = await this.provider.broadcastTransaction(txSerialized)
+  }): string {
+    return ethers.Transaction.from({
+      ...transaction,
+      signature: this.parseSignature(mpcSignatures[0]),
+    }).serialized
+  }
 
+  async broadcast(transactionSerialized: string): Promise<string> {
+    try {
+      const txResponse = await this.provider.broadcastTransaction(
+        transactionSerialized
+      )
       return txResponse.hash
     } catch (error) {
-      console.error('Transaction execution failed:', error)
-      throw new Error('Failed to send signed transaction.')
+      console.error('Transaction broadcast failed:', error)
+      throw new Error('Failed to broadcast transaction.')
     }
   }
 }

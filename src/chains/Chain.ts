@@ -44,11 +44,15 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
   }>
 
   /**
-   * Adds signatures to transaction and broadcasts it
+   * Gets the current signature deposit for the chain
    */
-  addSignatureAndBroadcast: (params: {
+  addSignature: (params: {
     transaction: UnsignedTransaction
     mpcSignatures: RSVSignature[]
-    publicKey: string
-  }) => Promise<string>
+  }) => string
+
+  /**
+   * Broadcasts a transaction
+   */
+  broadcast: (transactionSerialized: string) => Promise<string>
 }

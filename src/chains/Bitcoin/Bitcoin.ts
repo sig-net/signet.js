@@ -275,13 +275,13 @@ export class Bitcoin
     }
   }
 
-  async addSignatureAndBroadcast({
+  addSignature({
     transaction: { psbt, publicKey },
     mpcSignatures,
   }: {
     transaction: BTCUnsignedTransaction
     mpcSignatures: RSVSignature[]
-  }): Promise<string> {
+  }): string {
     const publicKeyBuffer = Buffer.from(publicKey, 'hex')
 
     const keyPair = (index: number): bitcoin.Signer => ({
@@ -297,10 +297,13 @@ export class Bitcoin
     }
 
     psbt.finalizeAllInputs()
+    return psbt.extractTransaction().toHex()
+  }
 
+  async broadcast(transactionSerialized: string): Promise<string> {
     const response = await axios.post<string>(
       `${this.providerUrl}/tx`,
-      psbt.extractTransaction().toHex()
+      transactionSerialized
     )
 
     if (response.status === 200 && response.data) {
