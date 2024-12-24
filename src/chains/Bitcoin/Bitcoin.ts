@@ -80,15 +80,12 @@ export class Bitcoin
     const { inputs, outputs } =
       transactionRequest.inputs && transactionRequest.outputs
         ? transactionRequest
-        : await this.btcRpcAdapter.getInputsAndOutputs(
-            transactionRequest.from,
-            [
-              {
-                address: transactionRequest.to,
-                value: parseFloat(transactionRequest.value),
-              },
-            ]
-          )
+        : await this.btcRpcAdapter.selectUTXOs(transactionRequest.from, [
+            {
+              address: transactionRequest.to,
+              value: parseFloat(transactionRequest.value),
+            },
+          ])
 
     const psbt = new bitcoin.Psbt({ network: parseBTCNetwork(this.network) })
 

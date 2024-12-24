@@ -1,7 +1,7 @@
 import { type BTCTransaction, type BTCInput, type BTCOutput } from '../types'
 
 export abstract class BTCRpcAdapter {
-  abstract getInputsAndOutputs(
+  abstract selectUTXOs(
     from: string,
     targets: BTCOutput[]
   ): Promise<{ inputs: BTCInput[]; outputs: BTCOutput[] }>

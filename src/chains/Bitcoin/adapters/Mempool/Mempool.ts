@@ -42,7 +42,7 @@ export class Mempool extends BTCRpcAdapter {
     }
   }
 
-  async getInputsAndOutputs(
+  async selectUTXOs(
     from: string,
     targets: BTCOutput[],
     confirmationTarget = 6

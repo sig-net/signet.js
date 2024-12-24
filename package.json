@@ -48,7 +48,7 @@
     "bitcoinjs-lib": "^6.1.5",
     "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
-    "chain-registry": "^1.63.103",
+    "chain-registry": "^1.69.72",
     "coinselect": "^3.1.13",
     "cosmjs-types": "^0.9.0",
     "ethers": "^6.11.1",

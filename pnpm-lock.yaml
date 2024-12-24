@@ -54,8 +54,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       chain-registry:
-        specifier: ^1.63.103
-        version: 1.63.103
+        specifier: ^1.69.72
+        version: 1.69.72
       coinselect:
         specifier: ^3.1.13
         version: 3.1.13
@@ -737,8 +737,8 @@ packages:
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
 
-  '@chain-registry/types@0.45.83':
-    resolution: {integrity: sha512-XQ23QNkp5RieTQ2KG2lImNoWNZHP7RCIt8eGPPDLwKk2UG1sG1bYvBQzPoCzc3CesrAAr+3o7i/USFbRGO7gtQ==}
+  '@chain-registry/types@0.50.42':
+    resolution: {integrity: sha512-UfiaZDeagedfXSqhzmLiCAvUb2LRJ60erMhY/V1SB4B6PIwuDdnV17gmtKisnGB3Ze4vOA+NVXV2DeezCREX9A==}
 
   '@confio/ics23@0.6.8':
     resolution: {integrity: sha512-wB6uo+3A50m0sW/EWcU64xpV/8wShZ6bMTa7pF8eYsTrSkQA7oLUIJcs/wb8g4y2Oyq701BaGiO6n/ak5WXO1w==}
@@ -1434,8 +1434,8 @@ packages:
   caniuse-lite@1.0.30001664:
     resolution: {integrity: sha512-AmE7k4dXiNKQipgn7a2xg558IRqPN3jMQY/rOsbxDhrd0tyChwbITBfiwtnqz8bi2M5mIWbxAYBvk7W7QBUS2g==}
 
-  chain-registry@1.63.103:
-    resolution: {integrity: sha512-TICiOH+lqHhFvyTaM1y7WWAPaJswz8NhASG24AkenoZnkaZMEAdwUCiscC7H6/BloDA3FMQvAgDeTG3HycGvKA==}
+  chain-registry@1.69.72:
+    resolution: {integrity: sha512-dlASkvhCXkBNoVsotF3FpVQxcQjITdpNTuAgCNzEBVqXnlIXCr9lqfLekyg3Al5g1UhvdEa+mey74UwVhYI+uA==}
 
   chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -3908,7 +3908,7 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
-  '@chain-registry/types@0.45.83': {}
+  '@chain-registry/types@0.50.42': {}
 
   '@confio/ics23@0.6.8':
     dependencies:
@@ -4975,9 +4975,9 @@ snapshots:
 
   caniuse-lite@1.0.30001664: {}
 
-  chain-registry@1.63.103:
+  chain-registry@1.69.72:
     dependencies:
-      '@chain-registry/types': 0.45.83
+      '@chain-registry/types': 0.50.42
 
   chalk@2.4.2:
     dependencies:
