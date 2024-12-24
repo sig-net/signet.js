@@ -48,7 +48,7 @@ export class Cosmos
   /**
    * Creates a new Cosmos chain instance
    * @param params - Configuration parameters
-   * @param params.chainId - Chain identifier for the Cosmos network
+   * @param params.chainId - Chain id for the Cosmos network
    * @param params.contract - Instance of the chain signature contract for MPC operations
    * @param params.endpoints - Optional RPC and REST endpoints
    * @param params.endpoints.rpcUrl - Optional RPC endpoint URL
@@ -86,12 +86,6 @@ export class Cosmos
     }
   }
 
-  /**
-   * Gets the balance of a Cosmos address in the chain's native token
-   * @param address - The Cosmos address to check
-   * @returns The balance formatted according to the chain's decimals
-   * @throws Error if balance fetch fails
-   */
   async getBalance(address: string): Promise<string> {
     try {
       const { restUrl, denom, decimals } = await this.getChainInfo()
@@ -118,13 +112,6 @@ export class Cosmos
     }
   }
 
-  /**
-   * Derives a Cosmos address and public key from a signer ID and derivation path
-   * @param predecessor - The ID of the signer to derive from
-   * @param path - The derivation path to use
-   * @returns Object containing the derived Cosmos address and public key
-   * @throws Error if public key derivation fails
-   */
   async deriveAddressAndPublicKey(
     predecessor: string,
     path: KeyDerivationPath
@@ -150,11 +137,6 @@ export class Cosmos
     return { address, publicKey: derivedKey }
   }
 
-  /**
-   * Stores an unsigned transaction in local storage
-   * @param transaction - The unsigned transaction to store
-   * @param storageKey - The key to store the transaction under
-   */
   setTransaction(
     transaction: CosmosUnsignedTransaction,
     storageKey: string
@@ -163,13 +145,6 @@ export class Cosmos
     window.localStorage.setItem(storageKey, toBase64(serialized))
   }
 
-  /**
-   * Retrieves a stored transaction from local storage
-   * @param storageKey - The key of the stored transaction
-   * @param options - Optional parameters
-   * @param options.remove - Whether to remove the transaction after retrieval
-   * @returns The stored transaction or undefined if not found
-   */
   getTransaction(
     storageKey: string,
     options?: {
@@ -186,12 +161,6 @@ export class Cosmos
     return TxRaw.decode(fromBase64(serialized))
   }
 
-  /**
-   * Prepares a transaction for MPC signing by creating the necessary payloads
-   * @param transactionRequest - The transaction request containing messages and options
-   * @returns Object containing the unsigned transaction and MPC payloads
-   * @throws Error if account does not exist on chain
-   */
   async getMPCPayloadAndTransaction(
     transactionRequest: CosmosTransactionRequest
   ): Promise<{
@@ -270,13 +239,6 @@ export class Cosmos
     }
   }
 
-  /**
-   * Adds signatures to a Cosmos transaction
-   * @param params - Parameters for adding signatures
-   * @param params.transaction - The unsigned transaction
-   * @param params.mpcSignatures - Array of RSV signatures from MPC
-   * @returns The serialized signed transaction in hex format
-   */
   addSignature({
     transaction,
     mpcSignatures,
@@ -293,12 +255,6 @@ export class Cosmos
     return Buffer.from(txBytes).toString('hex')
   }
 
-  /**
-   * Broadcasts a signed transaction to the network
-   * @param txSerialized - The serialized signed transaction in hex format
-   * @returns The transaction hash
-   * @throws Error if broadcast fails
-   */
   async broadcastTx(txSerialized: string): Promise<string> {
     try {
       const { rpcUrl } = await this.getChainInfo()

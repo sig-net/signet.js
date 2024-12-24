@@ -13,7 +13,7 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * Gets the native token balance for a given address
    *
    * @param address - The blockchain address to check
-   * @returns Promise resolving to the balance as a string, formatted according to the chain's decimal places
+   * @returns Promise resolving to the balance as a string, formatted according to the chain's decimal places (e.g. ETH, BTC, etc.)
    * @throws Error if the balance fetch fails or the address is invalid
    */
   getBalance: (address: string) => Promise<string>
@@ -22,7 +22,7 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * Derives an address and public key from a signer ID and derivation path.
    * Uses MPC (Multi-Party Computation) to derive the key pair securely.
    *
-   * @param predecessor - The ID of the signer that controls the derived key
+   * @param predecessor - The signer ID used to call the sign function on ChainSignatureContract
    * @param path - The derivation path that uniquely identifies this key pair
    * @returns Promise resolving to the derived address and its corresponding public key
    * @throws Error if key derivation fails or the signer ID is invalid
