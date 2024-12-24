@@ -18,6 +18,10 @@ import { type ChainSignatureContract } from '../ChainSignatureContract'
 import { compressPubKey } from '../../utils/key'
 import { type BTCRpcAdapter } from './adapters/BTCRpcAdapter'
 
+/**
+ * Implementation of the Chain interface for Bitcoin network.
+ * Handles interactions with both Bitcoin mainnet and testnet, supporting P2WPKH transactions.
+ */
 export class Bitcoin
   implements Chain<BTCTransactionRequest, BTCUnsignedTransaction>
 {
@@ -27,6 +31,13 @@ export class Bitcoin
   private readonly contract: ChainSignatureContract
   private readonly btcRpcAdapter: BTCRpcAdapter
 
+  /**
+   * Creates a new Bitcoin chain instance
+   * @param config - Configuration object for the Bitcoin chain
+   * @param config.network - Network identifier (mainnet/testnet)
+   * @param config.contract - Instance of the chain signature contract for MPC operations
+   * @param config.btcRpcAdapter - Bitcoin RPC adapter for network interactions
+   */
   constructor(config: {
     network: BTCNetworkIds
     contract: ChainSignatureContract
@@ -37,10 +48,20 @@ export class Bitcoin
     this.btcRpcAdapter = config.btcRpcAdapter
   }
 
+  /**
+   * Converts satoshis to BTC
+   * @param satoshis - Amount in satoshis
+   * @returns Amount in BTC
+   */
   static toBTC(satoshis: number): number {
     return satoshis / Bitcoin.SATOSHIS_PER_BTC
   }
 
+  /**
+   * Converts BTC to satoshis
+   * @param btc - Amount in BTC
+   * @returns Amount in satoshis (rounded)
+   */
   static toSatoshi(btc: number): number {
     return Math.round(btc * Bitcoin.SATOSHIS_PER_BTC)
   }
@@ -72,6 +93,12 @@ export class Bitcoin
     return rawSignature
   }
 
+  /**
+   * Creates a Partially Signed Bitcoin Transaction (PSBT)
+   * @param params - Parameters for creating the PSBT
+   * @param params.transactionRequest - Transaction request containing inputs and outputs
+   * @returns Created PSBT instance
+   */
   async createPSBT({
     transactionRequest,
   }: {
@@ -128,18 +155,30 @@ export class Bitcoin
     return psbt
   }
 
+  /**
+   * Gets the BTC balance of an address
+   * @param address - The Bitcoin address to check
+   * @returns The balance in BTC as a string
+   */
   async getBalance(address: string): Promise<string> {
     const balance = await this.btcRpcAdapter.getBalance(address)
     return Bitcoin.toBTC(balance).toString()
   }
 
+  /**
+   * Derives a Bitcoin address and public key from a signer ID and derivation path
+   * @param predecessor - The ID of the signer to derive from
+   * @param path - The derivation path to use
+   * @returns Object containing the derived Bitcoin address and public key
+   * @throws Error if public key derivation or address generation fails
+   */
   async deriveAddressAndPublicKey(
-    signerId: string,
+    predecessor: string,
     path: KeyDerivationPath
   ): Promise<{ address: string; publicKey: string }> {
     const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
-      predecessor: signerId,
+      predecessor,
     })
 
     if (!uncompressedPubKey) {
@@ -164,6 +203,11 @@ export class Bitcoin
     return { address, publicKey: derivedKey }
   }
 
+  /**
+   * Stores an unsigned transaction in local storage
+   * @param transaction - The unsigned transaction to store
+   * @param storageKey - The key to store the transaction under
+   */
   setTransaction(
     transaction: BTCUnsignedTransaction,
     storageKey: string
@@ -177,6 +221,13 @@ export class Bitcoin
     )
   }
 
+  /**
+   * Retrieves a stored transaction from local storage
+   * @param storageKey - The key of the stored transaction
+   * @param options - Optional parameters
+   * @param options.remove - Whether to remove the transaction after retrieval
+   * @returns The stored transaction or undefined if not found
+   */
   getTransaction(
     storageKey: string,
     options?: {
@@ -197,6 +248,11 @@ export class Bitcoin
     }
   }
 
+  /**
+   * Prepares a transaction for MPC signing by creating the necessary payloads
+   * @param transactionRequest - The transaction request to prepare
+   * @returns Object containing the unsigned transaction and MPC payloads
+   */
   async getMPCPayloadAndTransaction(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
@@ -238,6 +294,14 @@ export class Bitcoin
     }
   }
 
+  /**
+   * Adds signatures to a PSBT
+   * @param params - Parameters for adding signatures
+   * @param params.transaction - The unsigned transaction with PSBT
+   * @param params.mpcSignatures - Array of RSV signatures from MPC
+   * @returns The serialized signed transaction
+   * @throws Error if signature application fails
+   */
   addSignature({
     transaction: { psbt, publicKey },
     mpcSignatures,
@@ -263,6 +327,12 @@ export class Bitcoin
     return psbt.extractTransaction().toHex()
   }
 
+  /**
+   * Broadcasts a signed transaction to the Bitcoin network
+   * @param txSerialized - The serialized transaction in hex format
+   * @returns The transaction ID (txid) of the broadcast transaction
+   * @throws Error if broadcasting fails
+   */
   async broadcastTx(txSerialized: string): Promise<string> {
     return await this.btcRpcAdapter.broadcastTransaction(txSerialized)
   }

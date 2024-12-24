@@ -1,170 +1,119 @@
-<!-- # MultiChain Tools
+# Multichain Tools
 
-MultiChain Tools is a TypeScript package that provides a set of utilities and functions for interacting with various blockchain networks, including Ethereum (EVM-based chains) and Bitcoin. It offers an easy way to sign and send transactions, fetch derived addresses, and estimate transaction fees using a single NEAR account that controls the keys for the other chains.
+A TypeScript library for handling multi-chain transactions and signatures using MPC (Multi-Party Computation).
 
-## Supported Chains
+## Overview
 
-- BTC
-- EVM
+This library provides a unified interface for interacting with different blockchain networks, including:
+
+- EVM-based chains (Ethereum, etc.)
+- Bitcoin
+- Cosmos-based chains
+
+## Core Features
+
+### Chain Interface
+
+The library implements a common interface for all supported chains with the following key functionalities:
+
+- **Balance Checking**: Query account balances across different chains
+- **Address Derivation**: Derive addresses and public keys using MPC
+- **Transaction Management**: Create, store, and retrieve transactions
+- **Signature Handling**: Process MPC signatures for transactions
+- **Transaction Broadcasting**: Submit signed transactions to the network
+
+### Chain Signature Contract
+
+The ChainSignatureContract is a crucial component that handles MPC operations. Here's an example implementation using NEAR:
+
+```typescript
+import { ChainSignatureContract } from './chains/ChainSignatureContract'
+import { ChainSignaturesContract } from './utils/near/contract'
+
+// Initialize with view-only access
+const viewOnlyContract = new ChainSignaturesContract({
+  networkId: 'testnet',
+  contractId: 'contract.testnet',
+})
+
+// Initialize with full access (for signing)
+const fullAccessContract = new ChainSignaturesContract({
+  networkId: 'testnet',
+  contractId: 'contract.testnet',
+  accountId: 'signer.testnet',
+  keypair: nearKeyPair, // Your NEAR KeyPair instance
+})
+
+// Example: Derive a public key
+const publicKey = await fullAccessContract.getDerivedPublicKey({
+  path: 'my-derivation-path',
+  predecessor: 'signer.testnet',
+})
+
+// Example: Sign a payload
+const signature = await fullAccessContract.sign({
+  payload: [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+  ], // Your payload bytes
+  path: 'my-derivation-path',
+  key_version: 1,
+})
+
+// Example: Get current signature deposit
+const deposit = await fullAccessContract.getCurrentSignatureDeposit()
+```
+
+### Supported Chains
+
+The library currently supports multiple blockchain networks through dedicated implementations:
+
+- **EVM Chains**: Ethereum and compatible networks
+- **Bitcoin**: Bitcoin network support
+- **Cosmos**: Cosmos-based blockchain networks
 
 ## Installation
 
-To install MultiChain Tools, use npm:
-
-    npm install multichain-tools
+```bash
+npm install multichain-tools
+# or
+yarn add multichain-tools
+# or
+pnpm add multichain-tools
+```
 
 ## Usage
 
-To use MultiChain Tools in your project, import the required functions and classes:
+### Basic Example
 
 ```typescript
-import {
-  signAndSendEVMTransaction,
-  signAndSendBTCTransaction,
-  fetchDerivedEVMAddress,
-  fetchBTCFeeProperties,
-  fetchDerivedBTCAddress,
-  fetchEstimatedEVMFee,
-  fetchEVMFeeProperties,
-  fetchDerivedBTCAddressAndPublicKey,
-} from 'multichain-tools'
+import { Chain } from './src/chains/Chain'
+
+// Example implementation will depend on the specific chain being used
+// See individual chain documentation for detailed examples
 ```
 
-### Derived Path
+### Chain-Specific Documentation
 
-In this repository, we frequently utilize derived paths, which enable the generation of new keys using the combination of a Root Key and a String, resulting in a Child Key.
+- [EVM Chains](src/chains/EVM/README.md)
+- [Bitcoin](src/chains/Bitcoin/README.md)
+- [Cosmos](src/chains/Cosmos/README.md)
 
-For more detailed information, please refer to the [NEAR Documentation on Chain Signatures](https://docs.near.org/concepts/abstraction/chain-signatures#derivation-paths-one-account-multiple-chains).
+## Architecture
 
-To ensure consistency and predictability in providing the key path, we recommend using JSON Canonical Serialization. This standardizes the format of the path, making it easier to understand and use. But, you can also provide a plain string.
+The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
 
-Here's an example of how to provide a derived path using Canonical Serialization:
+### Key Components
 
-```typescript
-import canonicalize from 'canonicalize'
+- **Chain Interface**: Defines standard methods for cross-chain compatibility
+- **Chain-Specific Implementations**: Custom implementations for each supported blockchain
+- **MPC Integration**: Secure signature generation using Multi-Party Computation
+- **Transaction Management**: Unified transaction handling across chains
 
-const derivedPath = canonicalize({
-  chain: 'BTC',
-  domain: 'example.com',
-  meta: {
-    prop1: 'prop1',
-  },
-})
-```
+## Contributing
 
-or
+Contributions are welcome! Please read our contributing guidelines for details on our code of conduct and the process for submitting pull requests.
 
-```typescript
-const derivedPath = 'myderivedpath,btc'
-```
+## License
 
-In the example above:
-
-- chain: Specifies the chain for which you are requesting the signature, such as BTC (Bitcoin), ETH (Ethereum), etc.
-- domain: Represents the domain of the dApp (e.g., www.example.com).
-- meta: Allows you to include any additional information you want to incorporate into the key path.
-
-By following this approach, you can create standardized and predictable derived paths for generating child keys based on a root key and a specific string combination.
-
-### Key Pair
-
-In this repository, we will also utilize NEAR account key pairs, which are essentially the private and public keys of an account used to sign transactions.
-
-To create a key pair, you can use the following code:
-
-```typescript
-import { KeyPair } from 'near-api-js'
-
-const nearAccountKeyPair = KeyPair.fromString(
-  process.env.NEXT_PUBLIC_NEAR_PRIVATE_KEY
-)
-```
-
-## Examples
-
-Signing and Sending an EVM Transaction
-
-```typescript
-const evmRequest: EVMRequest = {
-  transaction: {
-    to: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-    value: '1000000000000000000', // In wei
-    derivedPath,
-  },
-  chainConfig: {
-    providerUrl: 'https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID',
-    contract: 'v2.multichain-mpc.testnet',
-  },
-  nearAuthentication: {
-    networkId: 'testnet',
-    keypair: nearAccountKeyPair,
-    accountId: 'signer.near',
-  },
-}
-
-const response: Response = await signAndSendEVMTransaction(evmRequest)
-```
-
-Signing and Sending a Bitcoin Transaction
-
-```typescript
-const btcRequest: BitcoinRequest = {
-  chainConfig: {
-    providerUrl: 'https://btc.example.com/api/',
-    contract: 'v2.multichain-mpc.testnet',
-    networkType: 'testnet',
-  },
-  transaction: {
-    to: '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2',
-    value: '1000000', // In satoshis
-    derivedPath,
-  },
-  nearAuthentication: {
-    networkId: 'mainnet',
-    keypair: nearAccountKeyPair,
-    accountId: 'signer.near',
-  },
-}
-
-const response: Response = await signAndSendBTCTransaction(btcRequest)
-```
-
-Fetching Derived Addresses
-
-```typescript
-const evmAddress: string = await fetchDerivedEVMAddress(
-  'signer.near',
-  derivedPath,
-  'testnet',
-  'v2.multichain-mpc.testnet'
-)
-
-import * as bitcoinlib from 'bitcoinjs-lib'
-
-const { address: btcAddress, publicKey: btcPublicKey } =
-  await fetchDerivedBTCAddressAndPublicKey(
-    'signer.near',
-    derivedPath,
-    bitcoinlib.networks.testnet,
-    'testnet',
-    'v2.multichain-mpc.testnet'
-  )
-```
-
-Fetching Transaction Fee Properties
-
-```typescript
-const evmFeeProperties = await fetchEVMFeeProperties(
-  'https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID',
-  {
-    to: '0x0987654321098765432109876543210987654321',
-    value: ethers.parseEther('1'),
-  }
-)
-
-const btcFeeProperties = await fetchBTCFeeProperties(
-  'https://btc.example.com/api/',
-  '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2',
-  [{ address: '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', value: 1000000 }]
-)
-``` -->
+This project is licensed under the terms specified in the [LICENSE](LICENSE) file.

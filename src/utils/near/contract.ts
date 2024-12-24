@@ -14,11 +14,11 @@ import {
   ChainSignatureContract,
 } from '../../chains/ChainSignatureContract'
 import { base_decode } from 'near-api-js/lib/utils/serialize'
-import { type UncompressedPublicKey } from '../../chains/types'
+import { type UncompressedPubKeySEC1 } from '../../chains/types'
 import { toRSV } from '../../signature'
 import { getNearAccount } from './account'
 
-const najToUncompressedPubKey = (najPubKey: string): UncompressedPublicKey => {
+const najToUncompressedPubKey = (najPubKey: string): UncompressedPubKeySEC1 => {
   return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`
 }
 
@@ -93,7 +93,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     }) as unknown as NearContract
   }
 
-  async getPublicKey(): Promise<UncompressedPublicKey> {
+  async getPublicKey(): Promise<UncompressedPubKeySEC1> {
     const contract = await this.getContract()
     const najPubKey = await contract.public_key()
     return najToUncompressedPubKey(najPubKey)
@@ -114,7 +114,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
   async getDerivedPublicKey(args: {
     path: string
     predecessor: string
-  }): Promise<UncompressedPublicKey> {
+  }): Promise<UncompressedPubKeySEC1> {
     const contract = await this.getContract()
 
     const najPubKey = await contract.derived_public_key(args)

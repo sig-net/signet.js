@@ -12,17 +12,24 @@ import {
 import { type Chain } from '../Chain'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
 
+/**
+ * Implementation of the Chain interface for EVM-compatible networks.
+ * Handles interactions with Ethereum Virtual Machine based blockchains like Ethereum, BSC, Polygon, etc.
+ */
 export class EVM
   implements Chain<EVMTransactionRequest, EVMUnsignedTransaction>
 {
   private readonly provider: ethers.JsonRpcProvider
   private readonly contract: ChainSignatureContract
 
-  constructor(config: {
-    providerUrl: string
-    contract: ChainSignatureContract
-  }) {
-    this.provider = new ethers.JsonRpcProvider(config.providerUrl)
+  /**
+   * Creates a new EVM chain instance
+   * @param config - Configuration object for the EVM chain
+   * @param config.rpcUrl - URL of the EVM JSON-RPC provider (e.g., Infura endpoint)
+   * @param config.contract - Instance of the chain signature contract for MPC operations
+   */
+  constructor(config: { rpcUrl: string; contract: ChainSignatureContract }) {
+    this.provider = new ethers.JsonRpcProvider(config.rpcUrl)
     this.contract = config.contract
   }
 
@@ -57,8 +64,15 @@ export class EVM
     })
   }
 
+  /**
+   * Derives an Ethereum address and public key from a signer ID and derivation path
+   * @param predecessor - The ID of the signer to derive from
+   * @param path - The derivation path to use
+   * @returns Object containing the derived Ethereum address and public key
+   * @throws Error if public key derivation fails
+   */
   async deriveAddressAndPublicKey(
-    signerId: string,
+    predecessor: string,
     path: KeyDerivationPath
   ): Promise<{
     address: string
@@ -66,7 +80,7 @@ export class EVM
   }> {
     const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
-      predecessor: signerId,
+      predecessor,
     })
 
     if (!uncompressedPubKey) {
@@ -85,6 +99,12 @@ export class EVM
     }
   }
 
+  /**
+   * Gets the ETH balance of an address
+   * @param address - The Ethereum address to check
+   * @returns The balance in ETH as a string
+   * @throws Error if balance fetch fails
+   */
   async getBalance(address: string): Promise<string> {
     try {
       const balance = await this.provider.getBalance(address)
@@ -95,6 +115,11 @@ export class EVM
     }
   }
 
+  /**
+   * Stores an unsigned transaction in local storage
+   * @param transaction - The unsigned transaction to store
+   * @param storageKey - The key to store the transaction under
+   */
   setTransaction(
     transaction: EVMUnsignedTransaction,
     storageKey: string
@@ -105,6 +130,13 @@ export class EVM
     window.localStorage.setItem(storageKey, serializedTransaction)
   }
 
+  /**
+   * Retrieves a stored transaction from local storage
+   * @param storageKey - The key of the stored transaction
+   * @param options - Optional parameters
+   * @param options.remove - Whether to remove the transaction after retrieval
+   * @returns The stored transaction or undefined if not found
+   */
   getTransaction(
     storageKey: string,
     options?: {
@@ -118,6 +150,11 @@ export class EVM
     return txSerialized ? JSON.parse(txSerialized) : undefined
   }
 
+  /**
+   * Prepares a transaction for MPC signing by creating the necessary payloads
+   * @param transactionRequest - The transaction request to prepare
+   * @returns Object containing the unsigned transaction and MPC payloads
+   */
   async getMPCPayloadAndTransaction(
     transactionRequest: EVMTransactionRequest
   ): Promise<{
@@ -140,6 +177,13 @@ export class EVM
     }
   }
 
+  /**
+   * Adds a signature to an unsigned transaction
+   * @param params - Parameters for adding the signature
+   * @param params.transaction - The unsigned transaction
+   * @param params.mpcSignatures - Array of RSV signatures from MPC
+   * @returns The serialized signed transaction
+   */
   addSignature({
     transaction,
     mpcSignatures,
@@ -153,6 +197,12 @@ export class EVM
     }).serialized
   }
 
+  /**
+   * Broadcasts a signed transaction to the network
+   * @param txSerialized - The serialized signed transaction
+   * @returns The transaction hash
+   * @throws Error if broadcast fails
+   */
   async broadcastTx(txSerialized: string): Promise<string> {
     try {
       const txResponse = await this.provider.broadcastTransaction(txSerialized)
