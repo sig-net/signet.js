@@ -14,6 +14,7 @@ import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
 import { NEAR_MAX_GAS } from './constants'
 import { type NFTKeysContracts, type ChainSignatureContractIds } from './types'
 import { toRSV } from '../../signature'
+import BN from 'bn.js'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -49,7 +50,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
             key_version: 0,
           },
         },
-        gas: NEAR_MAX_GAS.toString(),
+        gas: NEAR_MAX_GAS.div(new BN(mpcPayloads.length)).toString(),
         deposit: currentContractFee?.toString() || '1',
       },
     })),
@@ -92,7 +93,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
           path,
           payload: Array.from(payload),
         },
-        gas: NEAR_MAX_GAS.toString(),
+        gas: NEAR_MAX_GAS.div(new BN(mpcPayloads.length)).toString(),
         deposit: currentContractFee?.toString() || '1',
       },
     })),
