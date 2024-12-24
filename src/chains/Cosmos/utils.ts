@@ -1,8 +1,6 @@
 import { chains, assets } from 'chain-registry'
 
-export const fetchChainInfo = async (
-  chainId: string
-): Promise<{
+export interface ChainInfo {
   prefix: string
   denom: string
   rpcUrl: string
@@ -10,7 +8,9 @@ export const fetchChainInfo = async (
   expectedChainId: string
   gasPrice: number
   decimals: number
-}> => {
+}
+
+export const fetchChainInfo = async (chainId: string): Promise<ChainInfo> => {
   const chainInfo = chains.find((chain) => chain.chain_id === chainId)
   if (!chainInfo) {
     throw new Error(`Chain info not found for chainId: ${chainId}`)

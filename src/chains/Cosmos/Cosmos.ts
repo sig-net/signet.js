@@ -12,7 +12,7 @@ import { encodeSecp256k1Pubkey } from '@cosmjs/amino'
 import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 import { ripemd160, sha256 } from '@cosmjs/crypto'
 
-import { fetchChainInfo } from './utils'
+import { type ChainInfo, fetchChainInfo } from './utils'
 import { type MPCPayloads } from '../types'
 import {
   type BalanceResponse,
@@ -36,17 +36,27 @@ export class Cosmos
   private readonly registry: Registry
   private readonly chainId: CosmosNetworkIds
   private readonly contract: ChainSignatureContract
+  private readonly endpoints?: {
+    rpcUrl?: string
+    restUrl?: string
+  }
 
   constructor({
     chainId,
     contract,
+    endpoints,
   }: {
     contract: ChainSignatureContract
     chainId: CosmosNetworkIds
+    endpoints?: {
+      rpcUrl?: string
+      restUrl?: string
+    }
   }) {
     this.registry = new Registry()
     this.chainId = chainId
     this.contract = contract
+    this.endpoints = endpoints
   }
 
   private parseRSVSignature(rsvSignature: RSVSignature): Uint8Array {
@@ -56,9 +66,16 @@ export class Cosmos
     ])
   }
 
+  private async getChainInfo(): Promise<ChainInfo> {
+    return {
+      ...(await fetchChainInfo(this.chainId)),
+      ...this.endpoints,
+    }
+  }
+
   async getBalance(address: string): Promise<string> {
     try {
-      const { restUrl, denom, decimals } = await fetchChainInfo(this.chainId)
+      const { restUrl, denom, decimals } = await this.getChainInfo()
 
       const response = await fetch(
         `${restUrl}/cosmos/bank/v1beta1/balances/${address}`
@@ -89,7 +106,7 @@ export class Cosmos
     address: string
     publicKey: string
   }> {
-    const { prefix } = await fetchChainInfo(this.chainId)
+    const { prefix } = await this.getChainInfo()
     const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor: signerId,
@@ -137,10 +154,11 @@ export class Cosmos
     transaction: CosmosUnsignedTransaction
     mpcPayloads: MPCPayloads
   }> {
-    const { denom, rpcUrl, gasPrice } = await fetchChainInfo(this.chainId)
+    const { denom, rpcUrl, gasPrice } = await this.getChainInfo()
     const publicKeyBytes = fromHex(transactionRequest.publicKey)
 
     const gasLimit = transactionRequest.gas || 200_000
+
     const fee = calculateFee(
       gasLimit,
       GasPrice.fromString(`${gasPrice}${denom}`)
@@ -166,9 +184,9 @@ export class Cosmos
 
     const txBodyBytes = this.registry.encode(txBodyEncodeObject)
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const pubkey = encodePubkey(encodeSecp256k1Pubkey(publicKeyBytes))
 
+    // TODO: Allow caller to provide: multiple signers, fee payer, fee granter
     const authInfoBytes = makeAuthInfoBytes(
       [
         {
@@ -226,7 +244,7 @@ export class Cosmos
 
   async broadcastTx(txSerialized: string): Promise<string> {
     try {
-      const { rpcUrl } = await fetchChainInfo(this.chainId)
+      const { rpcUrl } = await this.getChainInfo()
       const client = await StargateClient.connect(rpcUrl)
 
       const txBytes = Buffer.from(txSerialized, 'hex')
