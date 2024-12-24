@@ -41,9 +41,6 @@ importers:
       '@near-wallet-selector/core':
         specifier: ^8.9.5
         version: 8.9.14(near-api-js@3.0.4)
-      axios:
-        specifier: ^1.6.8
-        version: 1.7.7
       bech32:
         specifier: ^2.0.0
         version: 2.0.0
