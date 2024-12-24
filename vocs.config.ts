@@ -8,7 +8,7 @@ export default defineConfig({
     compilerOptions: {
       strict: true,
       paths: {
-        '@multichain-tools': ['./dist'],
+        '@multichain-tools': ['./src'],
       },
     },
   },
@@ -34,8 +34,6 @@ export default defineConfig({
       items: [
         { text: 'Chain Interface', link: '/guides/implementing-new-chain' },
         { text: 'MPC Overview', link: '/guides/mpc-overview' },
-        { text: 'Security Model', link: '/guides/mpc-security' },
-        { text: 'Key Management', link: '/guides/mpc-key-management' },
       ],
     },
     {
@@ -54,15 +52,6 @@ export default defineConfig({
           text: 'Chain Signature Contract',
           link: '/guides/implementing-signature-contract',
         },
-      ],
-    },
-    {
-      text: 'Advanced Topics',
-      collapsed: true,
-      items: [
-        { text: 'Error Handling', link: '/advanced/error-handling' },
-        { text: 'Testing', link: '/advanced/testing' },
-        { text: 'Performance', link: '/advanced/performance' },
       ],
     },
   ],
