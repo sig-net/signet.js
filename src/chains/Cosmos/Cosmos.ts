@@ -143,7 +143,7 @@ export class Cosmos
     }
 
     const derivedKey = compressPubKey(uncompressedPubKey)
-    const pubKeySha256 = sha256(Buffer.from(fromHex(derivedKey)))
+    const pubKeySha256 = sha256(fromHex(derivedKey))
     const ripemd160Hash = ripemd160(pubKeySha256)
     const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))
 
@@ -304,7 +304,7 @@ export class Cosmos
       const { rpcUrl } = await this.getChainInfo()
       const client = await StargateClient.connect(rpcUrl)
 
-      const txBytes = Buffer.from(txSerialized, 'hex')
+      const txBytes = fromHex(txSerialized)
       const broadcastResponse = await client.broadcastTx(txBytes)
 
       if (broadcastResponse.code !== 0) {

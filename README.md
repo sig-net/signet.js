@@ -4,73 +4,16 @@ A TypeScript library for handling multi-chain transactions and signatures using 
 
 ## Overview
 
-This library provides a unified interface for interacting with different blockchain networks, including:
+This library provides a unified interface for interacting with different blockchain networks through a common set of methods. It uses MPC for secure key management and transaction signing.
 
-- EVM-based chains (Ethereum, etc.)
-- Bitcoin
-- Cosmos-based chains
+## Features
 
-## Core Features
-
-### Chain Interface
-
-The library implements a common interface for all supported chains with the following key functionalities:
-
-- **Balance Checking**: Query account balances across different chains
-- **Address Derivation**: Derive addresses and public keys using MPC
-- **Transaction Management**: Create, store, and retrieve transactions
-- **Signature Handling**: Process MPC signatures for transactions
-- **Transaction Broadcasting**: Submit signed transactions to the network
-
-### Chain Signature Contract
-
-The ChainSignatureContract is a crucial component that handles MPC operations. Here's an example implementation using NEAR:
-
-```typescript
-import { ChainSignatureContract } from './chains/ChainSignatureContract'
-import { ChainSignaturesContract } from './utils/near/contract'
-
-// Initialize with view-only access
-const viewOnlyContract = new ChainSignaturesContract({
-  networkId: 'testnet',
-  contractId: 'contract.testnet',
-})
-
-// Initialize with full access (for signing)
-const fullAccessContract = new ChainSignaturesContract({
-  networkId: 'testnet',
-  contractId: 'contract.testnet',
-  accountId: 'signer.testnet',
-  keypair: nearKeyPair, // Your NEAR KeyPair instance
-})
-
-// Example: Derive a public key
-const publicKey = await fullAccessContract.getDerivedPublicKey({
-  path: 'my-derivation-path',
-  predecessor: 'signer.testnet',
-})
-
-// Example: Sign a payload
-const signature = await fullAccessContract.sign({
-  payload: [
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-    22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-  ], // Your payload bytes
-  path: 'my-derivation-path',
-  key_version: 1,
-})
-
-// Example: Get current signature deposit
-const deposit = await fullAccessContract.getCurrentSignatureDeposit()
-```
-
-### Supported Chains
-
-The library currently supports multiple blockchain networks through dedicated implementations:
-
-- **EVM Chains**: Ethereum and compatible networks
-- **Bitcoin**: Bitcoin network support
-- **Cosmos**: Cosmos-based blockchain networks
+- **Multi-Chain Support**: Built-in support for EVM chains, Bitcoin, and Cosmos networks
+- **Unified Interface**: Common API across all supported chains
+- **MPC Integration**: Secure key management and transaction signing
+- **Type Safety**: Full TypeScript support with comprehensive type definitions
+- **Modular Design**: Easy to extend with new chain implementations
+- **Secure**: No private keys stored or transmitted
 
 ## Installation
 
@@ -82,38 +25,62 @@ yarn add multichain-tools
 pnpm add multichain-tools
 ```
 
-## Usage
-
-### Basic Example
+## Quick Example
 
 ```typescript
-import { Chain } from './src/chains/Chain'
+import { EVM } from '@multichain-tools/chains/EVM'
+import { ChainSignaturesContract } from '@multichain-tools/utils/near/contract'
 
-// Example implementation will depend on the specific chain being used
-// See individual chain documentation for detailed examples
+// Initialize MPC contract
+const contract = new ChainSignaturesContract({
+  networkId: 'testnet',
+  contractId: 'mpc.testnet',
+  accountId: 'signer.testnet',
+  keypair: nearKeyPair,
+})
+
+// Initialize chain
+const chain = new EVM({
+  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
+  contract,
+})
+
+// Create and sign transaction
+const { transaction, mpcPayloads } = await chain.getMPCPayloadAndTransaction({
+  to: '0x1234...',
+  value: '1000000000000000000', // 1 ETH
+})
+
+const signature = await contract.sign({
+  payload: mpcPayloads[0].payload,
+  path: 'm/44/60/0/0/0',
+  key_version: 1,
+})
+
+const signedTx = chain.addSignature({
+  transaction,
+  mpcSignatures: [signature],
+})
+
+const txHash = await chain.broadcastTx(signedTx)
 ```
 
-### Chain-Specific Documentation
+## Documentation
 
-- [EVM Chains](src/chains/EVM/README.md)
-- [Bitcoin](src/chains/Bitcoin/README.md)
-- [Cosmos](src/chains/Cosmos/README.md)
+For detailed documentation, including:
 
-## Architecture
+- Getting started guide
+- Chain-specific implementations
+- MPC system overview
+- Implementation guides
+- API reference
 
-The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
-
-### Key Components
-
-- **Chain Interface**: Defines standard methods for cross-chain compatibility
-- **Chain-Specific Implementations**: Custom implementations for each supported blockchain
-- **MPC Integration**: Secure signature generation using Multi-Party Computation
-- **Transaction Management**: Unified transaction handling across chains
+Visit our [documentation site](https://near.github.io/multichain-tools).
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines for details on our code of conduct and the process for submitting pull requests.
+Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 
-This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

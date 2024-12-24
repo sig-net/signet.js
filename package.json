@@ -2,13 +2,17 @@
   "name": "multichain-tools",
   "version": "4.0.1",
   "description": "",
+  "type": "module",
   "main": "./src/index.ts",
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "pre:deploy": "npm run build && cp package.json README.md dist/",
-    "deploy": "npm run pre:deploy && cd dist && npm publish",
-    "deploy:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
-    "test": "jest"
+    "publish-npm": "npm run pre:deploy && cd dist && npm publish",
+    "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
+    "test": "jest",
+    "docs:dev": "vocs dev",
+    "docs:build": "vocs build",
+    "docs:preview": "vocs preview"
   },
   "author": "",
   "license": "ISC",
@@ -52,7 +56,10 @@
     "coinselect": "^3.1.13",
     "cosmjs-types": "^0.9.0",
     "ethers": "^6.11.1",
-    "near-api-js": "^3.0.4"
+    "near-api-js": "^3.0.4",
+    "shiki": "^1.24.4",
+    "vitepress": "^1.5.0",
+    "vocs": "1.0.0-alpha.62"
   },
   "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387"
 }

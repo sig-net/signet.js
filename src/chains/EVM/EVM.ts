@@ -11,6 +11,7 @@ import {
 } from '../../signature/types'
 import { type Chain } from '../Chain'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
+import { fromHex } from '@cosmjs/encoding'
 
 /**
  * Implementation of the Chain interface for EVM-compatible networks.
@@ -91,7 +92,7 @@ export class EVM
       ? uncompressedPubKey.substring(2)
       : uncompressedPubKey
 
-    const hash = ethers.keccak256(Buffer.from(publicKeyNoPrefix, 'hex'))
+    const hash = ethers.keccak256(fromHex(publicKeyNoPrefix))
 
     return {
       address: `0x${hash.substring(hash.length - 40)}`,
