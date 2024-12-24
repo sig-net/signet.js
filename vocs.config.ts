@@ -4,7 +4,14 @@ export default defineConfig({
   title: 'Multichain Tools',
   description:
     'A TypeScript library for handling multi-chain transactions and signatures using MPC',
-
+  twoslash: {
+    compilerOptions: {
+      strict: true,
+      paths: {
+        '@multichain-tools': ['./dist'],
+      },
+    },
+  },
   sidebar: [
     {
       text: 'Getting Started',

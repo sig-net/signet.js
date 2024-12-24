@@ -31,7 +31,7 @@ export const EVMTransaction = async (
     })
 
     const evm = new EVM({
-      providerUrl: req.chainConfig.providerUrl,
+      rpcUrl: req.chainConfig.providerUrl,
       contract,
     })
 

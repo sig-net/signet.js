@@ -4,20 +4,19 @@ This implementation supports both Bitcoin mainnet and testnet, with a focus on P
 
 ## Configuration
 
-```typescript
-import { Bitcoin } from '@multichain-tools/chains/Bitcoin'
-import { Mempool } from '@multichain-tools/chains/Bitcoin/adapters/Mempool'
-import { ChainSignatureContract } from '@multichain-tools/chains/ChainSignatureContract'
+```ts twoslash
+import { Bitcoin, BTCRpcAdapters, near } from '@multichain-tools'
 
 // Initialize the RPC adapter using Mempool
-const btcAdapter = new Mempool(
-  'https://mempool.space/api' // or 'https://mempool.space/testnet/api' for testnet
-)
+const btcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api') // or 'https://mempool.space/testnet/api' for testnet
 
 // Initialize the chain
 const bitcoinChain = new Bitcoin({
-  network: 'mainnet', // or 'testnet'
-  contract: new ChainSignatureContract(...),
+  network: 'testnet', // or 'testnet'
+  contract: new near.contract.ChainSignaturesContract({
+    networkId: 'testnet',
+    contractId: 'v1.chain-signatures.testnet',
+  }),
   btcRpcAdapter: btcAdapter,
 })
 ```
