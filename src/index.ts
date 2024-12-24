@@ -16,7 +16,7 @@ export type {
 // Bitcoin
 export { Bitcoin } from './chains/Bitcoin/Bitcoin'
 
-export { fetchBTCFeeProperties } from './chains/Bitcoin/utils'
+export { BTCRpcAdapters } from './chains/Bitcoin/adapters'
 
 export type {
   BTCNetworkIds,

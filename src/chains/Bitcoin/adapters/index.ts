@@ -1,5 +1,5 @@
 import { Mempool } from './Mempool'
 
-export const BTCAdapters = {
+export const BTCRpcAdapters = {
   Mempool,
 }

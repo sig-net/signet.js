@@ -16,8 +16,7 @@ import {
 import { type Chain } from '../Chain'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
 import { compressPubKey } from '../../utils/key'
-import { type Adapter } from './adapters/Adapter'
-import { Mempool } from './adapters/Mempool'
+import { type BTCRpcAdapter } from './adapters/BTCRpcAdapter'
 
 export class Bitcoin
   implements Chain<BTCTransactionRequest, BTCUnsignedTransaction>
@@ -26,17 +25,16 @@ export class Bitcoin
 
   private readonly network: BTCNetworkIds
   private readonly contract: ChainSignatureContract
-  private readonly adapter: Adapter
+  private readonly btcRpcAdapter: BTCRpcAdapter
 
   constructor(config: {
     network: BTCNetworkIds
-    providerUrl: string
     contract: ChainSignatureContract
-    adapter?: Adapter
+    btcRpcAdapter: BTCRpcAdapter
   }) {
     this.network = config.network
     this.contract = config.contract
-    this.adapter = config.adapter || new Mempool(config.providerUrl)
+    this.btcRpcAdapter = config.btcRpcAdapter
   }
 
   static toBTC(satoshis: number): number {
@@ -50,7 +48,7 @@ export class Bitcoin
   private async fetchTransaction(
     transactionId: string
   ): Promise<bitcoin.Transaction> {
-    const data = await this.adapter.getTransaction(transactionId)
+    const data = await this.btcRpcAdapter.getTransaction(transactionId)
     const tx = new bitcoin.Transaction()
 
     data.vout.forEach((vout) => {
@@ -82,29 +80,33 @@ export class Bitcoin
     const { inputs, outputs } =
       transactionRequest.inputs && transactionRequest.outputs
         ? transactionRequest
-        : await this.adapter.getInputsAndOutputs(transactionRequest.from, [
-            {
-              address: transactionRequest.to,
-              value: parseFloat(transactionRequest.value),
-            },
-          ])
+        : await this.btcRpcAdapter.getInputsAndOutputs(
+            transactionRequest.from,
+            [
+              {
+                address: transactionRequest.to,
+                value: parseFloat(transactionRequest.value),
+              },
+            ]
+          )
 
     const psbt = new bitcoin.Psbt({ network: parseBTCNetwork(this.network) })
 
-    // Since the sender address is always P2WPKH, we can assume all inputs are P2WPKH
     await Promise.all(
       inputs.map(async (utxo: BTCInput) => {
-        const transaction = await this.fetchTransaction(utxo.txid)
-        const prevOut = transaction.outs[utxo.vout]
-        const value = utxo.value
+        if (!utxo.scriptPubKey) {
+          const transaction = await this.fetchTransaction(utxo.txid)
+          const prevOut = transaction.outs[utxo.vout]
+          utxo.scriptPubKey = prevOut.script
+        }
 
         // Prepare the input as P2WPKH
         const inputOptions = {
           hash: utxo.txid,
           index: utxo.vout,
           witnessUtxo: {
-            script: prevOut.script,
-            value,
+            script: utxo.scriptPubKey,
+            value: utxo.value,
           },
         }
 
@@ -113,17 +115,24 @@ export class Bitcoin
     )
 
     outputs.forEach((out: BTCOutput) => {
-      psbt.addOutput({
-        address: out.address,
-        value: out.value,
-      })
+      if (out.address) {
+        psbt.addOutput({
+          address: out.address,
+          value: out.value,
+        })
+      } else if (out.script) {
+        psbt.addOutput({
+          script: out.script,
+          value: out.value,
+        })
+      }
     })
 
     return psbt
   }
 
   async getBalance(address: string): Promise<string> {
-    const balance = await this.adapter.getBalance(address)
+    const balance = await this.btcRpcAdapter.getBalance(address)
     return Bitcoin.toBTC(balance).toString()
   }
 
@@ -144,7 +153,6 @@ export class Bitcoin
     const publicKeyBuffer = Buffer.from(derivedKey, 'hex')
     const network = parseBTCNetwork(this.network)
 
-    // Use P2WPKH (Bech32) address type
     const payment = bitcoin.payments.p2wpkh({
       pubkey: publicKeyBuffer,
       network,
@@ -258,7 +266,7 @@ export class Bitcoin
     return psbt.extractTransaction().toHex()
   }
 
-  async broadcast(transactionSerialized: string): Promise<string> {
-    return await this.adapter.broadcastTransaction(transactionSerialized)
+  async broadcastTx(txSerialized: string): Promise<string> {
+    return await this.btcRpcAdapter.broadcastTransaction(txSerialized)
   }
 }

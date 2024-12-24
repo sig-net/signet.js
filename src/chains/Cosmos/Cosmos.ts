@@ -224,12 +224,12 @@ export class Cosmos
     return Buffer.from(txBytes).toString('hex')
   }
 
-  async broadcast(transactionSerialized: string): Promise<string> {
+  async broadcastTx(txSerialized: string): Promise<string> {
     try {
       const { rpcUrl } = await fetchChainInfo(this.chainId)
       const client = await StargateClient.connect(rpcUrl)
 
-      const txBytes = Buffer.from(transactionSerialized, 'hex')
+      const txBytes = Buffer.from(txSerialized, 'hex')
       const broadcastResponse = await client.broadcastTx(txBytes)
 
       if (broadcastResponse.code !== 0) {

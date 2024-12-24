@@ -1,6 +1,6 @@
 import { type BTCTransaction, type BTCInput, type BTCOutput } from '../types'
 
-export abstract class Adapter {
+export abstract class BTCRpcAdapter {
   abstract getInputsAndOutputs(
     from: string,
     targets: BTCOutput[]

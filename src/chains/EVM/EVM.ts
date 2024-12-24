@@ -153,11 +153,9 @@ export class EVM
     }).serialized
   }
 
-  async broadcast(transactionSerialized: string): Promise<string> {
+  async broadcastTx(txSerialized: string): Promise<string> {
     try {
-      const txResponse = await this.provider.broadcastTransaction(
-        transactionSerialized
-      )
+      const txResponse = await this.provider.broadcastTransaction(txSerialized)
       return txResponse.hash
     } catch (error) {
       console.error('Transaction broadcast failed:', error)

@@ -10,6 +10,7 @@ import { type Response } from '../../../chains/types'
 import { ChainSignaturesContract } from '../contract'
 import { type KeyPair } from '@near-js/crypto'
 import { getNearAccount } from '../account'
+import { BTCRpcAdapters } from '../../../chains/Bitcoin/adapters'
 
 export const EVMTransaction = async (
   req: EVMRequest,
@@ -44,10 +45,12 @@ export const EVMTransaction = async (
       key_version: 0,
     })
 
-    const txHash = await evm.addSignatureAndBroadcast({
+    const txSerialized = evm.addSignature({
       transaction,
       mpcSignatures: [signature],
     })
+
+    const txHash = await evm.broadcastTx(txSerialized)
 
     return {
       transactionHash: txHash,
@@ -81,7 +84,7 @@ export const BTCTransaction = async (
     })
 
     const btc = new Bitcoin({
-      providerUrl: req.chainConfig.providerUrl,
+      btcRpcAdapter: new BTCRpcAdapters.Mempool(req.chainConfig.providerUrl),
       contract,
       network: req.chainConfig.network,
     })
@@ -101,10 +104,12 @@ export const BTCTransaction = async (
       )
     )
 
-    const txHash = await btc.addSignatureAndBroadcast({
+    const txSerialized = btc.addSignature({
       transaction,
       mpcSignatures: signatures,
     })
+
+    const txHash = await btc.broadcastTx(txSerialized)
 
     return {
       transactionHash: txHash,
@@ -155,10 +160,12 @@ export const CosmosTransaction = async (
       )
     )
 
-    const txHash = await cosmos.addSignatureAndBroadcast({
+    const txSerialized = cosmos.addSignature({
       transaction,
       mpcSignatures: signatures,
     })
+
+    const txHash = await cosmos.broadcastTx(txSerialized)
 
     return {
       transactionHash: txHash,

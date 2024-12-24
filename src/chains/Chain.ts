@@ -54,5 +54,5 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
   /**
    * Broadcasts a transaction
    */
-  broadcast: (transactionSerialized: string) => Promise<string>
+  broadcastTx: (txSerialized: string) => Promise<string>
 }

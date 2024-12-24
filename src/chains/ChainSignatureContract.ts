@@ -11,11 +11,8 @@ export interface SignArgs {
 
 export abstract class ChainSignatureContract {
   abstract getCurrentSignatureDeposit(): Promise<BN>
-
   abstract getPublicKey(): Promise<UncompressedPublicKey>
-
   abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
-
   abstract getDerivedPublicKey(
     args: {
       path: string
