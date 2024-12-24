@@ -4,7 +4,7 @@ A TypeScript library for handling multi-chain transactions and signatures using 
 
 ## Overview
 
-This library provides a unified interface for interacting with different blockchain networks through a common set of methods. It uses MPC for secure key management and transaction signing.
+This library provides a unified interface for interacting with different blockchain networks through a common set of methods. It uses MPC-TSS for secure transaction signing.
 
 ## Supported Chains
 
@@ -32,34 +32,37 @@ pnpm add multichain-tools
 
 ## Quick Start
 
-1. Initialize the Chain Signature Contract:
+Here's a basic example using the EVM implementation:
 
-```typescript
-import { ChainSignaturesContract } from '@multichain-tools/utils/near/contract'
+```ts twoslash
+import { EVM, near } from '@multichain-tools'
+import { KeyPair, type KeyPairString } from '@near-js/crypto'
 
-const contract = new ChainSignaturesContract({
+// Initialize NEAR connection with credentials from environment
+const accountId = process.env.NEAR_ACCOUNT_ID
+const privateKey = process.env.NEAR_PRIVATE_KEY as KeyPairString
+
+if (!accountId || !privateKey) {
+  throw new Error(
+    'NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY must be set in environment'
+  )
+}
+
+const nearKeyPair = KeyPair.fromString(privateKey)
+
+const contract = new near.contract.ChainSignaturesContract({
   networkId: 'testnet',
   contractId: 'contract.testnet',
   accountId: 'signer.testnet',
   keypair: nearKeyPair,
 })
-```
-
-2. Initialize a Chain Implementation:
-
-```typescript
-import { EVM } from '@multichain-tools/chains/EVM'
 
 const evmChain = new EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract,
 })
-```
 
-3. Use Chain Methods:
-
-```typescript
-// Derive address
+// Derive address and public key
 const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
   'signer.testnet',
   'my-derivation-path'
@@ -71,6 +74,7 @@ const balance = await evmChain.getBalance(address)
 // Create and sign transaction
 const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
   {
+    from: '0x...',
     to: '0x...',
     value: '1000000000000000000', // 1 ETH
   }
@@ -79,16 +83,17 @@ const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
 // Sign with MPC
 const signature = await contract.sign({
   payload: mpcPayloads[0].payload,
-  path: 'my-derivation-path',
-  key_version: 1,
+  path: 'any_string',
+  key_version: 0,
 })
 
-// Add signature and broadcast
+// Add signature
 const signedTx = evmChain.addSignature({
   transaction,
   mpcSignatures: [signature],
 })
 
+// Broadcast transaction
 const txHash = await evmChain.broadcastTx(signedTx)
 ```
 

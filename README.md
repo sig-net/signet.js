@@ -35,8 +35,6 @@ import { ChainSignaturesContract } from '@multichain-tools/utils/near/contract'
 const contract = new ChainSignaturesContract({
   networkId: 'testnet',
   contractId: 'mpc.testnet',
-  accountId: 'signer.testnet',
-  keypair: nearKeyPair,
 })
 
 // Initialize chain
@@ -53,8 +51,8 @@ const { transaction, mpcPayloads } = await chain.getMPCPayloadAndTransaction({
 
 const signature = await contract.sign({
   payload: mpcPayloads[0].payload,
-  path: 'm/44/60/0/0/0',
-  key_version: 1,
+  path: 'any_string',
+  key_version: 0,
 })
 
 const signedTx = chain.addSignature({
@@ -76,11 +74,3 @@ For detailed documentation, including:
 - API reference
 
 Visit our [documentation site](https://near.github.io/multichain-tools).
-
-## Contributing
-
-Contributions are welcome! Please read our [contributing guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
