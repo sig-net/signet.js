@@ -10,7 +10,7 @@ import { type Response } from '../../../chains/types'
 import { ChainSignaturesContract } from '../contract'
 import { type KeyPair } from '@near-js/crypto'
 import { getNearAccount } from '../account'
-import { BTCRpcAdapters } from '../../../chains/Bitcoin/adapters'
+import { BTCRpcAdapters } from '../../../chains/Bitcoin/BTCRpcAdapter'
 
 export const EVMTransaction = async (
   req: EVMRequest,

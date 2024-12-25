@@ -1,17 +1,17 @@
 # Getting Started
 
-This guide will help you get started with the multichain-tools library.
+This guide will help you get started with the signet.js library.
 
 ## Installation
 
 Install the package using your preferred package manager:
 
 ```bash
-npm install multichain-tools
+npm install signet.js
 # or
-yarn add multichain-tools
+yarn add signet.js
 # or
-pnpm add multichain-tools
+pnpm add signet.js
 ```
 
 ## Basic Setup

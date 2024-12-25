@@ -1,6 +1,6 @@
 # Multi-Party Computation (MPC) Overview
 
-This guide explains how the MPC system works in the multichain-tools library and how it's used for secure key management and transaction signing.
+This guide explains how the MPC system works in the signet.js library and how it's used for secure key management and transaction signing.
 
 ## What is MPC?
 

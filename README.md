@@ -1,4 +1,4 @@
-# Multichain Tools
+# Signet.js
 
 A TypeScript library for handling multi-chain transactions and signatures using MPC (Multi-Party Computation).
 
@@ -18,21 +18,20 @@ This library provides a unified interface for interacting with different blockch
 ## Installation
 
 ```bash
-npm install multichain-tools
+npm install signet.js
 # or
-yarn add multichain-tools
+yarn add signet.js
 # or
-pnpm add multichain-tools
+pnpm add signet.js
 ```
 
 ## Quick Example
 
-```typescript
-import { EVM } from '@multichain-tools/chains/EVM'
-import { ChainSignaturesContract } from '@multichain-tools/utils/near/contract'
+```ts twoslash
+import { EVM, near } from 'signet.js'
 
 // Initialize MPC contract
-const contract = new ChainSignaturesContract({
+const contract = new near.contract.ChainSignaturesContract({
   networkId: 'testnet',
   contractId: 'mpc.testnet',
 })
@@ -73,4 +72,4 @@ For detailed documentation, including:
 - Implementation guides
 - API reference
 
-Visit our [documentation site](https://near.github.io/multichain-tools).
+Visit our [documentation site](https://near.github.io/signet.js).

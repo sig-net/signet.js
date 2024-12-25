@@ -1,14 +1,14 @@
 import { defineConfig, type Config } from 'vocs'
 
 export default defineConfig({
-  title: 'Multichain Tools',
+  title: 'Signet.js',
   description:
     'A TypeScript library for handling multi-chain transactions and signatures using MPC',
   twoslash: {
     compilerOptions: {
       strict: true,
       paths: {
-        '@multichain-tools': ['./src'],
+        'signet.js': ['./src'],
       },
     },
   },
@@ -59,7 +59,7 @@ export default defineConfig({
   socials: [
     {
       icon: 'github',
-      link: 'https://github.com/near/multichain-tools',
+      link: 'https://github.com/near/signet.js',
     },
   ],
 

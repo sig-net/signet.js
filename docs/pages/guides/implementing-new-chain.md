@@ -1,6 +1,6 @@
 # Implementing a New Chain
 
-This guide explains how to implement support for a new blockchain network in the multichain-tools library.
+This guide explains how to implement support for a new blockchain network in the signet.js library.
 
 ## Overview
 

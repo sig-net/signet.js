@@ -5,19 +5,19 @@ This implementation supports both Bitcoin mainnet and testnet, with a focus on P
 ## Configuration
 
 ```ts twoslash
-import { Bitcoin, BTCRpcAdapters, near } from '@multichain-tools'
+import { Bitcoin, BTCRpcAdapters, near } from 'signet.js'
 
 // Initialize the RPC adapter using Mempool
-const btcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api') // or 'https://mempool.space/testnet/api' for testnet
+const btcRPCAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
 
 // Initialize the chain
 const bitcoinChain = new Bitcoin({
-  network: 'testnet', // or 'testnet'
+  network: 'testnet',
   contract: new near.contract.ChainSignaturesContract({
     networkId: 'testnet',
     contractId: 'v1.chain-signatures.testnet',
   }),
-  btcRpcAdapter: btcAdapter,
+  btcRpcAdapter: btcRPCAdapter,
 })
 ```
 
@@ -35,18 +35,7 @@ The `BTCRpcAdapter` provides an abstraction layer for interacting with Bitcoin n
 You can implement your own adapter by extending the `BTCRpcAdapter` abstract class:
 
 ```typescript
-export abstract class BTCRpcAdapter {
-  abstract getBalance(address: string): Promise<number>
-  abstract getTransaction(txid: string): Promise<BTCTransaction>
-  abstract selectUTXOs(
-    from: string,
-    outputs: BTCOutput[]
-  ): Promise<{
-    inputs: BTCInput[]
-    outputs: BTCOutput[]
-  }>
-  abstract broadcastTransaction(transactionHex: string): Promise<string>
-}
+// [!include ~/../src/chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter.ts]
 ```
 
 ## Public Methods

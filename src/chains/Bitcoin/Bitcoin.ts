@@ -16,7 +16,7 @@ import {
 import { type Chain } from '../Chain'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
 import { compressPubKey } from '../../utils/key'
-import { type BTCRpcAdapter } from './adapters/BTCRpcAdapter'
+import { type BTCRpcAdapter } from './BTCRpcAdapter/BTCRpcAdapter'
 
 /**
  * Implementation of the Chain interface for Bitcoin network.

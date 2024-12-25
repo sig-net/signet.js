@@ -23,11 +23,11 @@ This library provides a unified interface for interacting with different blockch
 ## Installation
 
 ```bash
-npm install multichain-tools
+npm install signet.js
 # or
-yarn add multichain-tools
+yarn add signet.js
 # or
-pnpm add multichain-tools
+pnpm add signet.js
 ```
 
 ## Quick Start
@@ -35,7 +35,7 @@ pnpm add multichain-tools
 Here's a basic example using the EVM implementation:
 
 ```ts twoslash
-import { EVM, near } from '@multichain-tools'
+import { EVM, near } from 'signet.js'
 import { KeyPair, type KeyPairString } from '@near-js/crypto'
 
 // Initialize NEAR connection with credentials from environment

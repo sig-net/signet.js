@@ -16,7 +16,7 @@ export type {
 // Bitcoin
 export { Bitcoin } from './chains/Bitcoin/Bitcoin'
 
-export { BTCRpcAdapters } from './chains/Bitcoin/adapters'
+export { BTCRpcAdapters, BTCRpcAdapter } from './chains/Bitcoin/BTCRpcAdapter'
 
 export type {
   BTCNetworkIds,
