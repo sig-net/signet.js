@@ -17,8 +17,7 @@ export default defineConfig({
       text: 'Getting Started',
       items: [
         { text: 'Overview', link: '/' },
-        { text: 'Installation', link: '/getting-started' },
-        { text: 'Quick Start', link: '/getting-started#basic-setup' },
+        { text: 'Sig Network', link: '/sig-net' },
       ],
     },
     {
