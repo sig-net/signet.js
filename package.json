@@ -4,6 +4,9 @@
   "description": "",
   "type": "module",
   "main": "./src/index.ts",
+  "exports": {
+    "@chains": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "pre:deploy": "npm run build && npm run docs:build && cp package.json README.md dist/",

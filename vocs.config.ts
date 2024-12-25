@@ -9,6 +9,7 @@ export default defineConfig({
       strict: true,
       paths: {
         'signet.js': ['./src'],
+        '@chains': ['./src/chains'],
       },
     },
   },

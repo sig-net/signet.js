@@ -2,20 +2,16 @@
 
 A TypeScript library for handling interactions with Sig Network MPC Smart Contract
 
-## Overview
-
-This library provides a unified interface for interacting with different blockchain networks through a common set of methods. It uses MPC-TSS for secure transaction signing.
-
 ## Supported Chains
 
-- [EVM Chains](./chains/evm.md) - Ethereum and compatible networks
-- [Bitcoin](./chains/bitcoin.md) - Bitcoin network (mainnet and testnet)
-- [Cosmos](./chains/cosmos.md) - Cosmos SDK-based networks
+- [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
+- [Bitcoin](./chains/bitcoin.mdx) - Bitcoin network (mainnet and testnet)
+- [Cosmos](./chains/cosmos.mdx) - Cosmos SDK-based networks
 
 ## Core Features
 
 - **Balance Checking**: Query account balances across different chains
-- **Address Derivation**: Derive addresses and public keys using MPC
+- **Address Derivation**: Derive addresses and public keys following Sig Network derivation function
 - **Transaction Management**: Create, store, and retrieve transactions
 - **Signature Handling**: Process MPC signatures for transactions
 - **Transaction Broadcasting**: Submit signed transactions to the network
@@ -52,8 +48,8 @@ const nearKeyPair = KeyPair.fromString(privateKey)
 
 const contract = new near.contract.ChainSignaturesContract({
   networkId: 'testnet',
-  contractId: 'contract.testnet',
-  accountId: 'signer.testnet',
+  contractId: 'v1.signer-prod.testnet',
+  accountId,
   keypair: nearKeyPair,
 })
 
@@ -64,8 +60,8 @@ const evmChain = new EVM({
 
 // Derive address and public key
 const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
-  'signer.testnet',
-  'my-derivation-path'
+  accountId,
+  'any_string'
 )
 
 // Check balance
@@ -101,13 +97,12 @@ const txHash = await evmChain.broadcastTx(signedTx)
 
 The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
 
-### Key Components
+```ts
+// [!include ~/../src/chains/Chain.ts]
+```
 
-- **Chain Interface**: Defines standard methods for cross-chain compatibility
-- **Chain-Specific Implementations**: Custom implementations for each supported blockchain
-- **MPC Integration**: Secure signature generation using Multi-Party Computation
-- **Transaction Management**: Unified transaction handling across chains
+## Utility Functions
 
-## Contributing
+Besides the Chain methods the library also provide utility functions to assist you on building transactions, requesting signature in wrapped methods.
 
-Contributions are welcome! Please read our contributing guidelines for details on our code of conduct and the process for submitting pull requests.
+Currently we support only Near, but we are working on adding support for other chains.
