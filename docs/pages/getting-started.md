@@ -169,12 +169,11 @@ const { transaction, mpcPayloads } =
 
 ## Next Steps
 
-- Learn about [MPC System](./mpc-overview.md)
 - Explore chain-specific documentation:
-  - [EVM Chains](../chains/evm.md)
-  - [Bitcoin](../chains/bitcoin.md)
-  - [Cosmos](../chains/cosmos.md)
+  - [EVM Chains](./chains/evm.md)
+  - [Bitcoin](./chains/bitcoin.md)
+  - [Cosmos](./chains/cosmos.md)
 - Read the implementation guides:
-  - [Creating a New Chain](./implementing-new-chain.md)
-  - [Bitcoin RPC Adapter](./implementing-btc-adapter.md)
-  - [Chain Signature Contract](./implementing-signature-contract.md)
+  - [Creating a New Chain](./guides/implementing-new-chain.md)
+  - [Bitcoin RPC Adapter](./guides/implementing-btc-adapter.md)
+  - [Chain Signature Contract](./guides/implementing-signature-contract.md)
