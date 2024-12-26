@@ -1,5 +1,5 @@
 export { Chain } from './Chain'
-export { ChainSignatureContract } from './ChainSignatureContract'
+export { ChainSignatureContract, type SignArgs } from './ChainSignatureContract'
 export * from './types'
 export * as utils from './utils'
 
@@ -17,10 +17,10 @@ export { BTCRpcAdapters, BTCRpcAdapter } from './Bitcoin/BTCRpcAdapter'
 
 export type {
   BTCTransactionRequest,
+  BTCUnsignedTransaction,
   BTCTransaction,
   BTCOutput,
   BTCInput,
-  BTCUnsignedTransaction,
   BTCNetworkIds,
 } from './Bitcoin/types'
 

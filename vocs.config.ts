@@ -10,6 +10,7 @@ export default defineConfig({
       paths: {
         'signet.js': ['./src'],
         '@chains': ['./src/chains'],
+        '@utils': ['./src/utils'],
       },
     },
   },

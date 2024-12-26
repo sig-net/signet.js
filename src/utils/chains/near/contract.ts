@@ -1,22 +1,22 @@
 import { type Account, Contract } from '@near-js/accounts'
 import { actionCreators } from '@near-js/transactions'
 import { KeyPair } from '@near-js/crypto'
-
+import { base_decode } from 'near-api-js/lib/utils/serialize'
 import BN from 'bn.js'
 
-import {
-  type RSVSignature,
-  type MPCSignature,
-  type UncompressedPubKeySEC1,
-  ChainSignatureContract,
+import { ChainSignatureContract, utils } from '@chains'
+import type {
+  RSVSignature,
+  MPCSignature,
+  UncompressedPubKeySEC1,
+  SignArgs,
 } from '@chains'
+import { chains } from '@utils'
+
 import { type NearNetworkIds, type ChainSignatureContractIds } from './types'
 import { parseSignedDelegateForRelayer } from './relayer'
 import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from './constants'
-import { base_decode } from 'near-api-js/lib/utils/serialize'
-import { utils } from '@chains'
 import { getNearAccount } from './account'
-import { near } from '..'
 
 const najToUncompressedPubKey = (najPubKey: string): UncompressedPubKeySEC1 => {
   return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`
@@ -28,12 +28,6 @@ const requireAccount = (accountId: string): void => {
       'A valid account ID and keypair are required for change methods. Please instantiate a new contract with valid credentials.'
     )
   }
-}
-
-interface SignArgs {
-  payload: number[]
-  path: string
-  key_version: number
 }
 
 type NearContract = Contract & {
@@ -61,7 +55,7 @@ interface ChainSignatureContractArgs {
  * This contract will default to view methods only.
  * If you want to use the change methods, you need to provide an account and keypair.
  */
-export class ChainSignaturesContract extends ChainSignatureContract {
+export class NearChainSignatureContract extends ChainSignatureContract {
   private readonly networkId: NearNetworkIds
   private readonly contractId: ChainSignatureContractIds
   private readonly accountId: string
@@ -188,7 +182,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
       'FINAL'
     )
 
-    const signature = near.transactionBuilder.responseToMpcSignature({
+    const signature = chains.near.transactionBuilder.responseToMpcSignature({
       response: txStatus,
     })
 

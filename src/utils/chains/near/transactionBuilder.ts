@@ -3,18 +3,20 @@ import type {
   FinalExecutionOutcome,
   NetworkId,
 } from '@near-wallet-selector/core'
+import BN from 'bn.js'
+import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
+
 import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
   type MPCPayloads,
 } from '@chains'
-import { ChainSignaturesContract } from './contract'
-import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
+import { utils } from '@chains'
+
+import { NearChainSignatureContract } from './contract'
 import { NEAR_MAX_GAS } from './constants'
 import { type NFTKeysContracts, type ChainSignatureContractIds } from './types'
-import { utils } from '@chains'
-import BN from 'bn.js'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -30,7 +32,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new ChainSignaturesContract({
+  const contract = new NearChainSignatureContract({
     networkId,
     contractId,
   })
@@ -75,7 +77,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new ChainSignaturesContract({
+  const contract = new NearChainSignatureContract({
     networkId,
     contractId: chainSigContract,
   })

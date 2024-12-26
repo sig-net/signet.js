@@ -6,7 +6,7 @@ import {
   type EVMRequest,
 } from '../types'
 import { type Response } from '@chains'
-import { ChainSignaturesContract } from '../contract'
+import { NearChainSignatureContract } from '../contract'
 import { type KeyPair } from '@near-js/crypto'
 import { getNearAccount } from '../account'
 
@@ -21,7 +21,7 @@ export const EVMTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract({
+    const contract = new NearChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -74,7 +74,7 @@ export const BTCTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract({
+    const contract = new NearChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -132,7 +132,7 @@ export const CosmosTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract({
+    const contract = new NearChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,

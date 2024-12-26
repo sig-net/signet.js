@@ -1,14 +1,5 @@
 import { chains, assets } from 'chain-registry'
-
-export interface ChainInfo {
-  prefix: string
-  denom: string
-  rpcUrl: string
-  restUrl: string
-  expectedChainId: string
-  gasPrice: number
-  decimals: number
-}
+import { type ChainInfo } from './types'
 
 export const fetchChainInfo = async (chainId: string): Promise<ChainInfo> => {
   const chainInfo = chains.find((chain) => chain.chain_id === chainId)

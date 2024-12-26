@@ -23,3 +23,13 @@ export interface BalanceResponse {
     total: string
   }
 }
+
+export interface ChainInfo {
+  prefix: string
+  denom: string
+  rpcUrl: string
+  restUrl: string
+  expectedChainId: string
+  gasPrice: number
+  decimals: number
+}
