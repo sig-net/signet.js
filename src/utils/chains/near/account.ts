@@ -1,8 +1,7 @@
 import { Account, Connection } from '@near-js/accounts'
-import { InMemoryKeyStore } from '@near-js/keystores'
 import { KeyPair } from '@near-js/crypto'
-
-import { DONT_CARE_ACCOUNT_ID } from './constants'
+import { InMemoryKeyStore } from '@near-js/keystores'
+import { DONT_CARE_ACCOUNT_ID } from '@utils/chains/near/constants'
 
 type SetConnectionArgs =
   | {

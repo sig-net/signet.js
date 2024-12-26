@@ -1,5 +1,5 @@
+import { type ChainInfo } from '@chains/Cosmos/types'
 import { chains, assets } from 'chain-registry'
-import { type ChainInfo } from './types'
 
 export const fetchChainInfo = async (chainId: string): Promise<ChainInfo> => {
   const chainInfo = chains.find((chain) => chain.chain_id === chainId)

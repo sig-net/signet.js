@@ -1,9 +1,3 @@
-import { type Account, Contract } from '@near-js/accounts'
-import { actionCreators } from '@near-js/transactions'
-import { KeyPair } from '@near-js/crypto'
-import { base_decode } from 'near-api-js/lib/utils/serialize'
-import BN from 'bn.js'
-
 import { ChainSignatureContract, utils } from '@chains'
 import type {
   RSVSignature,
@@ -11,12 +5,22 @@ import type {
   UncompressedPubKeySEC1,
   SignArgs,
 } from '@chains'
+import { type Account, Contract } from '@near-js/accounts'
+import { KeyPair } from '@near-js/crypto'
+import { actionCreators } from '@near-js/transactions'
 import { chains } from '@utils'
-
-import { type NearNetworkIds, type ChainSignatureContractIds } from './types'
-import { parseSignedDelegateForRelayer } from './relayer'
-import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from './constants'
-import { getNearAccount } from './account'
+import { getNearAccount } from '@utils/chains/near/account'
+import {
+  DONT_CARE_ACCOUNT_ID,
+  NEAR_MAX_GAS,
+} from '@utils/chains/near/constants'
+import { parseSignedDelegateForRelayer } from '@utils/chains/near/relayer'
+import {
+  type NearNetworkIds,
+  type ChainSignatureContractIds,
+} from '@utils/chains/near/types'
+import BN from 'bn.js'
+import { base_decode } from 'near-api-js/lib/utils/serialize'
 
 const najToUncompressedPubKey = (najPubKey: string): UncompressedPubKeySEC1 => {
   return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`

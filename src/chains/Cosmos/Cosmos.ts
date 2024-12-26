@@ -1,19 +1,3 @@
-import { GasPrice, StargateClient, calculateFee } from '@cosmjs/stargate'
-import {
-  Registry,
-  makeSignBytes,
-  encodePubkey,
-  makeAuthInfoBytes,
-  makeSignDoc,
-  type TxBodyEncodeObject,
-} from '@cosmjs/proto-signing'
-import { toBase64, fromBase64, fromHex } from '@cosmjs/encoding'
-import { encodeSecp256k1Pubkey } from '@cosmjs/amino'
-import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
-import { ripemd160, sha256 } from '@cosmjs/crypto'
-import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
-import { bech32 } from 'bech32'
-
 import { Chain, utils } from '@chains'
 import type {
   MPCPayloads,
@@ -24,9 +8,23 @@ import type {
   CosmosUnsignedTransaction,
   ChainSignatureContract,
 } from '@chains'
-
-import type { ChainInfo, BalanceResponse } from './types'
-import { fetchChainInfo } from './utils'
+import type { ChainInfo, BalanceResponse } from '@chains/Cosmos/types'
+import { fetchChainInfo } from '@chains/Cosmos/utils'
+import { encodeSecp256k1Pubkey } from '@cosmjs/amino'
+import { ripemd160, sha256 } from '@cosmjs/crypto'
+import { toBase64, fromBase64, fromHex } from '@cosmjs/encoding'
+import {
+  Registry,
+  makeSignBytes,
+  encodePubkey,
+  makeAuthInfoBytes,
+  makeSignDoc,
+  type TxBodyEncodeObject,
+} from '@cosmjs/proto-signing'
+import { GasPrice, StargateClient, calculateFee } from '@cosmjs/stargate'
+import { bech32 } from 'bech32'
+import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
+import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 
 /**
  * Implementation of the Chain interface for Cosmos-based networks.

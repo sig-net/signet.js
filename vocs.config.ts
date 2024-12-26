@@ -11,6 +11,8 @@ export default defineConfig({
         'signet.js': ['./src'],
         '@chains': ['./src/chains'],
         '@utils': ['./src/utils'],
+        '@chains/*': ['./src/chains/*'],
+        '@utils/*': ['./src/utils/*'],
       },
     },
   },
