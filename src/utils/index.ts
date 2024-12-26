@@ -1,1 +1,1 @@
-export * as near from './near'
+export * as chains from './chains'

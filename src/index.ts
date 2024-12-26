@@ -1,4 +1,2 @@
-export type { SLIP044ChainId, KeyDerivationPath } from './signature/types'
-export { near } from './utils'
-
-export * from './chains'
+export * as utils from './utils'
+export * as chains from './chains'

@@ -1,15 +1,15 @@
 import { ethers, keccak256 } from 'ethers'
 import { fetchEVMFeeProperties } from './utils'
-import { type MPCPayloads } from '../types'
+import {
+  type MPCPayloads,
+  type RSVSignature,
+  type KeyDerivationPath,
+} from '../types'
 import {
   type EVMTransactionRequest,
   type EVMUnsignedTransaction,
 } from './types'
-import {
-  type RSVSignature,
-  type KeyDerivationPath,
-} from '../../signature/types'
-import { type Chain } from '../Chain'
+import { Chain } from '../Chain'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
 import { fromHex } from '@cosmjs/encoding'
 
@@ -17,21 +17,24 @@ import { fromHex } from '@cosmjs/encoding'
  * Implementation of the Chain interface for EVM-compatible networks.
  * Handles interactions with Ethereum Virtual Machine based blockchains like Ethereum, BSC, Polygon, etc.
  */
-export class EVM
-  implements Chain<EVMTransactionRequest, EVMUnsignedTransaction>
-{
+export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   private readonly provider: ethers.JsonRpcProvider
-  private readonly contract: ChainSignatureContract
 
   /**
    * Creates a new EVM chain instance
-   * @param config - Configuration object for the EVM chain
-   * @param config.rpcUrl - URL of the EVM JSON-RPC provider (e.g., Infura endpoint)
-   * @param config.contract - Instance of the chain signature contract for MPC operations
+   * @param params - Configuration parameters
+   * @param params.rpcUrl - URL of the EVM JSON-RPC provider (e.g., Infura endpoint)
+   * @param params.contract - Instance of the chain signature contract for MPC operations
    */
-  constructor(config: { rpcUrl: string; contract: ChainSignatureContract }) {
-    this.provider = new ethers.JsonRpcProvider(config.rpcUrl)
-    this.contract = config.contract
+  constructor({
+    rpcUrl,
+    contract,
+  }: {
+    rpcUrl: string
+    contract: ChainSignatureContract
+  }) {
+    super({ contract })
+    this.provider = new ethers.JsonRpcProvider(rpcUrl)
   }
 
   private async attachGasAndNonce(

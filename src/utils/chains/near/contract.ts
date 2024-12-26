@@ -4,19 +4,19 @@ import { KeyPair } from '@near-js/crypto'
 
 import BN from 'bn.js'
 
-import { type RSVSignature, type MPCSignature } from '../../signature/types'
+import {
+  type RSVSignature,
+  type MPCSignature,
+  type UncompressedPubKeySEC1,
+  ChainSignatureContract,
+} from '@chains'
 import { type NearNetworkIds, type ChainSignatureContractIds } from './types'
 import { parseSignedDelegateForRelayer } from './relayer'
 import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from './constants'
-import { near } from '../..'
-import {
-  type SignArgs,
-  ChainSignatureContract,
-} from '../../chains/ChainSignatureContract'
 import { base_decode } from 'near-api-js/lib/utils/serialize'
-import { type UncompressedPubKeySEC1 } from '../../chains/types'
-import { toRSV } from '../../signature'
+import { utils } from '@chains'
 import { getNearAccount } from './account'
+import { near } from '..'
 
 const najToUncompressedPubKey = (najPubKey: string): UncompressedPubKeySEC1 => {
   return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`
@@ -28,6 +28,12 @@ const requireAccount = (accountId: string): void => {
       'A valid account ID and keypair are required for change methods. Please instantiate a new contract with valid credentials.'
     )
   }
+}
+
+interface SignArgs {
+  payload: number[]
+  path: string
+  key_version: number
 }
 
 type NearContract = Contract & {
@@ -133,7 +139,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
       amount: deposit,
     })
 
-    return toRSV(signature)
+    return utils.toRSV(signature)
   }
 
   static async signWithRelayer({

@@ -1,6 +1,6 @@
-import { type BTCTransaction, type BTCInput, type BTCOutput } from '../../types'
+import { BTCRpcAdapter } from '@chains'
+import type { BTCTransaction, BTCInput, BTCOutput } from '@chains'
 import { type BTCFeeRecommendation, type UTXO } from './types'
-import { BTCRpcAdapter } from '../BTCRpcAdapter'
 
 // There is no types for coinselect
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

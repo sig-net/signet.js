@@ -1,7 +1,5 @@
-// import { type RSVSignature } from '../signature'
 import type BN from 'bn.js'
-import { type RSVSignature } from '../signature'
-import { type UncompressedPubKeySEC1 } from './types'
+import { type RSVSignature, type UncompressedPubKeySEC1 } from './types'
 
 /**
  * Arguments for the sign method

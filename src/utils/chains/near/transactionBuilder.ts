@@ -7,13 +7,13 @@ import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
-} from '../../signature/types'
-import { type MPCPayloads } from '../../chains/types'
+  type MPCPayloads,
+} from '@chains'
 import { ChainSignaturesContract } from './contract'
 import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
 import { NEAR_MAX_GAS } from './constants'
 import { type NFTKeysContracts, type ChainSignatureContractIds } from './types'
-import { toRSV } from '../../signature'
+import { utils } from '@chains'
 import BN from 'bn.js'
 
 export const mpcPayloadsToChainSigTransaction = async ({
@@ -127,7 +127,7 @@ export const responseToMpcSignature = ({
       Ok: MPCSignature
     }
 
-    return toRSV(parsedJSONSignature.Ok)
+    return utils.toRSV(parsedJSONSignature.Ok)
   } else {
     return undefined
   }

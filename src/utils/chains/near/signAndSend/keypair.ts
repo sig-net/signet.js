@@ -1,16 +1,14 @@
-import { Bitcoin } from '../../../chains/Bitcoin/Bitcoin'
+import { Bitcoin, Cosmos, EVM, BTCRpcAdapters } from '@chains'
+
 import {
   type BitcoinRequest,
   type CosmosRequest,
   type EVMRequest,
 } from '../types'
-import { Cosmos } from '../../../chains/Cosmos/Cosmos'
-import { EVM } from '../../../chains/EVM/EVM'
-import { type Response } from '../../../chains/types'
+import { type Response } from '@chains'
 import { ChainSignaturesContract } from '../contract'
 import { type KeyPair } from '@near-js/crypto'
 import { getNearAccount } from '../account'
-import { BTCRpcAdapters } from '../../../chains/Bitcoin/BTCRpcAdapter'
 
 export const EVMTransaction = async (
   req: EVMRequest,

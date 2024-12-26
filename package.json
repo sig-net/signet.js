@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
-    "@chains": "./src/index.ts"
+    ".": "./src/index.ts",
+    "@chains": "./src/chains/index.ts",
+    "@utils": "./src/utils/index.ts"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",

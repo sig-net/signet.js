@@ -1,5 +1,9 @@
-import { type KeyDerivationPath, type RSVSignature } from '../signature/types'
-import { type MPCPayloads } from './types'
+import { type ChainSignatureContract } from './ChainSignatureContract'
+import {
+  type KeyDerivationPath,
+  type MPCPayloads,
+  type RSVSignature,
+} from './types'
 
 /**
  * Core interface for blockchain implementations.
@@ -8,7 +12,23 @@ import { type MPCPayloads } from './types'
  * @typeParam TransactionRequest - The type of transaction request specific to the blockchain
  * @typeParam UnsignedTransaction - The type of unsigned transaction specific to the blockchain
  */
-export interface Chain<TransactionRequest, UnsignedTransaction> {
+export abstract class Chain<TransactionRequest, UnsignedTransaction> {
+  /**
+   * Instance of the ChainSignatureContract used for MPC operations.
+   * Only view methods will be used from this contract, such as getting derived public keys.
+   * No state-modifying operations are performed.
+   */
+  readonly contract: ChainSignatureContract
+
+  /**
+   * Creates a new Chain instance
+   * @param params - Configuration parameters
+   * @param params.contract - Instance of ChainSignatureContract for MPC operations with only view methods
+   */
+  constructor({ contract }: { contract: ChainSignatureContract }) {
+    this.contract = contract
+  }
+
   /**
    * Gets the native token balance for a given address
    *
@@ -16,7 +36,7 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to the balance as a string, formatted according to the chain's decimal places (e.g. ETH, BTC, etc.)
    * @throws Error if the balance fetch fails or the address is invalid
    */
-  getBalance: (address: string) => Promise<string>
+  abstract getBalance(address: string): Promise<string>
 
   /**
    * Derives an address and public key from a signer ID and derivation path.
@@ -27,10 +47,10 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to the derived address and its corresponding public key
    * @throws Error if key derivation fails or the signer ID is invalid
    */
-  deriveAddressAndPublicKey: (
+  abstract deriveAddressAndPublicKey(
     predecessor: string,
     path: KeyDerivationPath
-  ) => Promise<{
+  ): Promise<{
     address: string
     publicKey: string
   }>
@@ -43,7 +63,10 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @param transaction - The unsigned transaction to store
    * @param storageKey - Unique key to identify the stored transaction
    */
-  setTransaction: (transaction: UnsignedTransaction, storageKey: string) => void
+  abstract setTransaction(
+    transaction: UnsignedTransaction,
+    storageKey: string
+  ): void
 
   /**
    * Retrieves a previously stored transaction from local storage.
@@ -53,12 +76,12 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @param options.remove - If true, removes the transaction from storage after retrieval
    * @returns The stored transaction or undefined if not found
    */
-  getTransaction: (
+  abstract getTransaction(
     storageKey: string,
     options?: {
       remove?: boolean
     }
-  ) => UnsignedTransaction | undefined
+  ): UnsignedTransaction | undefined
 
   /**
    * Prepares a transaction for MPC signing by creating the necessary payloads.
@@ -72,9 +95,9 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to the unsigned transaction and MPC payloads for signing
    * @throws Error if transaction preparation fails
    */
-  getMPCPayloadAndTransaction: (
+  abstract getMPCPayloadAndTransaction(
     transactionRequest: TransactionRequest
-  ) => Promise<{
+  ): Promise<{
     transaction: UnsignedTransaction
     mpcPayloads: MPCPayloads
   }>
@@ -89,10 +112,10 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @returns The serialized signed transaction ready for broadcast
    * @throws Error if signature application fails
    */
-  addSignature: (params: {
+  abstract addSignature(params: {
     transaction: UnsignedTransaction
     mpcSignatures: RSVSignature[]
-  }) => string
+  }): string
 
   /**
    * Broadcasts a signed transaction to the network.
@@ -101,5 +124,5 @@ export interface Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to the transaction hash/ID
    * @throws Error if broadcast fails or transaction is rejected
    */
-  broadcastTx: (txSerialized: string) => Promise<string>
+  abstract broadcastTx(txSerialized: string): Promise<string>
 }

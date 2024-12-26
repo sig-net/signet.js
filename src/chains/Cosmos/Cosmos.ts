@@ -13,33 +13,33 @@ import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 import { ripemd160, sha256 } from '@cosmjs/crypto'
 
 import { type ChainInfo, fetchChainInfo } from './utils'
-import { type MPCPayloads } from '../types'
+import {
+  type MPCPayloads,
+  type RSVSignature,
+  type KeyDerivationPath,
+} from '../types'
 import {
   type BalanceResponse,
   type CosmosNetworkIds,
   type CosmosTransactionRequest,
   type CosmosUnsignedTransaction,
 } from './types'
-import {
-  type RSVSignature,
-  type KeyDerivationPath,
-} from '../../signature/types'
-import { type Chain } from '../Chain'
+import { Chain } from '../Chain'
 import { bech32 } from 'bech32'
 import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
 import { type ChainSignatureContract } from '../ChainSignatureContract'
-import { compressPubKey } from '../../utils/key'
+import { utils } from '@chains'
 
 /**
  * Implementation of the Chain interface for Cosmos-based networks.
  * Handles interactions with Cosmos SDK chains like Cosmos Hub, Osmosis, etc.
  */
-export class Cosmos
-  implements Chain<CosmosTransactionRequest, CosmosUnsignedTransaction>
-{
+export class Cosmos extends Chain<
+  CosmosTransactionRequest,
+  CosmosUnsignedTransaction
+> {
   private readonly registry: Registry
   private readonly chainId: CosmosNetworkIds
-  private readonly contract: ChainSignatureContract
   private readonly endpoints?: {
     rpcUrl?: string
     restUrl?: string
@@ -66,9 +66,10 @@ export class Cosmos
       restUrl?: string
     }
   }) {
+    super({ contract })
+
     this.registry = new Registry()
     this.chainId = chainId
-    this.contract = contract
     this.endpoints = endpoints
   }
 
@@ -129,7 +130,7 @@ export class Cosmos
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = compressPubKey(uncompressedPubKey)
+    const derivedKey = utils.compressPubKey(uncompressedPubKey)
     const pubKeySha256 = sha256(fromHex(derivedKey))
     const ripemd160Hash = ripemd160(pubKeySha256)
     const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))

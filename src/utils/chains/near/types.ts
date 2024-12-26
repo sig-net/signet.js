@@ -3,9 +3,9 @@ import {
   type BTCNetworkIds,
   type CosmosNetworkIds,
   type CosmosTransactionRequest,
-} from '../..'
-import type { EVMTransactionRequest } from '../../chains/EVM/types'
-import type { KeyDerivationPath } from '../../signature'
+  type EVMTransactionRequest,
+  type KeyDerivationPath,
+} from '@chains'
 
 /** 
 Available ChainSignature contracts:
