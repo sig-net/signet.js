@@ -27,6 +27,7 @@ export class Bitcoin extends Chain<
 
   private readonly network: BTCNetworkIds
   private readonly btcRpcAdapter: BTCRpcAdapter
+  private readonly contract: ChainSignatureContract
 
   /**
    * Creates a new Bitcoin chain instance
@@ -44,10 +45,11 @@ export class Bitcoin extends Chain<
     contract: ChainSignatureContract
     btcRpcAdapter: BTCRpcAdapter
   }) {
-    super({ contract })
+    super()
 
     this.network = network
     this.btcRpcAdapter = btcRpcAdapter
+    this.contract = contract
   }
 
   /**

@@ -1,9 +1,4 @@
-import type {
-  KeyDerivationPath,
-  MPCPayloads,
-  RSVSignature,
-  ChainSignatureContract,
-} from '@chains'
+import type { KeyDerivationPath, MPCPayloads, RSVSignature } from '@chains'
 
 /**
  * Core interface for blockchain implementations.
@@ -13,22 +8,6 @@ import type {
  * @typeParam UnsignedTransaction - The type of unsigned transaction specific to the blockchain
  */
 export abstract class Chain<TransactionRequest, UnsignedTransaction> {
-  /**
-   * Instance of the ChainSignatureContract used for MPC operations.
-   * Only view methods will be used from this contract, such as getting derived public keys.
-   * No state-modifying operations are performed.
-   */
-  readonly contract: ChainSignatureContract
-
-  /**
-   * Creates a new Chain instance
-   * @param params - Configuration parameters
-   * @param params.contract - Instance of ChainSignatureContract for MPC operations with only view methods
-   */
-  constructor({ contract }: { contract: ChainSignatureContract }) {
-    this.contract = contract
-  }
-
   /**
    * Gets the native token balance for a given address
    *

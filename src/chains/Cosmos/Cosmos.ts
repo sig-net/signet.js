@@ -38,6 +38,7 @@ export class Cosmos extends Chain<
 > {
   private readonly registry: Registry
   private readonly chainId: CosmosNetworkIds
+  private readonly contract: ChainSignatureContract
   private readonly endpoints?: {
     rpcUrl?: string
     restUrl?: string
@@ -64,8 +65,9 @@ export class Cosmos extends Chain<
       restUrl?: string
     }
   }) {
-    super({ contract })
+    super()
 
+    this.contract = contract
     this.registry = new Registry()
     this.chainId = chainId
     this.endpoints = endpoints

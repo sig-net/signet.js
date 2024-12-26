@@ -17,6 +17,7 @@ import { Chain, fetchEVMFeeProperties } from '@chains'
  */
 export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   private readonly provider: ethers.JsonRpcProvider
+  private readonly contract: ChainSignatureContract
 
   /**
    * Creates a new EVM chain instance
@@ -31,7 +32,9 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     rpcUrl: string
     contract: ChainSignatureContract
   }) {
-    super({ contract })
+    super()
+
+    this.contract = contract
     this.provider = new ethers.JsonRpcProvider(rpcUrl)
   }
 
