@@ -1,3 +1,5 @@
+import * as bitcoin from 'bitcoinjs-lib'
+
 import type {
   MPCPayloads,
   RSVSignature,
@@ -12,7 +14,6 @@ import type {
 } from '@chains'
 import { Chain, utils } from '@chains'
 import { parseBTCNetwork } from '@chains/Bitcoin/utils'
-import * as bitcoin from 'bitcoinjs-lib'
 
 /**
  * Implementation of the Chain interface for Bitcoin network.

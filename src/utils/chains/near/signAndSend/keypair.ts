@@ -1,6 +1,7 @@
+import { type KeyPair } from '@near-js/crypto'
+
 import { Bitcoin, Cosmos, EVM, BTCRpcAdapters } from '@chains'
 import { type Response } from '@chains'
-import { type KeyPair } from '@near-js/crypto'
 import { getNearAccount } from '@utils/chains/near/account'
 import { NearChainSignatureContract } from '@utils/chains/near/contract'
 import {
