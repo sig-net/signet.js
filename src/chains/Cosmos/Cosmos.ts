@@ -15,15 +15,18 @@ import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
 import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 
 import type {
-  MPCPayloads,
-  RSVSignature,
-  KeyDerivationPath,
   CosmosNetworkIds,
   CosmosTransactionRequest,
   CosmosUnsignedTransaction,
-  ChainSignatureContract,
-} from '@chains'
-import { Chain, utils } from '@chains'
+} from '@chains/Cosmos/types'
+import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import type {
+  MPCPayloads,
+  RSVSignature,
+  KeyDerivationPath,
+} from '@chains/types'
+import { Chain } from '@chains/Chain'
+import { utils } from '@chains'
 import type { ChainInfo, BalanceResponse } from '@chains/Cosmos/types'
 import { fetchChainInfo } from '@chains/Cosmos/utils'
 

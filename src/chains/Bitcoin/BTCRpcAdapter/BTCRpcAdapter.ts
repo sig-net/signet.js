@@ -1,4 +1,4 @@
-import type { BTCTransaction, BTCInput, BTCOutput } from '@chains'
+import type { BTCTransaction, BTCInput, BTCOutput } from '@chains/Bitcoin/types'
 
 export abstract class BTCRpcAdapter {
   abstract selectUTXOs(

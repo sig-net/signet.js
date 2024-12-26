@@ -2,7 +2,7 @@ import {
   type MPCSignature,
   type RSVSignature,
   type UncompressedPubKeySEC1,
-} from '@chains'
+} from '@chains/types'
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   return {

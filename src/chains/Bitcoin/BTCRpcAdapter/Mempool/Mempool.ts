@@ -3,8 +3,8 @@
 // @ts-expect-error
 import coinselect from 'coinselect'
 
-import { BTCRpcAdapter } from '@chains'
-import type { BTCTransaction, BTCInput, BTCOutput } from '@chains'
+import { BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter'
+import type { BTCTransaction, BTCInput, BTCOutput } from '@chains/Bitcoin/types'
 import {
   type BTCFeeRecommendation,
   type UTXO,

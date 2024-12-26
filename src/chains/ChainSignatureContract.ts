@@ -1,6 +1,6 @@
 import type BN from 'bn.js'
 
-import type { RSVSignature, UncompressedPubKeySEC1 } from '@chains'
+import type { RSVSignature, UncompressedPubKeySEC1 } from '@chains/types'
 
 /**
  * Arguments for the sign method

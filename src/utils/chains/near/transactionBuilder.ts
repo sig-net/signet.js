@@ -11,7 +11,7 @@ import {
   type KeyDerivationPath,
   type MPCSignature,
   type MPCPayloads,
-} from '@chains'
+} from '@chains/types'
 import { utils } from '@chains'
 import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
 import { NearChainSignatureContract } from '@utils/chains/near/contract'

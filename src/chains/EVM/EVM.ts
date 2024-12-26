@@ -1,15 +1,18 @@
 import { fromHex } from '@cosmjs/encoding'
 import { ethers, keccak256 } from 'ethers'
 
-import {
-  type MPCPayloads,
-  type RSVSignature,
-  type KeyDerivationPath,
-  type EVMTransactionRequest,
-  type EVMUnsignedTransaction,
-  type ChainSignatureContract,
-} from '@chains'
-import { Chain, fetchEVMFeeProperties } from '@chains'
+import type {
+  MPCPayloads,
+  RSVSignature,
+  KeyDerivationPath,
+} from '@chains/types'
+import type {
+  EVMTransactionRequest,
+  EVMUnsignedTransaction,
+} from '@chains/EVM/types'
+import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import { Chain } from '@chains/Chain'
+import { fetchEVMFeeProperties } from '@chains/EVM/utils'
 
 /**
  * Implementation of the Chain interface for EVM-compatible networks.

@@ -4,15 +4,18 @@ import type {
   MPCPayloads,
   RSVSignature,
   KeyDerivationPath,
-  ChainSignatureContract,
-  BTCRpcAdapter,
+} from '@chains/types'
+import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import type {
   BTCInput,
   BTCNetworkIds,
   BTCOutput,
   BTCTransactionRequest,
   BTCUnsignedTransaction,
-} from '@chains'
-import { Chain, utils } from '@chains'
+} from '@chains/Bitcoin/types'
+import { BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter'
+import { Chain } from '@chains/Chain'
+import { utils } from '@chains'
 import { parseBTCNetwork } from '@chains/Bitcoin/utils'
 
 /**

@@ -1,4 +1,8 @@
-import type { KeyDerivationPath, MPCPayloads, RSVSignature } from '@chains'
+import type {
+  KeyDerivationPath,
+  MPCPayloads,
+  RSVSignature,
+} from '@chains/types'
 
 /**
  * Core interface for blockchain implementations.

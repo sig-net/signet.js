@@ -1,4 +1,4 @@
-import { type SignArgs } from '@chains'
+import { type SignArgs } from '@chains/ChainSignatureContract'
 
 interface SuccessResponse {
   transactionHash: string
