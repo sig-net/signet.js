@@ -5,13 +5,13 @@ A TypeScript library for handling interactions with Sig Network MPC Smart Contra
 ## Supported Chains
 
 - [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
-- [Bitcoin](./chains/bitcoin.mdx) - Bitcoin network (mainnet and testnet)
+- [Bitcoin](./chains/bitcoin.mdx) - Bitcoin network
 - [Cosmos](./chains/cosmos.mdx) - Cosmos SDK-based networks
 
 ## Core Features
 
 - **Balance Checking**: Query account balances across different chains
-- **Address Derivation**: Derive addresses and public keys following Sig Network derivation function
+- **Address and Public Key Derivation**: Derive addresses and public keys following Sig Network derivation function
 - **Transaction Management**: Create, store, and retrieve transactions
 - **Signature Handling**: Process MPC signatures for transactions
 - **Transaction Broadcasting**: Submit signed transactions to the network
@@ -31,7 +31,7 @@ pnpm add signet.js
 Here's a basic example using the EVM implementation:
 
 ```ts twoslash
-import { EVM, near } from 'signet.js'
+import { EVM, utils } from 'signet.js'
 import { KeyPair, type KeyPairString } from '@near-js/crypto'
 
 // Initialize NEAR connection with credentials from environment
@@ -46,7 +46,7 @@ if (!accountId || !privateKey) {
 
 const nearKeyPair = KeyPair.fromString(privateKey)
 
-const contract = new near.contract.ChainSignaturesContract({
+const contract = new utils.chains.near.ChainSignatureContract({
   networkId: 'testnet',
   contractId: 'v1.signer-prod.testnet',
   accountId,

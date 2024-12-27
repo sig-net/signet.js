@@ -7,6 +7,7 @@
   "types": "./src/index.d.ts",
   "scripts": {
     "build": "tsc --project tsconfig.json && tsc-alias",
+    "build:watch": "tsc --project tsconfig.json --watch & tsc-alias -w",
     "pre:deploy": "npm run build && cp package.json README.md dist/",
     "publish-npm": "npm run pre:deploy && cd dist && npm publish",
     "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",

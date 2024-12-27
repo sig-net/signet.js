@@ -5,7 +5,7 @@ This implementation supports both Bitcoin mainnet and testnet, with a focus on P
 ## Configuration
 
 ```ts twoslash
-import { Bitcoin, BTCRpcAdapters, near } from 'signet.js'
+import { Bitcoin, BTCRpcAdapters, utils } from 'signet.js'
 
 // Initialize the RPC adapter using Mempool
 const btcRPCAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
@@ -13,7 +13,7 @@ const btcRPCAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
 // Initialize the chain
 const bitcoinChain = new Bitcoin({
   network: 'testnet',
-  contract: new near.contract.ChainSignaturesContract({
+  contract: new utils.chains.near.ChainSignatureContract({
     networkId: 'testnet',
     contractId: 'v1.chain-signatures.testnet',
   }),

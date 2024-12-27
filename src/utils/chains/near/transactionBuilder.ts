@@ -14,7 +14,7 @@ import {
 } from '@chains/types'
 import { utils } from '@chains'
 import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
-import { NearChainSignatureContract } from '@utils/chains/near/contract'
+import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import {
   type NFTKeysContracts,
   type ChainSignatureContractIds,
@@ -34,7 +34,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new NearChainSignatureContract({
+  const contract = new ChainSignatureContract({
     networkId,
     contractId,
   })
@@ -79,7 +79,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new NearChainSignatureContract({
+  const contract = new ChainSignatureContract({
     networkId,
     contractId: chainSigContract,
   })

@@ -4,7 +4,7 @@ import { actionCreators } from '@near-js/transactions'
 import BN from 'bn.js'
 import { base_decode } from 'near-api-js/lib/utils/serialize'
 
-import { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import { utils } from '@chains'
 import type {
   RSVSignature,
@@ -61,7 +61,7 @@ interface ChainSignatureContractArgs {
  * This contract will default to view methods only.
  * If you want to use the change methods, you need to provide an account and keypair.
  */
-export class NearChainSignatureContract extends ChainSignatureContract {
+export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly networkId: NearNetworkIds
   private readonly contractId: ChainSignatureContractIds
   private readonly accountId: string

@@ -31,7 +31,7 @@ pnpm add signet.js
 import { EVM, near } from 'signet.js'
 
 // Initialize MPC contract
-const contract = new near.contract.ChainSignaturesContract({
+const contract = new near.ChainSignaturesContract({
   networkId: 'testnet',
   contractId: 'mpc.testnet',
 })
