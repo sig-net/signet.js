@@ -1,11 +1,7 @@
 import * as bitcoin from 'bitcoinjs-lib'
 
-import type {
-  MPCPayloads,
-  RSVSignature,
-  KeyDerivationPath,
-} from '@chains/types'
-import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import { utils } from '@chains'
+import { type BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter'
 import type {
   BTCInput,
   BTCNetworkIds,
@@ -13,10 +9,14 @@ import type {
   BTCTransactionRequest,
   BTCUnsignedTransaction,
 } from '@chains/Bitcoin/types'
-import { BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter'
-import { Chain } from '@chains/Chain'
-import { utils } from '@chains'
 import { parseBTCNetwork } from '@chains/Bitcoin/utils'
+import { Chain } from '@chains/Chain'
+import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import type {
+  MPCPayloads,
+  RSVSignature,
+  KeyDerivationPath,
+} from '@chains/types'
 
 /**
  * Implementation of the Chain interface for Bitcoin network.

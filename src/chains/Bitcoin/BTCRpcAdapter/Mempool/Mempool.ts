@@ -4,11 +4,11 @@
 import coinselect from 'coinselect'
 
 import { BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter'
-import type { BTCTransaction, BTCInput, BTCOutput } from '@chains/Bitcoin/types'
 import {
   type BTCFeeRecommendation,
   type UTXO,
 } from '@chains/Bitcoin/BTCRpcAdapter/Mempool/types'
+import type { BTCTransaction, BTCInput, BTCOutput } from '@chains/Bitcoin/types'
 
 export class Mempool extends BTCRpcAdapter {
   private readonly providerUrl: string

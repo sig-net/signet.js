@@ -6,15 +6,15 @@ import type {
 import BN from 'bn.js'
 import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
 
+import { utils } from '@chains'
 import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
   type MPCPayloads,
 } from '@chains/types'
-import { utils } from '@chains'
-import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
+import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
 import {
   type NFTKeysContracts,
   type ChainSignatureContractIds,
