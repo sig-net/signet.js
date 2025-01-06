@@ -16,7 +16,7 @@ const evmChain = new EVM({
 })
 ```
 
-## Public Methods
+## Methods
 
 ### getBalance
 
@@ -165,6 +165,20 @@ const arbitrumChain = new EVM({
   contract,
 })
 ```
+
+## Technical Details
+
+The implementation:
+
+- Uses `ethers.js` for transaction handling and RPC communication
+- Supports both legacy and EIP-1559 transactions
+- Handles automatic nonce management
+- Supports contract interactions through ABI encoding
+- Provides automatic gas estimation and fee calculation
+- Compatible with all EVM-based networks
+- Supports ENS name resolution on networks that implement it
+- Handles transaction signing according to EIP-155
+- Supports raw transaction data for custom contract interactions
 
 ## Types
 
