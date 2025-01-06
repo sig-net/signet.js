@@ -4,31 +4,21 @@ import type {
   RSVSignature,
 } from '@chains/types'
 
-/**
- * Core interface for blockchain implementations.
- * Provides a standardized way to interact with different blockchain networks through a common set of methods.
- *
- * @typeParam TransactionRequest - The type of transaction request specific to the blockchain
- * @typeParam UnsignedTransaction - The type of unsigned transaction specific to the blockchain
- */
 export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   /**
    * Gets the native token balance for a given address
    *
-   * @param address - The blockchain address to check
+   * @param address - The address to check
    * @returns Promise resolving to the balance as a string, formatted according to the chain's decimal places (e.g. ETH, BTC, etc.)
-   * @throws Error if the balance fetch fails or the address is invalid
    */
   abstract getBalance(address: string): Promise<string>
 
   /**
-   * Derives an address and public key from a signer ID and derivation path.
-   * Uses MPC (Multi-Party Computation) to derive the key pair securely.
+   * Uses Sig Network Key Derivation Function to derive the address and public key. from a signer ID and string path.
    *
-   * @param predecessor - The signer ID used to call the sign function on ChainSignatureContract
-   * @param path - The derivation path that uniquely identifies this key pair
-   * @returns Promise resolving to the derived address and its corresponding public key
-   * @throws Error if key derivation fails or the signer ID is invalid
+   * @param predecessor - The id/address of the account requesting signature
+   * @param path - The string path used to derive the key
+   * @returns Promise resolving to the derived address and public key
    */
   abstract deriveAddressAndPublicKey(
     predecessor: string,
@@ -40,8 +30,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
 
   /**
    * Stores an unsigned transaction in local storage for later use.
-   * This method persists transaction data between page reloads and browser sessions.
-   * Particularly useful for browser-based wallets that need to maintain transaction state.
+   * Particularly useful for browser-based wallets that redirects the user to a different page.
    *
    * @param transaction - The unsigned transaction to store
    * @param storageKey - Unique key to identify the stored transaction
@@ -67,7 +56,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   ): UnsignedTransaction | undefined
 
   /**
-   * Prepares a transaction for MPC signing by creating the necessary payloads.
+   * Prepares a transaction for Sig Network MPC signing by creating the necessary payloads.
    * This method handles chain-specific transaction preparation including:
    * - Fee calculation
    * - Nonce/sequence management
@@ -76,7 +65,6 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    *
    * @param transactionRequest - The transaction request containing parameters like recipient, amount, etc.
    * @returns Promise resolving to the unsigned transaction and MPC payloads for signing
-   * @throws Error if transaction preparation fails
    */
   abstract getMPCPayloadAndTransaction(
     transactionRequest: TransactionRequest
@@ -86,14 +74,12 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   }>
 
   /**
-   * Adds MPC-generated signatures to an unsigned transaction.
-   * The signatures are applied according to the chain's specific signing scheme.
+   * Adds Sig Network MPC-generated signatures to an unsigned transaction.
    *
    * @param params - Parameters for adding signatures
-   * @param params.transaction - The unsigned transaction to sign
+   * @param params.transaction - The unsigned transaction to add signatures to
    * @param params.mpcSignatures - Array of RSV signatures generated through MPC
    * @returns The serialized signed transaction ready for broadcast
-   * @throws Error if signature application fails
    */
   abstract addSignature(params: {
     transaction: UnsignedTransaction
@@ -105,7 +91,6 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    *
    * @param txSerialized - The serialized signed transaction
    * @returns Promise resolving to the transaction hash/ID
-   * @throws Error if broadcast fails or transaction is rejected
    */
   abstract broadcastTx(txSerialized: string): Promise<string>
 }

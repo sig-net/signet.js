@@ -4,14 +4,14 @@ import { actionCreators } from '@near-js/transactions'
 import BN from 'bn.js'
 import { base_decode } from 'near-api-js/lib/utils/serialize'
 
-import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import { utils } from '@chains'
+import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
+import type { SignArgs } from '@chains/ChainSignatureContract'
 import type {
   RSVSignature,
   MPCSignature,
   UncompressedPubKeySEC1,
 } from '@chains/types'
-import type { SignArgs } from '@chains/ChainSignatureContract'
 import { chains } from '@utils'
 import { getNearAccount } from '@utils/chains/near/account'
 import {

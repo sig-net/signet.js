@@ -1,12 +1,12 @@
 # Signet.js Documentation
 
-A TypeScript library for handling interactions with Sig Network MPC Smart Contract
+A TypeScript library for handling interactions with Sig Network MPC and Smart Contracts
 
 ## Supported Chains
 
 - [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
-- [Bitcoin](./chains/bitcoin.mdx) - Bitcoin network
-- [Cosmos](./chains/cosmos.mdx) - Cosmos SDK-based networks
+- [Bitcoin](./chains/bitcoin/bitcoin.mdx) - Bitcoin network
+- [Cosmos Chains](./chains/cosmos.mdx) - Cosmos SDK-based networks
 
 ## Core Features
 
@@ -32,25 +32,13 @@ Here's a basic example using the EVM implementation:
 
 ```ts twoslash
 import { EVM, utils } from 'signet.js'
-import { KeyPair, type KeyPairString } from '@near-js/crypto'
-
-// Initialize NEAR connection with credentials from environment
-const accountId = process.env.NEAR_ACCOUNT_ID
-const privateKey = process.env.NEAR_PRIVATE_KEY as KeyPairString
-
-if (!accountId || !privateKey) {
-  throw new Error(
-    'NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY must be set in environment'
-  )
-}
-
-const nearKeyPair = KeyPair.fromString(privateKey)
+// [!include ~/snippets/env.ts]
 
 const contract = new utils.chains.near.ChainSignatureContract({
   networkId: 'testnet',
   contractId: 'v1.signer-prod.testnet',
   accountId,
-  keypair: nearKeyPair,
+  keypair,
 })
 
 const evmChain = new EVM({

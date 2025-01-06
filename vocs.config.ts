@@ -21,7 +21,7 @@ export default defineConfig({
       text: 'Getting Started',
       items: [
         { text: 'Overview', link: '/' },
-        { text: 'Chain Interface', link: '/chain' },
+        // { text: 'Chain Interface', link: '/chain' },
         {
           text: 'Chain Signatures Contract',
           link: '/chain-signatures-contract',
