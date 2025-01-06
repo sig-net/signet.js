@@ -1,23 +1,24 @@
-# Implementing a custom Chain Signature Contract
+# Implementing a Custom Chain Signature Contract
 
-This guide explains how to implement a custom Chain Signature Contract for signing payloads with Sig Network MPC.
+This guide explains how to implement a custom Chain Signature Contract to provide as argument when instantiating a Chain instance.
 
 ## Overview
 
-The `ChainSignatureContract` is an abstract class that defines the interface for interacting with Sig Network infrastructure. It provides methods for:
+The `ChainSignatureContract` is an abstract class that defines the interface for interacting with the Sig Network infrastructure.
 
-- Key derivation
-- Transaction signing
+- Key derivation: Derived the child key from the root key using Sig Network Key Derivation Function
+- Transaction signing: Sigs the given payload using Sig Network MPC
+- Get the root public key: Gets the root public key from the contract
+- Get the current signature deposit: Gets the current signature deposit to handle network congestion
 
-The contract should be provided when instantiating a Chain instance.
+While the library includes a default implementation for the NEAR protocol, you have the flexibility to implement your own contract for other blockchain networks.
 
-The library currently provides a default implementation for Near but you are free to implement your own.
-
-## Using the Near Implementation
+## Using the NEAR Implementation
 
 ```ts twoslash
-import { utils, EVM } from 'signet.js'
 // [!include ~/snippets/env.ts]
+// ---cut---
+import { utils, EVM } from 'signet.js'
 
 const contract = new utils.chains.near.ChainSignatureContract({
   networkId: 'testnet',
@@ -32,15 +33,17 @@ const evmChain = new EVM({
 })
 ```
 
-## Implementing a custom Chain Signature Contract
+## Implementing a Custom Chain Signature Contract
 
-The custom contract should implement the `ChainSignatureContract` interface.
+To create your own implementation, your contract must implement the `ChainSignatureContract` interface.
 
 ```ts twoslash
 // [!include ~/../src/chains/ChainSignatureContract.ts]
 ```
 
-### Example of Near Implementation
+### Example: NEAR Implementation
+
+Below is the reference implementation for the NEAR, which you can use as a guide for implementing your own chain signature contract:
 
 ```ts twoslash
 // [!include ~/../src/utils/chains/near/ChainSignatureContract.ts]

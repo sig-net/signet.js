@@ -4,14 +4,15 @@ This implementation supports all EVM-compatible networks (Ethereum, Binance Smar
 
 ## Configuration
 
-```typescript
-import { EVM } from '@multichain-tools/chains/EVM'
-import { ChainSignatureContract } from '@multichain-tools/chains/ChainSignatureContract'
+```ts twoslash filename="base.ts"
+// [!include ~/snippets/contract.ts]
+// ---cut---
+import { EVM } from 'signet.js'
 
 // Initialize the chain
 const evmChain = new EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
-  contract: new ChainSignatureContract(...),
+  contract,
 })
 ```
 
@@ -21,8 +22,10 @@ const evmChain = new EVM({
 
 Gets the native token balance of an address in ETH units.
 
-```typescript
-async getBalance(address: string): Promise<string>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const balance = await evmChain.getBalance('0x...')
 ```
 
 **Parameters:**
@@ -33,47 +36,48 @@ async getBalance(address: string): Promise<string>
 
 - The balance in ETH as a string
 
-**Throws:**
-
-- Error if the balance fetch fails
-
 ### deriveAddressAndPublicKey
 
 Derives an Ethereum address and public key from a signer ID and derivation path.
 
-```typescript
-async deriveAddressAndPublicKey(
-  predecessor: string,
-  path: KeyDerivationPath
-): Promise<{ address: string; publicKey: string }>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
+  '0x...',
+  'any_string'
+)
 ```
 
 **Parameters:**
 
-- `predecessor`: The ID of the signer to derive from
+- `predecessor`: The ID/address of the signer requesting the signature
 - `path`: The derivation path to use
 
 **Returns:**
 
 - Object containing:
   - `address`: The derived Ethereum address
-  - `publicKey`: The corresponding public key
-
-**Throws:**
-
-- Error if public key derivation fails
+  - `publicKey`: The corresponding public key in SEC1 uncompressed format
 
 ### getMPCPayloadAndTransaction
 
 Prepares a transaction for MPC signing.
 
-```typescript
-async getMPCPayloadAndTransaction(
-  transactionRequest: EVMTransactionRequest
-): Promise<{
-  transaction: EVMUnsignedTransaction
-  mpcPayloads: MPCPayloads
-}>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+import { EVMTransactionRequest } from 'signet.js'
+
+const transactionRequest: EVMTransactionRequest = {
+  to: '0x...',
+  from: '0x...',
+  value: '100000000000000000',
+  data: '0x...',
+}
+
+const { transaction, mpcPayloads } =
+  await evmChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
 The transaction is enhanced with:
