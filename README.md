@@ -100,4 +100,4 @@ For detailed documentation, including:
 - Implementation guides
 - API reference
 
-Visit our [documentation site](https://near.github.io/signet.js).
+Visit our [documentation site](https://signet-js.vercel.app/).
