@@ -21,14 +21,6 @@ export abstract class ChainSignatureContract {
   abstract getCurrentSignatureDeposit(): Promise<BN>
 
   /**
-   * Gets the root public key associated with this contract.
-   * This is the root public key from which child keys can be derived.
-   *
-   * @returns Promise resolving to the SEC1 uncompressed public key
-   */
-  abstract getPublicKey(): Promise<UncompressedPubKeySEC1>
-
-  /**
    * Signs a payload using Sig Network MPC.
    *
    * @param args - Arguments for the signing operation

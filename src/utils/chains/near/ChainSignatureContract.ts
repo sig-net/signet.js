@@ -99,12 +99,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }) as unknown as NearContract
   }
 
-  async getPublicKey(): Promise<UncompressedPubKeySEC1> {
-    const contract = await this.getContract()
-    const najPubKey = await contract.public_key()
-    return najToUncompressedPubKey(najPubKey)
-  }
-
   async getCurrentSignatureDeposit(): Promise<BN> {
     const contract = await this.getContract()
     return new BN(
