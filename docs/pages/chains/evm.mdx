@@ -4,25 +4,28 @@ This implementation supports all EVM-compatible networks (Ethereum, Binance Smar
 
 ## Configuration
 
-```typescript
-import { EVM } from '@multichain-tools/chains/EVM'
-import { ChainSignatureContract } from '@multichain-tools/chains/ChainSignatureContract'
+```ts twoslash filename="base.ts"
+// [!include ~/snippets/contract.ts]
+// ---cut---
+import { EVM } from 'signet.js'
 
 // Initialize the chain
 const evmChain = new EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
-  contract: new ChainSignatureContract(...),
+  contract,
 })
 ```
 
-## Public Methods
+## Methods
 
 ### getBalance
 
 Gets the native token balance of an address in ETH units.
 
-```typescript
-async getBalance(address: string): Promise<string>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const balance = await evmChain.getBalance('0x...')
 ```
 
 **Parameters:**
@@ -33,47 +36,48 @@ async getBalance(address: string): Promise<string>
 
 - The balance in ETH as a string
 
-**Throws:**
-
-- Error if the balance fetch fails
-
 ### deriveAddressAndPublicKey
 
 Derives an Ethereum address and public key from a signer ID and derivation path.
 
-```typescript
-async deriveAddressAndPublicKey(
-  predecessor: string,
-  path: KeyDerivationPath
-): Promise<{ address: string; publicKey: string }>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
+  '0x...',
+  'any_string'
+)
 ```
 
 **Parameters:**
 
-- `predecessor`: The ID of the signer to derive from
+- `predecessor`: The ID/address of the signer requesting the signature
 - `path`: The derivation path to use
 
 **Returns:**
 
 - Object containing:
   - `address`: The derived Ethereum address
-  - `publicKey`: The corresponding public key
-
-**Throws:**
-
-- Error if public key derivation fails
+  - `publicKey`: The corresponding public key in SEC1 uncompressed format
 
 ### getMPCPayloadAndTransaction
 
 Prepares a transaction for MPC signing.
 
-```typescript
-async getMPCPayloadAndTransaction(
-  transactionRequest: EVMTransactionRequest
-): Promise<{
-  transaction: EVMUnsignedTransaction
-  mpcPayloads: MPCPayloads
-}>
+```ts twoslash filename="unsigned-transaction.ts"
+// [!include base.ts]
+// ---cut---
+import { EVMTransactionRequest } from 'signet.js'
+
+const transactionRequest: EVMTransactionRequest = {
+  to: '0x...',
+  from: '0x...',
+  value: '100000000000000000',
+  data: '0x...',
+}
+
+const { transaction: unsignedTransaction, mpcPayloads } =
+  await evmChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
 The transaction is enhanced with:
@@ -87,11 +91,24 @@ The transaction is enhanced with:
 
 Adds a signature to an unsigned transaction.
 
-```typescript
-addSignature(params: {
-  transaction: EVMUnsignedTransaction
-  mpcSignatures: RSVSignature[]
-}): string
+```ts twoslash filename="add-signature.ts"
+// [!include unsigned-transaction.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Ideally it would be a request to the Sig Network Smart Contract
+const mpcSignatures: RSVSignature[] = [
+  {
+    r: '0x...',
+    s: '0x...',
+    v: 27,
+  },
+]
+
+const txSerialized = await evmChain.addSignature({
+  transaction: unsignedTransaction,
+  mpcSignatures,
+})
 ```
 
 **Parameters:**
@@ -107,8 +124,10 @@ addSignature(params: {
 
 Broadcasts a signed transaction to the network.
 
-```typescript
-async broadcastTx(txSerialized: string): Promise<string>
+```ts twoslash filename="broadcast-tx.ts"
+// [!include add-signature.ts]
+// ---cut---
+const txHash = await evmChain.broadcastTx(txSerialized)
 ```
 
 **Parameters:**
@@ -119,31 +138,31 @@ async broadcastTx(txSerialized: string): Promise<string>
 
 - The transaction hash
 
-**Throws:**
-
-- Error if broadcast fails
-
 ## Adding New EVM Chains
 
 To add support for a new EVM-compatible chain, you only need to configure the provider URL. The chain ID and network configuration are automatically retrieved from the provider.
 
-```typescript
+```ts twoslash
+// [!include ~/snippets/contract.ts]
+// ---cut---
+import { EVM } from 'signet.js'
+
 // For Polygon (Matic)
 const polygonChain = new EVM({
   rpcUrl: 'https://polygon-rpc.com',
-  contract: new ChainSignatureContract(...),
+  contract,
 })
 
 // For Binance Smart Chain
 const bscChain = new EVM({
   rpcUrl: 'https://bsc-dataseed.binance.org',
-  contract: new ChainSignatureContract(...),
+  contract,
 })
 
 // For Arbitrum
 const arbitrumChain = new EVM({
   rpcUrl: 'https://arb1.arbitrum.io/rpc',
-  contract: new ChainSignatureContract(...),
+  contract,
 })
 ```
 
@@ -151,8 +170,20 @@ const arbitrumChain = new EVM({
 
 The implementation:
 
-- Uses ethers.js v6 internally
-- Supports EIP-1559 transactions
-- Handles gas estimation automatically
-- Manages nonce calculation
-- Supports all standard EVM operations
+- Uses `ethers.js` for transaction handling and RPC communication
+- Supports both legacy and EIP-1559 transactions
+- Handles automatic nonce management
+- Supports contract interactions through ABI encoding
+- Provides automatic gas estimation and fee calculation
+- Compatible with all EVM-based networks
+- Supports ENS name resolution on networks that implement it
+- Handles transaction signing according to EIP-155
+- Supports raw transaction data for custom contract interactions
+
+## Types
+
+The following types are used on the EVM chain:
+
+```ts twoslash
+// [!include ~/../src/chains/EVM/types.ts]
+```

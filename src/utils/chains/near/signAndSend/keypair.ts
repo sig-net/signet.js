@@ -4,7 +4,7 @@ import { Bitcoin, Cosmos, EVM } from '@chains'
 import { BTCRpcAdapters } from '@chains/Bitcoin/BTCRpcAdapter'
 import { type Response } from '@chains/types'
 import { getNearAccount } from '@utils/chains/near/account'
-import { NearChainSignatureContract } from '@utils/chains/near/contract'
+import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import {
   type BitcoinRequest,
   type CosmosRequest,
@@ -22,7 +22,7 @@ export const EVMTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new NearChainSignatureContract({
+    const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -75,7 +75,7 @@ export const BTCTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new NearChainSignatureContract({
+    const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -133,7 +133,7 @@ export const CosmosTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new NearChainSignatureContract({
+    const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,

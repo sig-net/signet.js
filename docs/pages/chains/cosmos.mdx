@@ -1,32 +1,30 @@
 # Cosmos Chain Implementation
 
-This implementation supports Cosmos SDK-based networks (Cosmos Hub, Osmosis, etc.) with a focus on standard transactions and IBC transfers.
+The Cosmos chain implementation supports Cosmos SDK-based networks (Cosmos Hub, Osmosis, etc.) with a focus on standard transactions and IBC transfers.
 
 ## Configuration
 
-```typescript
-import { Cosmos } from '@multichain-tools/chains/Cosmos'
-import { ChainSignatureContract } from '@multichain-tools/chains/ChainSignatureContract'
+```ts twoslash filename="base.ts"
+// [!include ~/snippets/contract.ts]
+// ---cut---
+import { Cosmos } from 'signet.js'
 
-// Initialize the chain
 const cosmosChain = new Cosmos({
-  chainId: 'cosmoshub-4',
-  contract: new ChainSignatureContract(...),
-  endpoints: {
-    rpcUrl: 'https://rpc.cosmos.network',
-    restUrl: 'https://api.cosmos.network',
-  },
+  chainId: 'cosmoshub-4', // Chain ID of the target network
+  contract,
 })
 ```
 
-## Public Methods
+## Methods
 
 ### getBalance
 
 Gets the native token balance of an address.
 
-```typescript
-async getBalance(address: string): Promise<string>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const balance = await cosmosChain.getBalance('cosmos1...')
 ```
 
 **Parameters:**
@@ -37,19 +35,17 @@ async getBalance(address: string): Promise<string>
 
 - The balance formatted according to the chain's decimal places
 
-**Throws:**
-
-- Error if balance fetch fails
-
 ### deriveAddressAndPublicKey
 
-Derives a Cosmos address and public key.
+Derives a Cosmos address and public key for a given path.
 
-```typescript
-async deriveAddressAndPublicKey(
-  predecessor: string,
-  path: KeyDerivationPath
-): Promise<{ address: string; publicKey: string }>
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { address, publicKey } = await cosmosChain.deriveAddressAndPublicKey(
+  'predecessor_id',
+  'any_string'
+)
 ```
 
 **Parameters:**
@@ -60,43 +56,86 @@ async deriveAddressAndPublicKey(
 **Returns:**
 
 - Object containing:
-  - `address`: The derived Cosmos address (bech32)
-  - `publicKey`: The corresponding public key
-
-**Throws:**
-
-- Error if public key derivation fails
+  - `address`: The derived Cosmos address (bech32 format)
+  - `publicKey`: The corresponding compressed public key
 
 ### getMPCPayloadAndTransaction
 
 Prepares a transaction for MPC signing.
 
-```typescript
-async getMPCPayloadAndTransaction(
-  transactionRequest: CosmosTransactionRequest
-): Promise<{
-  transaction: CosmosUnsignedTransaction
-  mpcPayloads: MPCPayloads
-}>
+```ts twoslash filename="unsigned-transaction.ts"
+// [!include base.ts]
+// ---cut---
+import { CosmosTransactionRequest } from 'signet.js'
+import { MsgSend } from 'cosmjs-types/cosmos/bank/v1beta1/tx'
+
+// Create a token transfer message
+const sendMsg = {
+  typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+  value: MsgSend.fromPartial({
+    fromAddress: 'cosmos1...',
+    toAddress: 'cosmos1...',
+    amount: [
+      {
+        denom: 'uatom',
+        amount: '1000000', // 1 ATOM (1,000,000 uatom)
+      },
+    ],
+  }),
+}
+
+const transactionRequest: CosmosTransactionRequest = {
+  address: 'cosmos1...',
+  publicKey: '0235a3...',
+  messages: [sendMsg],
+  memo: 'Token transfer',
+}
+
+const { transaction: unsignedTransaction, mpcPayloads } =
+  await cosmosChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
-The process includes:
+**Parameters:**
 
-- Fee calculation using the chain's gas price
-- Account sequence retrieval
-- Message encoding using Protobuf
-- AuthInfo generation with SIGN_MODE_DIRECT
-- SignDoc creation and hashing
+- `transactionRequest`: Transaction configuration:
+  ```ts
+  {
+    address: string      // Sender's address
+    publicKey: string    // Signer's public key
+    messages: Message[]  // Array of Cosmos SDK messages
+    memo?: string       // Optional transaction memo
+    gas?: number        // Optional gas limit (default: 200,000)
+  }
+  ```
+
+**Returns:**
+
+- Object containing:
+  - `transaction`: The unsigned transaction
+  - `mpcPayloads`: Array of payloads to be signed
 
 ### addSignature
 
 Adds signatures to a transaction.
 
-```typescript
-addSignature(params: {
-  transaction: CosmosUnsignedTransaction
-  mpcSignatures: RSVSignature[]
-}): string
+```ts twoslash filename="add-signature.ts"
+// [!include unsigned-transaction.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Ideally it would be a request to the Sig Network Smart Contract
+const mpcSignatures: RSVSignature[] = [
+  {
+    r: '0x...',
+    s: '0x...',
+    v: 27,
+  },
+]
+
+const signedTx = cosmosChain.addSignature({
+  transaction: unsignedTransaction,
+  mpcSignatures,
+})
 ```
 
 **Parameters:**
@@ -110,10 +149,12 @@ addSignature(params: {
 
 ### broadcastTx
 
-Broadcasts a signed transaction.
+Broadcasts a signed transaction to the network.
 
-```typescript
-async broadcastTx(txSerialized: string): Promise<string>
+```ts twoslash filename="broadcast-tx.ts"
+// [!include add-signature.ts]
+// ---cut---
+const txHash = await cosmosChain.broadcastTx(signedTx)
 ```
 
 **Parameters:**
@@ -124,64 +165,17 @@ async broadcastTx(txSerialized: string): Promise<string>
 
 - The transaction hash
 
-**Throws:**
-
-- Error if broadcast fails or transaction returns non-zero code
-
-## Adding New Cosmos Chains
-
-To add support for a new Cosmos SDK-based chain:
-
-1. Add the chain ID to the `CosmosNetworkIds` type
-2. Add chain configuration:
-
-```typescript
-// In utils.ts
-export const CHAIN_INFO: Record<CosmosNetworkIds, ChainInfo> = {
-  'my-new-chain': {
-    prefix: 'mychain', // Bech32 address prefix
-    denom: 'utoken', // Base denomination
-    decimals: 6, // Token decimals
-    gasPrice: 0.025, // Default gas price
-    defaultGas: 200_000, // Default gas limit
-  },
-}
-```
-
-Example configurations:
-
-```typescript
-// For Osmosis
-const osmosisChain = new Cosmos({
-  chainId: 'osmosis-1',
-  contract: new ChainSignatureContract(...),
-  endpoints: {
-    rpcUrl: 'https://rpc.osmosis.zone',
-    restUrl: 'https://lcd.osmosis.zone',
-  },
-})
-
-// For Juno
-const junoChain = new Cosmos({
-  chainId: 'juno-1',
-  contract: new ChainSignatureContract(...),
-  endpoints: {
-    rpcUrl: 'https://rpc.juno.network',
-    restUrl: 'https://rest.juno.network',
-  },
-})
-```
-
 ## Technical Details
 
 The implementation:
 
-- Uses CosmJS internally
-- Supports SIGN_MODE_DIRECT
+- Uses `@cosmjs/stargate` for transaction handling
+- Supports SIGN_MODE_DIRECT signing
 - Uses Protobuf for message encoding
 - Supports standard Cosmos SDK messages:
   - Bank (Send, MultiSend)
   - Staking (Delegate, Undelegate, Redelegate)
   - Distribution (Withdraw Rewards)
   - IBC (Transfer)
-- Allows custom message registration
+- Handles automatic fee calculation based on gas prices
+- Supports custom message types through the Registry
