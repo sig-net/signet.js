@@ -28,38 +28,66 @@ pnpm add signet.js
 ## Quick Example
 
 ```ts twoslash
-import { EVM, near } from 'signet.js'
+import { EVM, utils } from 'signet.js'
+import { KeyPair, type KeyPairString } from '@near-js/crypto'
 
-// Initialize MPC contract
-const contract = new near.ChainSignaturesContract({
+// Initialize NEAR connection with credentials from environment
+const accountId = process.env.NEAR_ACCOUNT_ID
+const privateKey = process.env.NEAR_PRIVATE_KEY as KeyPairString
+
+if (!accountId || !privateKey) {
+  throw new Error(
+    'NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY must be set in environment'
+  )
+}
+
+const keypair = KeyPair.fromString(privateKey)
+
+const contract = new utils.chains.near.ChainSignatureContract({
   networkId: 'testnet',
-  contractId: 'mpc.testnet',
+  contractId: 'v1.signer-prod.testnet',
+  accountId,
+  keypair,
 })
 
-// Initialize chain
-const chain = new EVM({
+const evmChain = new EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract,
 })
 
-// Create and sign transaction
-const { transaction, mpcPayloads } = await chain.getMPCPayloadAndTransaction({
-  to: '0x1234...',
-  value: '1000000000000000000', // 1 ETH
-})
+// Derive address and public key
+const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
+  accountId,
+  'any_string'
+)
 
+// Check balance
+const balance = await evmChain.getBalance(address)
+
+// Create and sign transaction
+const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
+  {
+    from: '0x...',
+    to: '0x...',
+    value: '1000000000000000000',
+  }
+)
+
+// Sign with MPC
 const signature = await contract.sign({
   payload: mpcPayloads[0].payload,
   path: 'any_string',
   key_version: 0,
 })
 
-const signedTx = chain.addSignature({
+// Add signature
+const signedTx = evmChain.addSignature({
   transaction,
   mpcSignatures: [signature],
 })
 
-const txHash = await chain.broadcastTx(signedTx)
+// Broadcast transaction
+const txHash = await evmChain.broadcastTx(signedTx)
 ```
 
 ## Documentation
