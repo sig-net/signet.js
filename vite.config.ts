@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-import { defineConfig } from 'vite'
+import { defineConfig, type UserConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 
 const pkg = JSON.parse(
@@ -9,39 +9,96 @@ const pkg = JSON.parse(
 ) as {
   dependencies?: Record<string, string>
   devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
 }
 
-// Get all dependencies and devDependencies
 const external = [
   ...Object.keys(pkg.dependencies || {}),
-  ...Object.keys(pkg.devDependencies || {}),
+  ...Object.keys(pkg.peerDependencies || {}),
+  'path',
+  'fs',
+  'crypto',
+  'stream',
+  'util',
+  'events',
+  'buffer',
 ]
 
-export default defineConfig({
+const getCommonConfig = (mode: string): UserConfig => ({
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
+      fileName: (format) =>
+        `${mode}/index.${mode}.${format === 'es' ? 'js' : 'cjs'}`,
     },
+    emptyOutDir: false,
+    sourcemap: true,
+    minify: true,
     rollupOptions: {
       external,
+      treeshake: true,
+      output: {
+        exports: 'named',
+        interop: 'auto',
+        manualChunks: undefined,
+        compact: true,
+        generatedCode: {
+          constBindings: true,
+          objectShorthand: true,
+        },
+      },
     },
-    target: 'node16',
-    sourcemap: true,
+    outDir: 'dist',
   },
-  plugins: [
-    dts({
-      tsconfigPath: './tsconfig.json',
-    }),
-  ],
   resolve: {
     alias: {
       '@chains': resolve(__dirname, './src/chains'),
       '@utils': resolve(__dirname, './src/utils'),
     },
-    mainFields: ['module', 'main'],
-    conditions: ['node'],
-    preserveSymlinks: true,
   },
+})
+
+export default defineConfig(({ mode }) => {
+  const commonConfig = getCommonConfig(mode)
+
+  if (mode === 'browser') {
+    return {
+      ...commonConfig,
+      build: {
+        ...commonConfig.build,
+        target: 'esnext',
+      },
+      resolve: {
+        ...commonConfig.resolve,
+        mainFields: ['browser', 'module', 'main'],
+        conditions: ['browser', 'import', 'default'],
+      },
+    }
+  }
+
+  return {
+    ...commonConfig,
+    build: {
+      ...commonConfig.build,
+      target: 'node18',
+    },
+    plugins: [
+      dts({
+        outDir: 'dist/types',
+        include: ['src'],
+        exclude: ['**/*.test.ts', '**/*.spec.ts'],
+        tsconfigPath: './tsconfig.json',
+        compilerOptions: {
+          removeComments: true,
+          skipLibCheck: true,
+        },
+      }),
+    ],
+    resolve: {
+      ...commonConfig.resolve,
+      mainFields: ['module', 'main'],
+      conditions: ['node', 'import', 'default'],
+    },
+  }
 })
