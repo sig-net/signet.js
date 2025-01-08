@@ -31,6 +31,18 @@ export interface NearAuthentication {
   accountId: string
 }
 
+interface SuccessResponse {
+  transactionHash: string
+  success: true
+}
+
+interface FailureResponse {
+  success: false
+  errorMessage: string
+}
+
+export type Response = SuccessResponse | FailureResponse
+
 export type EVMChainConfigWithProviders = ChainProvider
 
 export interface EVMRequest {
