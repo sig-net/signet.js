@@ -1,4 +1,3 @@
-import type { KeyDerivationPath } from '@chains/types'
 import type {
   BTCTransactionRequest,
   BTCNetworkIds,
@@ -8,6 +7,7 @@ import type {
   CosmosTransactionRequest,
 } from '@chains/Cosmos/types'
 import { type EVMTransactionRequest } from '@chains/EVM/types'
+import type { KeyDerivationPath } from '@chains/types'
 
 /** 
 Available ChainSignature contracts:

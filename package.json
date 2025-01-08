@@ -1,16 +1,28 @@
 {
   "name": "signet.js",
-  "version": "0.0.1",
+  "version": "0.0.1-test",
   "description": "",
   "type": "module",
-  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": {
+        "browser": "./index.js",
+        "node": "./index.js"
+      },
+      "require": "./index.cjs"
+    }
+  },
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "browser": "./index.js",
   "types": "./src/index.d.ts",
   "scripts": {
-    "build": "tsc --project tsconfig.json && tsc-alias",
-    "watch": "tsc --project tsconfig.json --watch & tsc-alias -w",
-    "pre:deploy": "npm run build && npm run docs:build && cp package.json README.md dist/",
-    "publish-npm": "npm run pre:deploy && cd dist && npm publish",
-    "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
+    "build": "rm -rf dist && vite build && cp package.json README.md LICENSE dist/",
+    "watch": "vite build --watch",
+    "pre:deploy": "npm run build && npm run docs:build",
+    "publish-npm": "npm run pre:deploy && npm publish",
+    "publish-npm:test": "npm run pre:deploy && npm publish --tag beta",
     "test": "jest",
     "docs:dev": "vocs dev",
     "docs:build": "vocs build",
@@ -19,9 +31,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.3",
-    "@babel/preset-typescript": "^7.24.7",
     "@types/bn.js": "^5.1.5",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "babel-jest": "^29.7.0",
@@ -35,9 +44,9 @@
     "eslint-plugin-promise": "^6.1.1",
     "jest": "^29.7.0",
     "prettier": "^3.2.5",
-    "ts-node": "^10.9.2",
-    "tsc-alias": "^1.8.10",
     "typescript": "^5.4.3",
+    "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.4.0",
     "vocs": "1.0.0-alpha.62"
   },
   "dependencies": {
