@@ -43,7 +43,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
 
   return {
     receiverId: contractId,
-    actions: mpcPayloads.map(({ payload }) => ({
+    actions: mpcPayloads.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'sign',
@@ -88,7 +88,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
 
   return {
     receiverId: nftKeysContract,
-    actions: mpcPayloads.map(({ payload }) => ({
+    actions: mpcPayloads.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'ckt_sign_hash',

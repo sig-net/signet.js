@@ -248,10 +248,7 @@ export class Bitcoin extends Chain<
     const mockKeyPair = (index: number): bitcoin.Signer => ({
       publicKey: publicKeyBuffer,
       sign: (hash: Buffer): Buffer => {
-        mpcPayloads.push({
-          index,
-          payload: Array.from(hash),
-        })
+        mpcPayloads[index] = Array.from(hash)
         // Return dummy signature to satisfy the interface
         return Buffer.alloc(64)
       },
@@ -266,7 +263,7 @@ export class Bitcoin extends Chain<
         psbt: bitcoin.Psbt.fromHex(psbtHex),
         publicKey: transactionRequest.publicKey,
       },
-      mpcPayloads: mpcPayloads.sort((a, b) => a.index - b.index),
+      mpcPayloads,
     }
   }
 

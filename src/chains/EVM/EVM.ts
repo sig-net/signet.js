@@ -146,12 +146,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
     return {
       transaction,
-      mpcPayloads: [
-        {
-          index: 0,
-          payload: txHash,
-        },
-      ],
+      mpcPayloads: [txHash],
     }
   }
 

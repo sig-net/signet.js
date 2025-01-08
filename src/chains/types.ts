@@ -12,7 +12,7 @@ interface FailureResponse {
 
 export type Response = SuccessResponse | FailureResponse
 
-export type MPCPayloads = Array<{ index: number; payload: SignArgs['payload'] }>
+export type MPCPayloads = Array<SignArgs['payload']>
 
 export type UncompressedPubKeySEC1 = `04${string}`
 

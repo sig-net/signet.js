@@ -234,12 +234,7 @@ export class Cosmos extends Chain<
         authInfoBytes,
         signatures: [],
       }),
-      mpcPayloads: [
-        {
-          index: 0,
-          payload,
-        },
-      ],
+      mpcPayloads: [payload],
     }
   }
 
