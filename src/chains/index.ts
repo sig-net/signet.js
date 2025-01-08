@@ -1,7 +1,6 @@
 export { Chain } from './Chain'
 export { ChainSignatureContract, type SignArgs } from './ChainSignatureContract'
 export * from './types'
-export * as utils from './utils'
 
 // EVM
 export { EVM } from './EVM/EVM'

@@ -4,7 +4,6 @@ import { actionCreators } from '@near-js/transactions'
 import BN from 'bn.js'
 import { base_decode } from 'near-api-js/lib/utils/serialize'
 
-import { utils } from '@chains'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import type { SignArgs } from '@chains/ChainSignatureContract'
 import type {
@@ -12,7 +11,7 @@ import type {
   MPCSignature,
   UncompressedPubKeySEC1,
 } from '@chains/types'
-import { chains } from '@utils'
+import { cryptography, chains } from '@utils'
 import { getNearAccount } from '@utils/chains/near/account'
 import {
   DONT_CARE_ACCOUNT_ID,
@@ -121,6 +120,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return najToUncompressedPubKey(najPubKey)
   }
 
+  async getPublicKey(): Promise<UncompressedPubKeySEC1> {
+    const contract = await this.getContract()
+
+    const najPubKey = await contract.public_key()
+    return najToUncompressedPubKey(najPubKey)
+  }
+
   async sign(args: SignArgs): Promise<RSVSignature> {
     requireAccount(this.accountId)
 
@@ -133,7 +139,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       amount: deposit,
     })
 
-    return utils.toRSV(signature)
+    return cryptography.toRSV(signature)
   }
 
   static async signWithRelayer({

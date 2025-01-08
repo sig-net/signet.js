@@ -2,7 +2,7 @@ import { fromHex } from '@cosmjs/encoding'
 import { ethers, keccak256 } from 'ethers'
 
 import { Chain } from '@chains/Chain'
-import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import type { BaseChainSignatureContract } from '@chains/ChainSignatureContract'
 import type {
   EVMTransactionRequest,
   EVMUnsignedTransaction,
@@ -20,7 +20,7 @@ import type {
  */
 export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   private readonly provider: ethers.JsonRpcProvider
-  private readonly contract: ChainSignatureContract
+  private readonly contract: BaseChainSignatureContract
 
   /**
    * Creates a new EVM chain instance
@@ -33,7 +33,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     contract,
   }: {
     rpcUrl: string
-    contract: ChainSignatureContract
+    contract: BaseChainSignatureContract
   }) {
     super()
 

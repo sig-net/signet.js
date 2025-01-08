@@ -6,13 +6,13 @@ import type {
 import BN from 'bn.js'
 import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
 
-import { utils } from '@chains'
 import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
   type MPCPayloads,
 } from '@chains/types'
+import { cryptography } from '@utils'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
 import {
@@ -131,7 +131,7 @@ export const responseToMpcSignature = ({
       Ok: MPCSignature
     }
 
-    return utils.toRSV(parsedJSONSignature.Ok)
+    return cryptography.toRSV(parsedJSONSignature.Ok)
   } else {
     return undefined
   }

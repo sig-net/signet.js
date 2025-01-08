@@ -14,21 +14,22 @@ import { bech32 } from 'bech32'
 import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
 import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 
+import { Chain } from '@chains/Chain'
+import type { BaseChainSignatureContract } from '@chains/ChainSignatureContract'
 import type {
   CosmosNetworkIds,
   CosmosTransactionRequest,
   CosmosUnsignedTransaction,
+  ChainInfo,
+  BalanceResponse,
 } from '@chains/Cosmos/types'
-import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import { fetchChainInfo } from '@chains/Cosmos/utils'
 import type {
   MPCPayloads,
   RSVSignature,
   KeyDerivationPath,
 } from '@chains/types'
-import { Chain } from '@chains/Chain'
-import { utils } from '@chains'
-import type { ChainInfo, BalanceResponse } from '@chains/Cosmos/types'
-import { fetchChainInfo } from '@chains/Cosmos/utils'
+import { cryptography } from '@utils'
 
 /**
  * Implementation of the Chain interface for Cosmos-based networks.
@@ -40,7 +41,7 @@ export class Cosmos extends Chain<
 > {
   private readonly registry: Registry
   private readonly chainId: CosmosNetworkIds
-  private readonly contract: ChainSignatureContract
+  private readonly contract: BaseChainSignatureContract
   private readonly endpoints?: {
     rpcUrl?: string
     restUrl?: string
@@ -60,7 +61,7 @@ export class Cosmos extends Chain<
     contract,
     endpoints,
   }: {
-    contract: ChainSignatureContract
+    contract: BaseChainSignatureContract
     chainId: CosmosNetworkIds
     endpoints?: {
       rpcUrl?: string
@@ -132,7 +133,7 @@ export class Cosmos extends Chain<
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = utils.compressPubKey(uncompressedPubKey)
+    const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
     const pubKeySha256 = sha256(fromHex(derivedKey))
     const ripemd160Hash = ripemd160(pubKeySha256)
     const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))

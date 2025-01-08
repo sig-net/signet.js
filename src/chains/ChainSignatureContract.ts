@@ -11,7 +11,7 @@ export interface SignArgs {
   key_version: number
 }
 
-export abstract class ChainSignatureContract {
+export abstract class BaseChainSignatureContract {
   /**
    * Gets the current signature deposit required by the contract.
    * This deposit amount helps manage network congestion.
@@ -19,17 +19,6 @@ export abstract class ChainSignatureContract {
    * @returns Promise resolving to the required deposit amount as a BigNumber
    */
   abstract getCurrentSignatureDeposit(): Promise<BN>
-
-  /**
-   * Signs a payload using Sig Network MPC.
-   *
-   * @param args - Arguments for the signing operation
-   * @param args.payload - The data to sign as an array of 32 bytes
-   * @param args.path - The string path to use derive the key
-   * @param args.key_version - Version of the key to use
-   * @returns Promise resolving to the RSV signature
-   */
-  abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
 
   /**
    * Derives a child public key using a derivation path and predecessor.
@@ -45,4 +34,24 @@ export abstract class ChainSignatureContract {
       predecessor: string
     } & Record<string, unknown>
   ): Promise<UncompressedPubKeySEC1>
+}
+
+export abstract class ChainSignatureContract extends BaseChainSignatureContract {
+  /**
+   * Signs a payload using Sig Network MPC.
+   *
+   * @param args - Arguments for the signing operation
+   * @param args.payload - The data to sign as an array of 32 bytes
+   * @param args.path - The string path to use derive the key
+   * @param args.key_version - Version of the key to use
+   * @returns Promise resolving to the RSV signature
+   */
+  abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
+
+  /**
+   * Gets the public key associated with this contract instance.
+   *
+   * @returns Promise resolving to the SEC1 uncompressed public key
+   */
+  abstract getPublicKey(): Promise<UncompressedPubKeySEC1>
 }
