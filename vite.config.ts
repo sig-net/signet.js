@@ -1,7 +1,21 @@
+import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
+
+const pkg = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+) as {
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+}
+
+// Get all dependencies and devDependencies
+const external = [
+  ...Object.keys(pkg.dependencies || {}),
+  ...Object.keys(pkg.devDependencies || {}),
+]
 
 export default defineConfig({
   build: {
@@ -11,27 +25,23 @@ export default defineConfig({
       fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
-      external: [
-        'cosmjs-types',
-        '@near-js/accounts',
-        '@near-js/crypto',
-        '@near-js/keystores',
-        '@near-js/transactions',
-        '@near-wallet-selector/core',
-        'near-api-js',
-        '@near-js/utils',
-      ],
+      external,
     },
+    target: 'node16',
+    sourcemap: true,
   },
   plugins: [
     dts({
-      exclude: ['docs/**'],
+      tsconfigPath: './tsconfig.json',
     }),
   ],
   resolve: {
     alias: {
-      '@chains': '/src/chains',
-      '@utils': '/src/utils',
+      '@chains': resolve(__dirname, './src/chains'),
+      '@utils': resolve(__dirname, './src/utils'),
     },
+    mainFields: ['module', 'main'],
+    conditions: ['node'],
+    preserveSymlinks: true,
   },
 })
