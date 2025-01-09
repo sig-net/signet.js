@@ -1,4 +1,6 @@
-import { GasPrice, StargateClient, calculateFee } from '@cosmjs/stargate'
+import { encodeSecp256k1Pubkey } from '@cosmjs/amino'
+import { ripemd160, sha256 } from '@cosmjs/crypto'
+import { toBase64, fromBase64, fromHex } from '@cosmjs/encoding'
 import {
   Registry,
   makeSignBytes,
@@ -7,39 +9,39 @@ import {
   makeSignDoc,
   type TxBodyEncodeObject,
 } from '@cosmjs/proto-signing'
-import { toBase64, fromBase64, fromHex } from '@cosmjs/encoding'
-import { encodeSecp256k1Pubkey } from '@cosmjs/amino'
-import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
-import { ripemd160, sha256 } from '@cosmjs/crypto'
-
-import { type ChainInfo, fetchChainInfo } from './utils'
-import { type MPCPayloads } from '../types'
-import {
-  type BalanceResponse,
-  type CosmosNetworkIds,
-  type CosmosTransactionRequest,
-  type CosmosUnsignedTransaction,
-} from './types'
-import {
-  type RSVSignature,
-  type KeyDerivationPath,
-} from '../../signature/types'
-import { type Chain } from '../Chain'
+import { GasPrice, StargateClient, calculateFee } from '@cosmjs/stargate'
 import { bech32 } from 'bech32'
 import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
-import { type ChainSignatureContract } from '../ChainSignatureContract'
-import { compressPubKey } from '../../utils/key'
+import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
+
+import { Chain } from '@chains/Chain'
+import type { BaseChainSignatureContract } from '@chains/ChainSignatureContract'
+import type {
+  CosmosNetworkIds,
+  CosmosTransactionRequest,
+  CosmosUnsignedTransaction,
+  ChainInfo,
+  BalanceResponse,
+} from '@chains/Cosmos/types'
+import { fetchChainInfo } from '@chains/Cosmos/utils'
+import type {
+  MPCPayloads,
+  RSVSignature,
+  KeyDerivationPath,
+} from '@chains/types'
+import { cryptography } from '@utils'
 
 /**
  * Implementation of the Chain interface for Cosmos-based networks.
  * Handles interactions with Cosmos SDK chains like Cosmos Hub, Osmosis, etc.
  */
-export class Cosmos
-  implements Chain<CosmosTransactionRequest, CosmosUnsignedTransaction>
-{
+export class Cosmos extends Chain<
+  CosmosTransactionRequest,
+  CosmosUnsignedTransaction
+> {
   private readonly registry: Registry
   private readonly chainId: CosmosNetworkIds
-  private readonly contract: ChainSignatureContract
+  private readonly contract: BaseChainSignatureContract
   private readonly endpoints?: {
     rpcUrl?: string
     restUrl?: string
@@ -59,16 +61,18 @@ export class Cosmos
     contract,
     endpoints,
   }: {
-    contract: ChainSignatureContract
+    contract: BaseChainSignatureContract
     chainId: CosmosNetworkIds
     endpoints?: {
       rpcUrl?: string
       restUrl?: string
     }
   }) {
+    super()
+
+    this.contract = contract
     this.registry = new Registry()
     this.chainId = chainId
-    this.contract = contract
     this.endpoints = endpoints
   }
 
@@ -129,7 +133,7 @@ export class Cosmos
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = compressPubKey(uncompressedPubKey)
+    const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
     const pubKeySha256 = sha256(fromHex(derivedKey))
     const ripemd160Hash = ripemd160(pubKeySha256)
     const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))
@@ -230,12 +234,7 @@ export class Cosmos
         authInfoBytes,
         signatures: [],
       }),
-      mpcPayloads: [
-        {
-          index: 0,
-          payload,
-        },
-      ],
+      mpcPayloads: [payload],
     }
   }
 

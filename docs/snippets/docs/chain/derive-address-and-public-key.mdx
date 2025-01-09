@@ -1,0 +1,23 @@
+### deriveAddressAndPublicKey
+
+Derives an {props.chainName} address and public key from a signer ID and derivation path.
+
+```ts twoslash
+// [!include ~/snippets/code/chain.ts]
+// ---cut---
+const { address, publicKey } = await chain.deriveAddressAndPublicKey(
+  '0x...',
+  'any_string'
+)
+```
+
+**Parameters:**
+
+- `predecessor`: The ID/address of the signer requesting the signature
+- `path`: The derivation path to use
+
+**Returns:**
+
+- Object containing:
+  - `address`: The derived {props.chainName} address
+  - `publicKey`: The corresponding public key in SEC1 uncompressed format

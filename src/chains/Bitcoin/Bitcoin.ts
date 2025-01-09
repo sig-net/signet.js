@@ -1,51 +1,58 @@
 import * as bitcoin from 'bitcoinjs-lib'
 
-import { parseBTCNetwork } from './utils'
-import { type MPCPayloads } from '../types'
-import {
-  type BTCInput,
-  type BTCNetworkIds,
-  type BTCOutput,
-  type BTCTransactionRequest,
-  type BTCUnsignedTransaction,
-} from './types'
-import {
-  type RSVSignature,
-  type KeyDerivationPath,
-} from '../../signature/types'
-import { type Chain } from '../Chain'
-import { type ChainSignatureContract } from '../ChainSignatureContract'
-import { compressPubKey } from '../../utils/key'
-import { type BTCRpcAdapter } from './BTCRpcAdapter/BTCRpcAdapter'
+import { type BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter'
+import type {
+  BTCInput,
+  BTCNetworkIds,
+  BTCOutput,
+  BTCTransactionRequest,
+  BTCUnsignedTransaction,
+} from '@chains/Bitcoin/types'
+import { parseBTCNetwork } from '@chains/Bitcoin/utils'
+import { Chain } from '@chains/Chain'
+import type { BaseChainSignatureContract } from '@chains/ChainSignatureContract'
+import type {
+  MPCPayloads,
+  RSVSignature,
+  KeyDerivationPath,
+} from '@chains/types'
+import { cryptography } from '@utils'
 
 /**
  * Implementation of the Chain interface for Bitcoin network.
  * Handles interactions with both Bitcoin mainnet and testnet, supporting P2WPKH transactions.
  */
-export class Bitcoin
-  implements Chain<BTCTransactionRequest, BTCUnsignedTransaction>
-{
+export class Bitcoin extends Chain<
+  BTCTransactionRequest,
+  BTCUnsignedTransaction
+> {
   private static readonly SATOSHIS_PER_BTC = 100_000_000
 
   private readonly network: BTCNetworkIds
-  private readonly contract: ChainSignatureContract
   private readonly btcRpcAdapter: BTCRpcAdapter
+  private readonly contract: BaseChainSignatureContract
 
   /**
    * Creates a new Bitcoin chain instance
-   * @param config - Configuration object for the Bitcoin chain
-   * @param config.network - Network identifier (mainnet/testnet)
-   * @param config.contract - Instance of the chain signature contract for MPC operations
-   * @param config.btcRpcAdapter - Bitcoin RPC adapter for network interactions
+   * @param params - Configuration parameters
+   * @param params.network - Network identifier (mainnet/testnet)
+   * @param params.contract - Instance of the chain signature contract for MPC operations
+   * @param params.btcRpcAdapter - Bitcoin RPC adapter for network interactions
    */
-  constructor(config: {
+  constructor({
+    network,
+    contract,
+    btcRpcAdapter,
+  }: {
     network: BTCNetworkIds
-    contract: ChainSignatureContract
+    contract: BaseChainSignatureContract
     btcRpcAdapter: BTCRpcAdapter
   }) {
-    this.network = config.network
-    this.contract = config.contract
-    this.btcRpcAdapter = config.btcRpcAdapter
+    super()
+
+    this.network = network
+    this.btcRpcAdapter = btcRpcAdapter
+    this.contract = contract
   }
 
   /**
@@ -74,7 +81,7 @@ export class Bitcoin
 
     data.vout.forEach((vout) => {
       const scriptPubKey = Buffer.from(vout.scriptpubkey, 'hex')
-      tx.addOutput(scriptPubKey, vout.value)
+      tx.addOutput(scriptPubKey, Number(vout.value))
     })
 
     return tx
@@ -117,24 +124,22 @@ export class Bitcoin
     const psbt = new bitcoin.Psbt({ network: parseBTCNetwork(this.network) })
 
     await Promise.all(
-      inputs.map(async (utxo: BTCInput) => {
-        if (!utxo.scriptPubKey) {
-          const transaction = await this.fetchTransaction(utxo.txid)
-          const prevOut = transaction.outs[utxo.vout]
-          utxo.scriptPubKey = prevOut.script
+      inputs.map(async (input: BTCInput) => {
+        if (!input.scriptPubKey) {
+          const transaction = await this.fetchTransaction(input.txid)
+          const prevOut = transaction.outs[input.vout]
+          input.scriptPubKey = prevOut.script
         }
 
         // Prepare the input as P2WPKH
-        const inputOptions = {
-          hash: utxo.txid,
-          index: utxo.vout,
+        psbt.addInput({
+          hash: input.txid,
+          index: input.vout,
           witnessUtxo: {
-            script: utxo.scriptPubKey,
-            value: utxo.value,
+            script: input.scriptPubKey,
+            value: input.value,
           },
-        }
-
-        psbt.addInput(inputOptions)
+        })
       })
     )
 
@@ -173,7 +178,7 @@ export class Bitcoin
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = compressPubKey(uncompressedPubKey)
+    const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
     const publicKeyBuffer = Buffer.from(derivedKey, 'hex')
     const network = parseBTCNetwork(this.network)
 
@@ -243,10 +248,7 @@ export class Bitcoin
     const mockKeyPair = (index: number): bitcoin.Signer => ({
       publicKey: publicKeyBuffer,
       sign: (hash: Buffer): Buffer => {
-        mpcPayloads.push({
-          index,
-          payload: Array.from(hash),
-        })
+        mpcPayloads[index] = Array.from(hash)
         // Return dummy signature to satisfy the interface
         return Buffer.alloc(64)
       },
@@ -261,7 +263,7 @@ export class Bitcoin
         psbt: bitcoin.Psbt.fromHex(psbtHex),
         publicKey: transactionRequest.publicKey,
       },
-      mpcPayloads: mpcPayloads.sort((a, b) => a.index - b.index),
+      mpcPayloads,
     }
   }
 

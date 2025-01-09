@@ -1,1 +1,2 @@
-export * as near from './near'
+export * as chains from './chains'
+export * as cryptography from './cryptography'

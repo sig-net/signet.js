@@ -1,4 +1,16 @@
-import { type UncompressedPubKeySEC1 } from '../chains/types'
+import {
+  type MPCSignature,
+  type RSVSignature,
+  type UncompressedPubKeySEC1,
+} from '@chains/types'
+
+export const toRSV = (signature: MPCSignature): RSVSignature => {
+  return {
+    r: signature.big_r.affine_point.substring(2),
+    s: signature.s.scalar,
+    v: signature.recovery_id,
+  }
+}
 
 /**
  * Compresses an uncompressed public key to its compressed format following SEC1 standards.

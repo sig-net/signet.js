@@ -1,6 +1,8 @@
 import { Account, Connection } from '@near-js/accounts'
-import { InMemoryKeyStore } from '@near-js/keystores'
 import { KeyPair } from '@near-js/crypto'
+import { InMemoryKeyStore } from '@near-js/keystores'
+
+import { DONT_CARE_ACCOUNT_ID } from '@utils/chains/near/constants'
 
 type SetConnectionArgs =
   | {
@@ -16,7 +18,7 @@ type SetConnectionArgs =
 
 export const getNearAccount = async ({
   networkId,
-  accountId = 'dontcare',
+  accountId = DONT_CARE_ACCOUNT_ID,
   keypair = KeyPair.fromRandom('ed25519'),
 }: SetConnectionArgs): Promise<Account> => {
   const keyStore = new InMemoryKeyStore()

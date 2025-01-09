@@ -1,11 +1,13 @@
-import {
-  type BTCTransactionRequest,
-  type BTCNetworkIds,
-  type CosmosNetworkIds,
-  type CosmosTransactionRequest,
-} from '../..'
-import type { EVMTransactionRequest } from '../../chains/EVM/types'
-import type { KeyDerivationPath } from '../../signature'
+import type {
+  BTCTransactionRequest,
+  BTCNetworkIds,
+} from '@chains/Bitcoin/types'
+import type {
+  CosmosNetworkIds,
+  CosmosTransactionRequest,
+} from '@chains/Cosmos/types'
+import { type EVMTransactionRequest } from '@chains/EVM/types'
+import type { KeyDerivationPath } from '@chains/types'
 
 /** 
 Available ChainSignature contracts:
@@ -28,6 +30,18 @@ export interface NearAuthentication {
   networkId: NearNetworkIds
   accountId: string
 }
+
+interface SuccessResponse {
+  transactionHash: string
+  success: true
+}
+
+interface FailureResponse {
+  success: false
+  errorMessage: string
+}
+
+export type Response = SuccessResponse | FailureResponse
 
 export type EVMChainConfigWithProviders = ChainProvider
 

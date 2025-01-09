@@ -1,0 +1,45 @@
+# Chain
+
+Chain is the most basic interface of the signet.js library. It provides a standard set of methods that all chains must implement.
+
+With this interface you will be able to interact with Sig Network smart contracts in a standard way to:
+
+- getBalance
+- deriveAddressAndPublicKey
+- setTransaction
+- getTransaction
+- getMPCPayloadAndTransaction
+- addSignature
+- broadcastTx
+
+If you wanna have a look this is the chain interface with a brief description of each method:
+
+```ts twoslash
+// [!include ~/../src/chains/Chain.ts]
+```
+
+# Implementing a New Chain
+
+This guide explains how to implement support for a new blockchain network in the signet.js library.
+
+## Overview
+
+To add support for a new blockchain, you need to implement the `Chain` interface:
+
+## Step-by-Step Guide
+
+### 1. Create the Chain Types
+
+First, define the transaction types for your chain:
+
+```ts twoslash
+// [!include ~/../src/chains/EVM/types.ts]
+```
+
+### 2. Implement the Chain Interface
+
+Create a new class that implements the `Chain` interface:
+
+```ts twoslash
+// [!include ~/../src/chains/EVM/EVM.ts]
+```

@@ -1,11 +1,14 @@
-import { type BTCTransaction, type BTCInput, type BTCOutput } from '../../types'
-import { type BTCFeeRecommendation, type UTXO } from './types'
-import { BTCRpcAdapter } from '../BTCRpcAdapter'
-
 // There is no types for coinselect
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import coinselect from 'coinselect'
+
+import { BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter'
+import {
+  type BTCFeeRecommendation,
+  type UTXO,
+} from '@chains/Bitcoin/BTCRpcAdapter/Mempool/types'
+import type { BTCTransaction, BTCInput, BTCOutput } from '@chains/Bitcoin/types'
 
 export class Mempool extends BTCRpcAdapter {
   private readonly providerUrl: string

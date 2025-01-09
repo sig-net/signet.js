@@ -1,0 +1,119 @@
+import ChainGetBalance from '../../../snippets/docs/chain/get-balance.mdx'
+import ChainDeriveAddressAndPublicKey from '../../../snippets/docs/chain/derive-address-and-public-key.mdx'
+import ChainBroadcastTx from '../../../snippets/docs/chain/broadcast-tx.mdx'
+
+# Bitcoin Chain Implementation
+
+The Bitcoin chain implementation supports both Bitcoin mainnet and testnet networks, with a focus on P2WPKH (Native SegWit) transactions.
+
+## Configuration
+
+```ts twoslash filename="base.ts"
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+import { Bitcoin, BTCRpcAdapters } from 'signet.js'
+
+// Initialize the RPC adapter using Mempool
+const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
+
+// Initialize the chain
+const bitcoinChain = new Bitcoin({
+  network: 'testnet', // 'mainnet' | 'testnet' | 'regtest'
+  contract,
+  btcRpcAdapter,
+})
+```
+
+## RPC Adapter
+
+The RPC adapter is a class that provides an interface for interacting with the Bitcoin network. It handles essential operations such as:
+
+- Fetching UTXOs (Unspent Transaction Outputs)
+- Retrieving transaction details
+- Getting current network fees
+- Broadcasting transactions
+- Querying address balances
+
+The adapter abstracts away the complexity of different Bitcoin API providers, allowing you to easily switch between services like Mempool.space, BlockCypher, or your own Bitcoin node.
+
+For detailed implementation and configuration options, see the [RPC Adapter](/chains/bitcoin/btc-rpc-adapter) documentation.
+
+## Methods
+
+<ChainGetBalance nativeToken={'BTC'} chainName={'Bitcoin'} />
+<ChainDeriveAddressAndPublicKey chainName={'Bitcoin P2WPKH'} />
+
+### getMPCPayloadAndTransaction
+
+Prepares a transaction for MPC signing.
+
+```ts twoslash filename="unsigned-transaction.ts"
+// [!include base.ts]
+// ---cut---
+import { BTCTransactionRequest } from 'signet.js'
+
+// Simple transfer format
+const transactionRequest: BTCTransactionRequest = {
+  from: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+  to: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+  value: '0.001', // 0.001 BTC
+  publicKey: '0235a3...',
+}
+
+const { transaction: unsignedTransaction, mpcPayloads } =
+  await bitcoinChain.getMPCPayloadAndTransaction(transactionRequest)
+```
+
+### addSignature
+
+Adds signatures to a PSBT.
+
+```ts twoslash filename="add-signature.ts"
+// [!include unsigned-transaction.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Ideally it would be a request to the Sig Network Smart Contract
+const mpcSignatures: RSVSignature[] = [
+  {
+    r: '0x...',
+    s: '0x...',
+    v: 27,
+  },
+]
+
+const signedTx = bitcoinChain.addSignature({
+  transaction: unsignedTransaction,
+  mpcSignatures,
+})
+```
+
+**Parameters:**
+
+- `transaction`: The unsigned transaction with PSBT
+- `mpcSignatures`: Array of RSV signatures from MPC
+
+**Returns:**
+
+- The serialized signed transaction in hex format
+
+<ChainBroadcastTx />
+
+## Types
+
+The following types are used on the Bitcoin chain:
+
+```ts twoslash
+// [!include ~/../src/chains/Bitcoin/types.ts]
+```
+
+## Technical Details
+
+The implementation:
+
+- Uses `bitcoinjs-lib` for transaction handling
+- Supports P2WPKH (Native SegWit) addresses
+- Handles automatic UTXO selection and change outputs
+- Supports custom fee rates through the RPC adapter
+- Uses PSBT (Partially Signed Bitcoin Transactions)
+- Supports both mainnet and testnet networks

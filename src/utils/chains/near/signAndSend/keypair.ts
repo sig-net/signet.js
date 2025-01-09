@@ -1,16 +1,15 @@
-import { Bitcoin } from '../../../chains/Bitcoin/Bitcoin'
+import { type KeyPair } from '@near-js/crypto'
+
+import { Bitcoin, Cosmos, EVM } from '@chains'
+import { BTCRpcAdapters } from '@chains/Bitcoin/BTCRpcAdapter'
+import { getNearAccount } from '@utils/chains/near/account'
+import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import {
+  type Response,
   type BitcoinRequest,
   type CosmosRequest,
   type EVMRequest,
-} from '../types'
-import { Cosmos } from '../../../chains/Cosmos/Cosmos'
-import { EVM } from '../../../chains/EVM/EVM'
-import { type Response } from '../../../chains/types'
-import { ChainSignaturesContract } from '../contract'
-import { type KeyPair } from '@near-js/crypto'
-import { getNearAccount } from '../account'
-import { BTCRpcAdapters } from '../../../chains/Bitcoin/BTCRpcAdapter'
+} from '@utils/chains/near/types'
 
 export const EVMTransaction = async (
   req: EVMRequest,
@@ -23,7 +22,7 @@ export const EVMTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract({
+    const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -40,7 +39,7 @@ export const EVMTransaction = async (
     )
 
     const signature = await contract.sign({
-      payload: mpcPayloads[0].payload,
+      payload: mpcPayloads[0],
       path: req.derivationPath,
       key_version: 0,
     })
@@ -76,7 +75,7 @@ export const BTCTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract({
+    const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -95,7 +94,7 @@ export const BTCTransaction = async (
 
     const signatures = await Promise.all(
       mpcPayloads.map(
-        async ({ payload }) =>
+        async (payload) =>
           await contract.sign({
             payload,
             path: req.derivationPath,
@@ -134,7 +133,7 @@ export const CosmosTransaction = async (
       keypair: keyPair,
     })
 
-    const contract = new ChainSignaturesContract({
+    const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
       accountId: account.accountId,
@@ -151,7 +150,7 @@ export const CosmosTransaction = async (
 
     const signatures = await Promise.all(
       mpcPayloads.map(
-        async ({ payload }) =>
+        async (payload) =>
           await contract.sign({
             payload,
             path: req.derivationPath,

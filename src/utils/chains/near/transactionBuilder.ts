@@ -3,18 +3,22 @@ import type {
   FinalExecutionOutcome,
   NetworkId,
 } from '@near-wallet-selector/core'
+import BN from 'bn.js'
+import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
+
 import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
-} from '../../signature/types'
-import { type MPCPayloads } from '../../chains/types'
-import { ChainSignaturesContract } from './contract'
-import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
-import { NEAR_MAX_GAS } from './constants'
-import { type NFTKeysContracts, type ChainSignatureContractIds } from './types'
-import { toRSV } from '../../signature'
-import BN from 'bn.js'
+  type MPCPayloads,
+} from '@chains/types'
+import { cryptography } from '@utils'
+import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
+import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
+import {
+  type NFTKeysContracts,
+  type ChainSignatureContractIds,
+} from '@utils/chains/near/types'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -30,7 +34,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new ChainSignaturesContract({
+  const contract = new ChainSignatureContract({
     networkId,
     contractId,
   })
@@ -39,7 +43,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
 
   return {
     receiverId: contractId,
-    actions: mpcPayloads.map(({ payload }) => ({
+    actions: mpcPayloads.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'sign',
@@ -75,7 +79,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
   receiverId: string
   actions: Action[]
 }> => {
-  const contract = new ChainSignaturesContract({
+  const contract = new ChainSignatureContract({
     networkId,
     contractId: chainSigContract,
   })
@@ -84,7 +88,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
 
   return {
     receiverId: nftKeysContract,
-    actions: mpcPayloads.map(({ payload }) => ({
+    actions: mpcPayloads.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'ckt_sign_hash',
@@ -127,7 +131,7 @@ export const responseToMpcSignature = ({
       Ok: MPCSignature
     }
 
-    return toRSV(parsedJSONSignature.Ok)
+    return cryptography.toRSV(parsedJSONSignature.Ok)
   } else {
     return undefined
   }

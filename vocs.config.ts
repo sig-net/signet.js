@@ -9,6 +9,10 @@ export default defineConfig({
       strict: true,
       paths: {
         'signet.js': ['./src'],
+        '@chains': ['./src/chains'],
+        '@utils': ['./src/utils'],
+        '@chains/*': ['./src/chains/*'],
+        '@utils/*': ['./src/utils/*'],
       },
     },
   },
@@ -17,41 +21,25 @@ export default defineConfig({
       text: 'Getting Started',
       items: [
         { text: 'Overview', link: '/' },
-        { text: 'Installation', link: '/getting-started' },
-        { text: 'Quick Start', link: '/getting-started#basic-setup' },
+        { text: 'Chain Interface', link: '/chain' },
+        {
+          text: 'Chain Signatures Contract',
+          link: '/chain-signatures-contract',
+        },
       ],
     },
     {
       text: 'Supported Chains',
       items: [
         { text: 'EVM Chains', link: '/chains/evm' },
-        { text: 'Bitcoin', link: '/chains/bitcoin' },
+        {
+          text: 'Bitcoin',
+          items: [
+            { text: 'Overview', link: '/chains/bitcoin/bitcoin' },
+            { text: 'RPC Adapter', link: '/chains/bitcoin/btc-rpc-adapter' },
+          ],
+        },
         { text: 'Cosmos', link: '/chains/cosmos' },
-      ],
-    },
-    {
-      text: 'Core Concepts',
-      items: [
-        { text: 'Chain Interface', link: '/guides/implementing-new-chain' },
-        { text: 'MPC Overview', link: '/guides/mpc-overview' },
-      ],
-    },
-    {
-      text: 'Implementation Guides',
-      collapsed: true,
-      items: [
-        {
-          text: 'Creating a New Chain',
-          link: '/guides/implementing-new-chain',
-        },
-        {
-          text: 'Bitcoin RPC Adapter',
-          link: '/guides/implementing-btc-adapter',
-        },
-        {
-          text: 'Chain Signature Contract',
-          link: '/guides/implementing-signature-contract',
-        },
       ],
     },
   ],
@@ -59,7 +47,7 @@ export default defineConfig({
   socials: [
     {
       icon: 'github',
-      link: 'https://github.com/near/signet.js',
+      link: 'https://github.com/sig-net',
     },
   ],
 

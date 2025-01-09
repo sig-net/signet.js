@@ -1,22 +1,42 @@
 {
   "name": "signet.js",
-  "version": "0.0.1",
+  "version": "0.0.1-beta.8",
   "description": "",
   "type": "module",
-  "main": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "browser": {
+        "import": "./browser/index.browser.js",
+        "require": "./browser/index.browser.cjs"
+      },
+      "node": {
+        "import": "./node/index.node.js",
+        "require": "./node/index.node.cjs"
+      },
+      "default": "./browser/index.browser.js"
+    }
+  },
+  "main": "./node/index.node.cjs",
+  "module": "./node/index.node.js",
+  "browser": "./browser/index.browser.js",
+  "types": "./types/index.d.ts",
   "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "pre:deploy": "npm run build && cp package.json README.md dist/",
-    "publish-npm": "npm run pre:deploy && cd dist && npm publish",
+    "watch": "vite build --watch",
+    "build": "rm -rf dist && npm run build:browser && npm run build:node && cp package.json README.md LICENSE dist/",
+    "build:browser": "vite build --mode browser",
+    "build:node": "vite build --mode node",
+    "pre:deploy": "npm run build && npm run docs:build",
+    "publish-npm": "npm run pre:deploy && npm publish",
     "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
-    "test": "jest"
+    "test": "jest",
+    "docs:dev": "vocs dev",
+    "docs:build": "vocs build",
+    "docs:preview": "vocs preview"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.3",
-    "@babel/preset-typescript": "^7.24.7",
     "@types/bn.js": "^5.1.5",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "babel-jest": "^29.7.0",
@@ -30,8 +50,10 @@
     "eslint-plugin-promise": "^6.1.1",
     "jest": "^29.7.0",
     "prettier": "^3.2.5",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.3",
+    "vite": "^6.0.7",
+    "vite-plugin-dts": "^4.4.0",
+    "vocs": "1.0.0-alpha.62"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.32.4",

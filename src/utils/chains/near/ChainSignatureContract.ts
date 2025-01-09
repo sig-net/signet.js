@@ -1,22 +1,27 @@
 import { type Account, Contract } from '@near-js/accounts'
-import { actionCreators } from '@near-js/transactions'
 import { KeyPair } from '@near-js/crypto'
-
+import { actionCreators } from '@near-js/transactions'
 import BN from 'bn.js'
-
-import { type RSVSignature, type MPCSignature } from '../../signature/types'
-import { type NearNetworkIds, type ChainSignatureContractIds } from './types'
-import { parseSignedDelegateForRelayer } from './relayer'
-import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from './constants'
-import { near } from '../..'
-import {
-  type SignArgs,
-  ChainSignatureContract,
-} from '../../chains/ChainSignatureContract'
 import { base_decode } from 'near-api-js/lib/utils/serialize'
-import { type UncompressedPubKeySEC1 } from '../../chains/types'
-import { toRSV } from '../../signature'
-import { getNearAccount } from './account'
+
+import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
+import type { SignArgs } from '@chains/ChainSignatureContract'
+import type {
+  RSVSignature,
+  MPCSignature,
+  UncompressedPubKeySEC1,
+} from '@chains/types'
+import { cryptography, chains } from '@utils'
+import { getNearAccount } from '@utils/chains/near/account'
+import {
+  DONT_CARE_ACCOUNT_ID,
+  NEAR_MAX_GAS,
+} from '@utils/chains/near/constants'
+import { parseSignedDelegateForRelayer } from '@utils/chains/near/relayer'
+import {
+  type NearNetworkIds,
+  type ChainSignatureContractIds,
+} from '@utils/chains/near/types'
 
 const najToUncompressedPubKey = (najPubKey: string): UncompressedPubKeySEC1 => {
   return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`
@@ -55,7 +60,7 @@ interface ChainSignatureContractArgs {
  * This contract will default to view methods only.
  * If you want to use the change methods, you need to provide an account and keypair.
  */
-export class ChainSignaturesContract extends ChainSignatureContract {
+export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly networkId: NearNetworkIds
   private readonly contractId: ChainSignatureContractIds
   private readonly accountId: string
@@ -93,12 +98,6 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     }) as unknown as NearContract
   }
 
-  async getPublicKey(): Promise<UncompressedPubKeySEC1> {
-    const contract = await this.getContract()
-    const najPubKey = await contract.public_key()
-    return najToUncompressedPubKey(najPubKey)
-  }
-
   async getCurrentSignatureDeposit(): Promise<BN> {
     const contract = await this.getContract()
     return new BN(
@@ -121,6 +120,13 @@ export class ChainSignaturesContract extends ChainSignatureContract {
     return najToUncompressedPubKey(najPubKey)
   }
 
+  async getPublicKey(): Promise<UncompressedPubKeySEC1> {
+    const contract = await this.getContract()
+
+    const najPubKey = await contract.public_key()
+    return najToUncompressedPubKey(najPubKey)
+  }
+
   async sign(args: SignArgs): Promise<RSVSignature> {
     requireAccount(this.accountId)
 
@@ -133,7 +139,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
       amount: deposit,
     })
 
-    return toRSV(signature)
+    return cryptography.toRSV(signature)
   }
 
   static async signWithRelayer({
@@ -182,7 +188,7 @@ export class ChainSignaturesContract extends ChainSignatureContract {
       'FINAL'
     )
 
-    const signature = near.transactionBuilder.responseToMpcSignature({
+    const signature = chains.near.transactionBuilder.responseToMpcSignature({
       response: txStatus,
     })
 

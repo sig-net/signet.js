@@ -12,14 +12,11 @@ export interface BTCInput {
   vout: number
   value: number
   scriptPubKey: Buffer
-  sequence?: number
 }
 
-export interface BTCOutput {
+export type BTCOutput = {
   value: number
-  address?: string
-  script?: Buffer
-}
+} & ({ address: string; script?: never } | { address?: never; script: Buffer })
 
 export type BTCTransactionRequest = {
   publicKey: string

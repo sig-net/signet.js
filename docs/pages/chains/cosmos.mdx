@@ -1,0 +1,119 @@
+import ChainGetBalance from '../../snippets/docs/chain/get-balance.mdx'
+import ChainDeriveAddressAndPublicKey from '../../snippets/docs/chain/derive-address-and-public-key.mdx'
+import ChainBroadcastTx from '../../snippets/docs/chain/broadcast-tx.mdx'
+
+# Cosmos Chain Implementation
+
+The Cosmos chain implementation supports Cosmos SDK-based networks (Cosmos Hub, Osmosis, etc.) with a focus on standard transactions and IBC transfers.
+
+## Configuration
+
+```ts twoslash filename="base.ts"
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+import { Cosmos } from 'signet.js'
+
+const cosmosChain = new Cosmos({
+  chainId: 'cosmoshub-4', // Chain ID of the target network
+  contract,
+})
+```
+
+## Methods
+
+<ChainGetBalance nativeToken={'ATOM'} chainName={'Cosmos'} />
+<ChainDeriveAddressAndPublicKey chainName={'Cosmos (bech32)'} />
+
+### getMPCPayloadAndTransaction
+
+Prepares a transaction for MPC signing.
+
+```ts twoslash filename="unsigned-transaction.ts"
+// [!include base.ts]
+// ---cut---
+import { CosmosTransactionRequest } from 'signet.js'
+import { MsgSend } from 'cosmjs-types/cosmos/bank/v1beta1/tx'
+
+// Create a token transfer message
+const transactionRequest: CosmosTransactionRequest = {
+  address: 'cosmos1...',
+  publicKey: '0350e8...',
+  messages: [
+    {
+      typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+      value: {
+        fromAddress: 'cosmos1...',
+        toAddress: 'cosmos1...',
+        amount: [
+          {
+            denom: 'uatom',
+            amount: '1000000',
+          },
+        ],
+      },
+    },
+  ],
+  memo: 'Token transfer',
+}
+
+const { transaction: unsignedTransaction, mpcPayloads } =
+  await cosmosChain.getMPCPayloadAndTransaction(transactionRequest)
+```
+
+### addSignature
+
+Adds signatures to a transaction.
+
+```ts twoslash filename="add-signature.ts"
+// [!include unsigned-transaction.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Ideally it would be a request to the Sig Network Smart Contract
+const mpcSignatures: RSVSignature[] = [
+  {
+    r: '0x...',
+    s: '0x...',
+    v: 27,
+  },
+]
+
+const signedTx = cosmosChain.addSignature({
+  transaction: unsignedTransaction,
+  mpcSignatures,
+})
+```
+
+**Parameters:**
+
+- `transaction`: The unsigned transaction
+- `mpcSignatures`: Array of RSV signatures from MPC
+
+**Returns:**
+
+- The serialized signed transaction in hex format
+
+<ChainBroadcastTx />
+
+## Types
+
+The following types are used on the Cosmos chain:
+
+```ts twoslash
+// [!include ~/../src/chains/Cosmos/types.ts]
+```
+
+## Technical Details
+
+The implementation:
+
+- Uses `@cosmjs/stargate` for transaction handling
+- Supports SIGN_MODE_DIRECT signing
+- Uses Protobuf for message encoding
+- Supports standard Cosmos SDK messages:
+  - Bank (Send, MultiSend)
+  - Staking (Delegate, Undelegate, Redelegate)
+  - Distribution (Withdraw Rewards)
+  - IBC (Transfer)
+- Handles automatic fee calculation based on gas prices
+- Supports custom message types through the Registry
