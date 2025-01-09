@@ -1,0 +1,17 @@
+### broadcastTx
+
+Broadcasts a signed transaction to the network.
+
+```ts twoslash
+// [!include ~/snippets/code/chain.ts]
+// ---cut---
+const txHash = await chain.broadcastTx('transactionSerialized')
+```
+
+**Parameters:**
+
+- `txSerialized`: The serialized signed transaction
+
+**Returns:**
+
+- The transaction hash

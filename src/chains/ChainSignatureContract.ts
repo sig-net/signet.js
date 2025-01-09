@@ -11,6 +11,11 @@ export interface SignArgs {
   key_version: number
 }
 
+/**
+ * Base contract interface required for compatibility with Chain instances like EVM and Bitcoin.
+ *
+ * See {@link EVM} and {@link Bitcoin} for example implementations.
+ */
 export abstract class BaseChainSignatureContract {
   /**
    * Gets the current signature deposit required by the contract.
@@ -21,7 +26,7 @@ export abstract class BaseChainSignatureContract {
   abstract getCurrentSignatureDeposit(): Promise<BN>
 
   /**
-   * Derives a child public key using a derivation path and predecessor.
+   * Derives a child public key using a\ derivation path and predecessor.
    *
    * @param args - Arguments for key derivation
    * @param args.path - The string path to use derive the key
@@ -36,6 +41,9 @@ export abstract class BaseChainSignatureContract {
   ): Promise<UncompressedPubKeySEC1>
 }
 
+/**
+ * Full contract interface that extends BaseChainSignatureContract to provide all Sig Network Smart Contract capabilities.
+ */
 export abstract class ChainSignatureContract extends BaseChainSignatureContract {
   /**
    * Signs a payload using Sig Network MPC.

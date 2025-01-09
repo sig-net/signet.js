@@ -1,0 +1,17 @@
+### getBalance
+
+Gets the native token balance of an address in {props.nativeToken} units.
+
+```ts twoslash
+// [!include ~/snippets/code/chain.ts]
+// ---cut---
+const balance = await chain.getBalance('nativeAddress')
+```
+
+**Parameters:**
+
+- `address`: The {props.chainName} address to check
+
+**Returns:**
+
+- The balance in {props.nativeToken} units as a string

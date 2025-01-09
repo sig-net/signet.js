@@ -1,3 +1,7 @@
+import ChainGetBalance from '../../../snippets/docs/chain/get-balance.mdx'
+import ChainDeriveAddressAndPublicKey from '../../../snippets/docs/chain/derive-address-and-public-key.mdx'
+import ChainBroadcastTx from '../../../snippets/docs/chain/broadcast-tx.mdx'
+
 # Bitcoin Chain Implementation
 
 The Bitcoin chain implementation supports both Bitcoin mainnet and testnet networks, with a focus on P2WPKH (Native SegWit) transactions.
@@ -5,7 +9,7 @@ The Bitcoin chain implementation supports both Bitcoin mainnet and testnet netwo
 ## Configuration
 
 ```ts twoslash filename="base.ts"
-// [!include ~/snippets/contract.ts]
+// [!include ~/snippets/code/contract.ts]
 // ---cut---
 import { Bitcoin, BTCRpcAdapters } from 'signet.js'
 
@@ -32,53 +36,12 @@ The RPC adapter is a class that provides an interface for interacting with the B
 
 The adapter abstracts away the complexity of different Bitcoin API providers, allowing you to easily switch between services like Mempool.space, BlockCypher, or your own Bitcoin node.
 
-For detailed implementation and configuration options, see the [RPC Adapter](./btc-rpc-adapter) documentation.
+For detailed implementation and configuration options, see the [RPC Adapter](/chains/bitcoin/btc-rpc-adapter) documentation.
 
 ## Methods
 
-### getBalance
-
-Gets the BTC balance of an address.
-
-```ts twoslash
-// [!include base.ts]
-// ---cut---
-const balance = await bitcoinChain.getBalance(
-  'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
-)
-```
-
-**Parameters:**
-
-- `address`: The Bitcoin address to check
-
-**Returns:**
-
-- The balance in BTC as a string
-
-### deriveAddressAndPublicKey
-
-Derives a Bitcoin address and public key for a given path.
-
-```ts twoslash
-// [!include base.ts]
-// ---cut---
-const { address, publicKey } = await bitcoinChain.deriveAddressAndPublicKey(
-  'predecessor_id',
-  'any_string'
-)
-```
-
-**Parameters:**
-
-- `predecessor`: The ID of the signer to derive from
-- `path`: The derivation path to use
-
-**Returns:**
-
-- Object containing:
-  - `address`: The derived Bitcoin P2WPKH address
-  - `publicKey`: The corresponding compressed public key
+<ChainGetBalance nativeToken={'BTC'} chainName={'Bitcoin'} />
+<ChainDeriveAddressAndPublicKey chainName={'Bitcoin P2WPKH'} />
 
 ### getMPCPayloadAndTransaction
 
@@ -100,33 +63,6 @@ const transactionRequest: BTCTransactionRequest = {
 const { transaction: unsignedTransaction, mpcPayloads } =
   await bitcoinChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
-
-**Parameters:**
-
-- `transactionRequest`: Either:
-  - Simple format:
-    ```ts
-    {
-      from: string // Source address
-      to: string // Destination address
-      value: string // Amount in BTC
-      publicKey: string // Signer's public key
-    }
-    ```
-  - Advanced format (manual UTXO selection):
-    ```ts
-    {
-      inputs: BTCInput[]   // Selected UTXOs
-      outputs: BTCOutput[] // Transaction outputs
-      publicKey: string    // Signer's public key
-    }
-    ```
-
-**Returns:**
-
-- Object containing:
-  - `transaction`: The unsigned transaction with PSBT
-  - `mpcPayloads`: Array of payloads to be signed
 
 ### addSignature
 
@@ -161,23 +97,15 @@ const signedTx = bitcoinChain.addSignature({
 
 - The serialized signed transaction in hex format
 
-### broadcastTx
+<ChainBroadcastTx />
 
-Broadcasts a signed transaction to the network.
+## Types
 
-```ts twoslash filename="broadcast-tx.ts"
-// [!include add-signature.ts]
-// ---cut---
-const txid = await bitcoinChain.broadcastTx(signedTx)
+The following types are used on the Bitcoin chain:
+
+```ts twoslash
+// [!include ~/../src/chains/Bitcoin/types.ts]
 ```
-
-**Parameters:**
-
-- `txSerialized`: The serialized transaction in hex format
-
-**Returns:**
-
-- The transaction ID (txid)
 
 ## Technical Details
 

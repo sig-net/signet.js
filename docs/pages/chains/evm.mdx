@@ -1,3 +1,7 @@
+import ChainGetBalance from '../../snippets/docs/chain/get-balance.mdx'
+import ChainDeriveAddressAndPublicKey from '../../snippets/docs/chain/derive-address-and-public-key.mdx'
+import ChainBroadcastTx from '../../snippets/docs/chain/broadcast-tx.mdx'
+
 # EVM Chain Implementation
 
 This implementation supports all EVM-compatible networks (Ethereum, Binance Smart Chain, Polygon, etc.).
@@ -5,12 +9,12 @@ This implementation supports all EVM-compatible networks (Ethereum, Binance Smar
 ## Configuration
 
 ```ts twoslash filename="base.ts"
-// [!include ~/snippets/contract.ts]
+// [!include ~/snippets/code/contract.ts]
 // ---cut---
 import { EVM } from 'signet.js'
 
 // Initialize the chain
-const evmChain = new EVM({
+const chain = new EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract,
 })
@@ -18,47 +22,8 @@ const evmChain = new EVM({
 
 ## Methods
 
-### getBalance
-
-Gets the native token balance of an address in ETH units.
-
-```ts twoslash
-// [!include base.ts]
-// ---cut---
-const balance = await evmChain.getBalance('0x...')
-```
-
-**Parameters:**
-
-- `address`: The Ethereum address to check
-
-**Returns:**
-
-- The balance in ETH as a string
-
-### deriveAddressAndPublicKey
-
-Derives an Ethereum address and public key from a signer ID and derivation path.
-
-```ts twoslash
-// [!include base.ts]
-// ---cut---
-const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
-  '0x...',
-  'any_string'
-)
-```
-
-**Parameters:**
-
-- `predecessor`: The ID/address of the signer requesting the signature
-- `path`: The derivation path to use
-
-**Returns:**
-
-- Object containing:
-  - `address`: The derived Ethereum address
-  - `publicKey`: The corresponding public key in SEC1 uncompressed format
+<ChainGetBalance nativeToken={'ETH'} chainName={'Ethereum'} />
+<ChainDeriveAddressAndPublicKey chainName={'Ethereum'} />
 
 ### getMPCPayloadAndTransaction
 
@@ -77,7 +42,7 @@ const transactionRequest: EVMTransactionRequest = {
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await evmChain.getMPCPayloadAndTransaction(transactionRequest)
+  await chain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
 The transaction is enhanced with:
@@ -91,7 +56,7 @@ The transaction is enhanced with:
 
 Adds a signature to an unsigned transaction.
 
-```ts twoslash filename="add-signature.ts"
+```ts twoslash
 // [!include unsigned-transaction.ts]
 // ---cut---
 import { RSVSignature } from 'signet.js'
@@ -105,7 +70,7 @@ const mpcSignatures: RSVSignature[] = [
   },
 ]
 
-const txSerialized = await evmChain.addSignature({
+const txSerialized = await chain.addSignature({
   transaction: unsignedTransaction,
   mpcSignatures,
 })
@@ -120,30 +85,14 @@ const txSerialized = await evmChain.addSignature({
 
 - The serialized signed transaction
 
-### broadcastTx
-
-Broadcasts a signed transaction to the network.
-
-```ts twoslash filename="broadcast-tx.ts"
-// [!include add-signature.ts]
-// ---cut---
-const txHash = await evmChain.broadcastTx(txSerialized)
-```
-
-**Parameters:**
-
-- `txSerialized`: The serialized signed transaction
-
-**Returns:**
-
-- The transaction hash
+<ChainBroadcastTx />
 
 ## Adding New EVM Chains
 
 To add support for a new EVM-compatible chain, you only need to configure the provider URL. The chain ID and network configuration are automatically retrieved from the provider.
 
 ```ts twoslash
-// [!include ~/snippets/contract.ts]
+// [!include ~/snippets/code/contract.ts]
 // ---cut---
 import { EVM } from 'signet.js'
 
@@ -166,6 +115,14 @@ const arbitrumChain = new EVM({
 })
 ```
 
+## Types
+
+The following types are used on the EVM chain:
+
+```ts twoslash
+// [!include ~/../src/chains/EVM/types.ts]
+```
+
 ## Technical Details
 
 The implementation:
@@ -179,11 +136,3 @@ The implementation:
 - Supports ENS name resolution on networks that implement it
 - Handles transaction signing according to EIP-155
 - Supports raw transaction data for custom contract interactions
-
-## Types
-
-The following types are used on the EVM chain:
-
-```ts twoslash
-// [!include ~/../src/chains/EVM/types.ts]
-```
