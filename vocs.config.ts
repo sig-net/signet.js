@@ -47,7 +47,7 @@ export default defineConfig({
   socials: [
     {
       icon: 'github',
-      link: 'https://github.com/near/signet.js',
+      link: 'https://github.com/sig-net',
     },
   ],
 

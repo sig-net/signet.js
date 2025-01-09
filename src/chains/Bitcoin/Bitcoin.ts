@@ -1,6 +1,5 @@
 import * as bitcoin from 'bitcoinjs-lib'
 
-import { utils } from '@chains'
 import { type BTCRpcAdapter } from '@chains/Bitcoin/BTCRpcAdapter'
 import type {
   BTCInput,
@@ -11,12 +10,13 @@ import type {
 } from '@chains/Bitcoin/types'
 import { parseBTCNetwork } from '@chains/Bitcoin/utils'
 import { Chain } from '@chains/Chain'
-import type { ChainSignatureContract } from '@chains/ChainSignatureContract'
+import type { BaseChainSignatureContract } from '@chains/ChainSignatureContract'
 import type {
   MPCPayloads,
   RSVSignature,
   KeyDerivationPath,
 } from '@chains/types'
+import { cryptography } from '@utils'
 
 /**
  * Implementation of the Chain interface for Bitcoin network.
@@ -30,7 +30,7 @@ export class Bitcoin extends Chain<
 
   private readonly network: BTCNetworkIds
   private readonly btcRpcAdapter: BTCRpcAdapter
-  private readonly contract: ChainSignatureContract
+  private readonly contract: BaseChainSignatureContract
 
   /**
    * Creates a new Bitcoin chain instance
@@ -45,7 +45,7 @@ export class Bitcoin extends Chain<
     btcRpcAdapter,
   }: {
     network: BTCNetworkIds
-    contract: ChainSignatureContract
+    contract: BaseChainSignatureContract
     btcRpcAdapter: BTCRpcAdapter
   }) {
     super()
@@ -178,7 +178,7 @@ export class Bitcoin extends Chain<
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = utils.compressPubKey(uncompressedPubKey)
+    const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
     const publicKeyBuffer = Buffer.from(derivedKey, 'hex')
     const network = parseBTCNetwork(this.network)
 
@@ -248,10 +248,7 @@ export class Bitcoin extends Chain<
     const mockKeyPair = (index: number): bitcoin.Signer => ({
       publicKey: publicKeyBuffer,
       sign: (hash: Buffer): Buffer => {
-        mpcPayloads.push({
-          index,
-          payload: Array.from(hash),
-        })
+        mpcPayloads[index] = Array.from(hash)
         // Return dummy signature to satisfy the interface
         return Buffer.alloc(64)
       },
@@ -266,7 +263,7 @@ export class Bitcoin extends Chain<
         psbt: bitcoin.Psbt.fromHex(psbtHex),
         publicKey: transactionRequest.publicKey,
       },
-      mpcPayloads: mpcPayloads.sort((a, b) => a.index - b.index),
+      mpcPayloads,
     }
   }
 

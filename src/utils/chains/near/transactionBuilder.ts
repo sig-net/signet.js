@@ -6,13 +6,13 @@ import type {
 import BN from 'bn.js'
 import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
 
-import { utils } from '@chains'
 import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
   type MPCPayloads,
 } from '@chains/types'
+import { cryptography } from '@utils'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
 import {
@@ -43,7 +43,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
 
   return {
     receiverId: contractId,
-    actions: mpcPayloads.map(({ payload }) => ({
+    actions: mpcPayloads.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'sign',
@@ -88,7 +88,7 @@ export const mpcPayloadsToNFTKeysTransaction = async ({
 
   return {
     receiverId: nftKeysContract,
-    actions: mpcPayloads.map(({ payload }) => ({
+    actions: mpcPayloads.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'ckt_sign_hash',
@@ -131,7 +131,7 @@ export const responseToMpcSignature = ({
       Ok: MPCSignature
     }
 
-    return utils.toRSV(parsedJSONSignature.Ok)
+    return cryptography.toRSV(parsedJSONSignature.Ok)
   } else {
     return undefined
   }

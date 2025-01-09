@@ -2,10 +2,10 @@ import { type KeyPair } from '@near-js/crypto'
 
 import { Bitcoin, Cosmos, EVM } from '@chains'
 import { BTCRpcAdapters } from '@chains/Bitcoin/BTCRpcAdapter'
-import { type Response } from '@chains/types'
 import { getNearAccount } from '@utils/chains/near/account'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import {
+  type Response,
   type BitcoinRequest,
   type CosmosRequest,
   type EVMRequest,
@@ -39,7 +39,7 @@ export const EVMTransaction = async (
     )
 
     const signature = await contract.sign({
-      payload: mpcPayloads[0].payload,
+      payload: mpcPayloads[0],
       path: req.derivationPath,
       key_version: 0,
     })
@@ -94,7 +94,7 @@ export const BTCTransaction = async (
 
     const signatures = await Promise.all(
       mpcPayloads.map(
-        async ({ payload }) =>
+        async (payload) =>
           await contract.sign({
             payload,
             path: req.derivationPath,
@@ -150,7 +150,7 @@ export const CosmosTransaction = async (
 
     const signatures = await Promise.all(
       mpcPayloads.map(
-        async ({ payload }) =>
+        async (payload) =>
           await contract.sign({
             payload,
             path: req.derivationPath,

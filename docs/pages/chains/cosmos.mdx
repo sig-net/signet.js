@@ -1,3 +1,7 @@
+import ChainGetBalance from '../../snippets/docs/chain/get-balance.mdx'
+import ChainDeriveAddressAndPublicKey from '../../snippets/docs/chain/derive-address-and-public-key.mdx'
+import ChainBroadcastTx from '../../snippets/docs/chain/broadcast-tx.mdx'
+
 # Cosmos Chain Implementation
 
 The Cosmos chain implementation supports Cosmos SDK-based networks (Cosmos Hub, Osmosis, etc.) with a focus on standard transactions and IBC transfers.
@@ -5,7 +9,7 @@ The Cosmos chain implementation supports Cosmos SDK-based networks (Cosmos Hub, 
 ## Configuration
 
 ```ts twoslash filename="base.ts"
-// [!include ~/snippets/contract.ts]
+// [!include ~/snippets/code/contract.ts]
 // ---cut---
 import { Cosmos } from 'signet.js'
 
@@ -17,47 +21,8 @@ const cosmosChain = new Cosmos({
 
 ## Methods
 
-### getBalance
-
-Gets the native token balance of an address.
-
-```ts twoslash
-// [!include base.ts]
-// ---cut---
-const balance = await cosmosChain.getBalance('cosmos1...')
-```
-
-**Parameters:**
-
-- `address`: The Cosmos address to check
-
-**Returns:**
-
-- The balance formatted according to the chain's decimal places
-
-### deriveAddressAndPublicKey
-
-Derives a Cosmos address and public key for a given path.
-
-```ts twoslash
-// [!include base.ts]
-// ---cut---
-const { address, publicKey } = await cosmosChain.deriveAddressAndPublicKey(
-  'predecessor_id',
-  'any_string'
-)
-```
-
-**Parameters:**
-
-- `predecessor`: The ID of the signer to derive from
-- `path`: The derivation path to use
-
-**Returns:**
-
-- Object containing:
-  - `address`: The derived Cosmos address (bech32 format)
-  - `publicKey`: The corresponding compressed public key
+<ChainGetBalance nativeToken={'ATOM'} chainName={'Cosmos'} />
+<ChainDeriveAddressAndPublicKey chainName={'Cosmos (bech32)'} />
 
 ### getMPCPayloadAndTransaction
 
@@ -70,49 +35,30 @@ import { CosmosTransactionRequest } from 'signet.js'
 import { MsgSend } from 'cosmjs-types/cosmos/bank/v1beta1/tx'
 
 // Create a token transfer message
-const sendMsg = {
-  typeUrl: '/cosmos.bank.v1beta1.MsgSend',
-  value: MsgSend.fromPartial({
-    fromAddress: 'cosmos1...',
-    toAddress: 'cosmos1...',
-    amount: [
-      {
-        denom: 'uatom',
-        amount: '1000000', // 1 ATOM (1,000,000 uatom)
-      },
-    ],
-  }),
-}
-
 const transactionRequest: CosmosTransactionRequest = {
   address: 'cosmos1...',
-  publicKey: '0235a3...',
-  messages: [sendMsg],
+  publicKey: '0350e8...',
+  messages: [
+    {
+      typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+      value: {
+        fromAddress: 'cosmos1...',
+        toAddress: 'cosmos1...',
+        amount: [
+          {
+            denom: 'uatom',
+            amount: '1000000',
+          },
+        ],
+      },
+    },
+  ],
   memo: 'Token transfer',
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
   await cosmosChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
-
-**Parameters:**
-
-- `transactionRequest`: Transaction configuration:
-  ```ts
-  {
-    address: string      // Sender's address
-    publicKey: string    // Signer's public key
-    messages: Message[]  // Array of Cosmos SDK messages
-    memo?: string       // Optional transaction memo
-    gas?: number        // Optional gas limit (default: 200,000)
-  }
-  ```
-
-**Returns:**
-
-- Object containing:
-  - `transaction`: The unsigned transaction
-  - `mpcPayloads`: Array of payloads to be signed
 
 ### addSignature
 
@@ -147,23 +93,15 @@ const signedTx = cosmosChain.addSignature({
 
 - The serialized signed transaction in hex format
 
-### broadcastTx
+<ChainBroadcastTx />
 
-Broadcasts a signed transaction to the network.
+## Types
 
-```ts twoslash filename="broadcast-tx.ts"
-// [!include add-signature.ts]
-// ---cut---
-const txHash = await cosmosChain.broadcastTx(signedTx)
+The following types are used on the Cosmos chain:
+
+```ts twoslash
+// [!include ~/../src/chains/Cosmos/types.ts]
 ```
-
-**Parameters:**
-
-- `txSerialized`: The serialized transaction in hex format
-
-**Returns:**
-
-- The transaction hash
 
 ## Technical Details
 

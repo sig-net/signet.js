@@ -6,17 +6,17 @@ This guide explains how to implement a custom Chain Signature Contract to provid
 
 The `ChainSignatureContract` is an abstract class that defines the interface for interacting with the Sig Network infrastructure.
 
-- Key derivation: Derived the child key from the root key using Sig Network Key Derivation Function
-- Transaction signing: Sigs the given payload using Sig Network MPC
-- Get the root public key: Gets the root public key from the contract
-- Get the current signature deposit: Gets the current signature deposit to handle network congestion
+- Key Derivation: Derive the child key from the root key using Sig Network key derivation function
+- Sign: Sigs the given payload using Sig Network MPC
+- Current Fee: Gets the current signature deposit that handles network congestion
+- Root Public Key: Gets the root public key of the Smart Contract on Sig Network MPC
 
 While the library includes a default implementation for the NEAR protocol, you have the flexibility to implement your own contract for other blockchain networks.
 
 ## Using the NEAR Implementation
 
 ```ts twoslash
-// [!include ~/snippets/env.ts]
+// [!include ~/snippets/code/env.ts]
 // ---cut---
 import { utils, EVM } from 'signet.js'
 
@@ -33,9 +33,18 @@ const evmChain = new EVM({
 })
 ```
 
+Currently the contracts are available on the following Near addresses:
+
+- Mainnet:
+  - `v1.signer`
+- Testnet:
+  - `v1.signer-prod.testnet`
+
 ## Implementing a Custom Chain Signature Contract
 
-To create your own implementation, your contract must implement the `ChainSignatureContract` interface.
+To create your own implementation to use on the [Chain](./chain.mdx) Instance, your contract must implement the `BaseChainSignatureContract` interface.
+
+In case you need you want all Sig Network Smart Contract capabilities, you can implement the `ChainSignatureContract` interface.
 
 ```ts twoslash
 // [!include ~/../src/chains/ChainSignatureContract.ts]

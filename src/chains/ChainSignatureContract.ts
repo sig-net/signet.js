@@ -11,7 +11,12 @@ export interface SignArgs {
   key_version: number
 }
 
-export abstract class ChainSignatureContract {
+/**
+ * Base contract interface required for compatibility with Chain instances like EVM and Bitcoin.
+ *
+ * See {@link EVM} and {@link Bitcoin} for example implementations.
+ */
+export abstract class BaseChainSignatureContract {
   /**
    * Gets the current signature deposit required by the contract.
    * This deposit amount helps manage network congestion.
@@ -21,26 +26,7 @@ export abstract class ChainSignatureContract {
   abstract getCurrentSignatureDeposit(): Promise<BN>
 
   /**
-   * Gets the root public key associated with this contract.
-   * This is the root public key from which child keys can be derived.
-   *
-   * @returns Promise resolving to the SEC1 uncompressed public key
-   */
-  abstract getPublicKey(): Promise<UncompressedPubKeySEC1>
-
-  /**
-   * Signs a payload using Sig Network MPC.
-   *
-   * @param args - Arguments for the signing operation
-   * @param args.payload - The data to sign as an array of 32 bytes
-   * @param args.path - The string path to use derive the key
-   * @param args.key_version - Version of the key to use
-   * @returns Promise resolving to the RSV signature
-   */
-  abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
-
-  /**
-   * Derives a child public key using a derivation path and predecessor.
+   * Derives a child public key using a\ derivation path and predecessor.
    *
    * @param args - Arguments for key derivation
    * @param args.path - The string path to use derive the key
@@ -53,4 +39,27 @@ export abstract class ChainSignatureContract {
       predecessor: string
     } & Record<string, unknown>
   ): Promise<UncompressedPubKeySEC1>
+}
+
+/**
+ * Full contract interface that extends BaseChainSignatureContract to provide all Sig Network Smart Contract capabilities.
+ */
+export abstract class ChainSignatureContract extends BaseChainSignatureContract {
+  /**
+   * Signs a payload using Sig Network MPC.
+   *
+   * @param args - Arguments for the signing operation
+   * @param args.payload - The data to sign as an array of 32 bytes
+   * @param args.path - The string path to use derive the key
+   * @param args.key_version - Version of the key to use
+   * @returns Promise resolving to the RSV signature
+   */
+  abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
+
+  /**
+   * Gets the public key associated with this contract instance.
+   *
+   * @returns Promise resolving to the SEC1 uncompressed public key
+   */
+  abstract getPublicKey(): Promise<UncompressedPubKeySEC1>
 }
