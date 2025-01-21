@@ -1,99 +1,28 @@
-# Signet.js Documentation
+## Introduction + How It Works
 
-A TypeScript library for handling interactions with Sig Network MPC and Smart Contracts
+### What Are Chain Signatures?
 
-## Supported Chains
+Chain Signatures let you manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions. The system:
 
-- [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
-- [Bitcoin](./chains/bitcoin/bitcoin.mdx) - Bitcoin network
-- [Cosmos Chains](./chains/cosmos.mdx) - Cosmos SDK-based networks
+- **Derives keys** from a single base key.
+- Allows third parties (e.g., dApps, wallets, or protocols) to request ECDSA signatures on-chain.
+- Introduces flexible usage controls, such as daily spending limits or rate limits, by combining these keys with custom on-chain logic.
 
-## Core Features
+#### Benefits & Use Cases:
 
-- **Balance Checking**: Query account balances across different chains
-- **Address and Public Key Derivation**: Derive addresses and public keys following Sig Network derivation function
-- **Transaction Management**: Create, store, and retrieve transactions
-- **Signature Handling**: Process MPC signatures for transactions
-- **Transaction Broadcasting**: Submit signed transactions to the network
+- **Multi-chain** or cross-chain setups are enabled using chain signatures. For example your Ethereum contract can hold and transact with native Bitcoin.
+- **Arbitrary restrictions** (e.g. Rate or time-based - “this key can only send up to 1 ETH per day”) can be enforced by the on-chain contract that manages key usage.
+- **Recovery or fallback** conditions: Instead of storing private keys in a single hardware device, you can use a multi-party computation (MPC) setup.
+- **Signs the arbitrary state of a foreign chain:** Gives your smart contract awareness of whether a transaction it signed went through so that it can perform actions accordingly. For example: allows for a smart contract to keep track of local chain assets based on foreign chain state.
 
-## Installation
+### Contract Background
 
-```bash
-npm install signet.js
-# or
-yarn add signet.js
-# or
-pnpm add signet.js
-```
+The **ChainSignatures** contract:
 
-## Quick Start
-
-Here's a basic example using the EVM implementation:
-
-```ts twoslash
-import { EVM, utils } from 'signet.js'
-// [!include ~/snippets/code/env.ts]
-
-const contract = new utils.chains.near.ChainSignatureContract({
-  networkId: 'testnet',
-  contractId: 'v1.signer-prod.testnet',
-  accountId,
-  keypair,
-})
-
-const evmChain = new EVM({
-  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
-  contract,
-})
-
-// Derive address and public key
-const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
-  accountId,
-  'any_string'
-)
-
-// Check balance
-const balance = await evmChain.getBalance(address)
-
-// Create and sign transaction
-const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
-  {
-    from: '0x...',
-    to: '0x...',
-    value: '1000000000000000000',
-  }
-)
-
-// Sign with MPC
-const signature = await contract.sign({
-  payload: mpcPayloads[0].payload,
-  path: 'any_string',
-  key_version: 0,
-})
-
-// Add signature
-const signedTx = evmChain.addSignature({
-  transaction,
-  mpcSignatures: [signature],
-})
-
-// Broadcast transaction
-const txHash = await evmChain.broadcastTx(signedTx)
-```
-
-## Architecture
-
-The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
-
-For more details check the [Chain](./chain.mdx) page.
-
-## Utility Functions
-
-Besides the Chain classes the library also provide utility functions to assist you on building transactions, requesting signature in wrapped methods.
-
-Currently we support only Near, but we are working on adding support for other chains.
-
-## Repositories
-
-- Signet.js: [https://github.com/sig-net/signet.js](https://github.com/sig-net/signet.js).
-- MPC: [https://github.com/sig-net/mpc](https://github.com/sig-net/mpc).
+- Holds a base public key (`publicKey`), expressed in affine coordinates on the secp256k1 curve.
+- Derives new public keys for each `(user, path)` combination by computing an integer `epsilon` (based on a `path` string and user’s address) and performing an EC point addition:
+  ```
+  DerivedPubKey = BasePubKey + (epsilon × G)
+  ```
+- Allows a user to request a signature on a 32-byte payload by calling `sign(...)`. A minimal deposit may be required to discourage spam; any unused deposit is refunded once the request is completed.
+- Awaits the **MPC network** to compute the actual ECDSA signature offline, then call `respond(...)` with that signature. The contract then emits an event with the signature, and refunds the deposit.
