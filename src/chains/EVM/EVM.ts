@@ -95,8 +95,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
       s: signature.s.startsWith('0x')
         ? (signature.s as `0x${string}`)
         : `0x${signature.s}`,
-      v: BigInt(signature.v),
-      yParity: signature.v % 2,
+      v: BigInt(signature.v + 27), // TODO: This should be handled before assigning the RSVSignature
     }
   }
 
@@ -205,12 +204,17 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getMPCPayloadAndUserOp(userOp: EVMUserOperation): Promise<{
+  async getMPCPayloadAndUserOp(
+    userOp: EVMUserOperation,
+    entryPointAddress?: Address
+  ): Promise<{
     userOp: EVMUserOperation
     mpcPayloads: MPCPayloads
   }> {
     const chainId = await this.client.getChainId()
-    const entryPoint = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as Address
+    const entryPoint =
+      entryPointAddress ||
+      ('0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as Address)
     const userOpHash = keccak256(
       encodePacked(
         ['address', 'uint256', 'bytes32'],
@@ -270,9 +274,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
       ...transaction,
       r: r.startsWith('0x') ? r : (`0x${r}` as `0x${string}`),
       s: s.startsWith('0x') ? s : (`0x${s}` as `0x${string}`),
-      // v: BigInt(v),
-      yParity: Number(v % BigInt(2)),
-      // accessList: [],
+      v: v,
     }
     return serializeTransaction(signedTx)
   }
@@ -284,7 +286,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     mpcSignatures: RSVSignature[]
   }): Hex {
     const { r, s, v } = this.parseSignature(mpcSignatures[0])
-    return concatHex([r, s, numberToHex(Number(v) + 27, { size: 1 })])
+    return concatHex([r, s, numberToHex(Number(v), { size: 1 })])
   }
 
   addTypedDataSignature({
@@ -294,7 +296,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     mpcSignatures: RSVSignature[]
   }): Hex {
     const { r, s, v } = this.parseSignature(mpcSignatures[0])
-    return concatHex([r, s, numberToHex(Number(v) + 27, { size: 1 })])
+    return concatHex([r, s, numberToHex(Number(v), { size: 1 })])
   }
 
   addUserOpSignature({
