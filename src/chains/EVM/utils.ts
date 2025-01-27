@@ -1,26 +1,31 @@
-import { ethers } from 'ethers'
+import { createPublicClient, http, type TransactionRequest } from 'viem'
 
-export async function fetchEVMFeeProperties(
-  providerUrl: string,
-  transaction: ethers.TransactionLike
-): Promise<{
+export interface EVMFeeProperties {
   gasLimit: bigint
   maxFeePerGas: bigint
   maxPriorityFeePerGas: bigint
-  maxFee: bigint
-}> {
-  const provider = new ethers.JsonRpcProvider(providerUrl)
-  const gasLimit = await provider.estimateGas(transaction)
-  const feeData = await provider.getFeeData()
+}
 
-  const maxFeePerGas = feeData.maxFeePerGas ?? ethers.parseUnits('10', 'gwei')
+export async function fetchEVMFeeProperties(
+  providerUrl: string,
+  transaction: TransactionRequest
+): Promise<EVMFeeProperties> {
+  const client = createPublicClient({
+    transport: http(providerUrl),
+  })
+
+  const [gasLimit, feeData] = await Promise.all([
+    client.estimateGas(transaction),
+    client.estimateFeesPerGas(),
+  ])
+
+  const maxFeePerGas = feeData.maxFeePerGas ?? BigInt(10_000_000_000) // 10 gwei
   const maxPriorityFeePerGas =
-    feeData.maxPriorityFeePerGas ?? ethers.parseUnits('10', 'gwei')
+    feeData.maxPriorityFeePerGas ?? BigInt(10_000_000_000) // 10 gwei
 
   return {
     gasLimit,
     maxFeePerGas,
     maxPriorityFeePerGas,
-    maxFee: maxFeePerGas * gasLimit,
   }
 }
