@@ -1,19 +1,24 @@
-## Introduction + How It Works
+## Introduction
+
+Managing multiple accounts across different blockchains is a headache. Every chain has its own wallets, private keys, and authentication systems, making cross-chain interactions complex and fragmented. But what if a single abstract account could seamlessly control multiple accounts across different chains—without compromising security? That's now possible through Chain Signatures.
 
 ### What Are Chain Signatures?
 
-Chain Signatures let you manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions. The system:
-
+Chain Signatures are programmable digital signatures that enable cross-chain control, allowing one account on one blockchain to securely manage accounts and assets on entirely different chains.
+The system:
 - **Derives keys** from a single base key.
-- Allows third parties (e.g., dApps, wallets, or protocols) to request ECDSA signatures on-chain.
-- Introduces flexible usage controls, such as daily spending limits or rate limits, by combining these keys with custom on-chain logic.
+- Allows third parties (e.g., dApps, wallets, or protocols) to **request signatures** on-chain.
+- Introduces **flexible usage controls**, such as daily spending limits or rate limits, by combining these keys with custom on-chain logic.
 
-#### Benefits & Use Cases:
+### Benefits & Use Cases:
 
-- **Multi-chain** or cross-chain setups are enabled using chain signatures. For example your Ethereum contract can hold and transact with native Bitcoin.
-- **Arbitrary restrictions** (e.g. Rate or time-based - “this key can only send up to 1 ETH per day”) can be enforced by the on-chain contract that manages key usage.
-- **Recovery or fallback** conditions: Instead of storing private keys in a single hardware device, you can use a multi-party computation (MPC) setup.
-- **Signs the arbitrary state of a foreign chain:** Gives your smart contract awareness of whether a transaction it signed went through so that it can perform actions accordingly. For example: allows for a smart contract to keep track of local chain assets based on foreign chain state.
+- **One Identity, Many Chains**: Instead of juggling multiple wallets, a single signature from your Ethereum account could authorize actions on any other supported EVM or non-EVM chain, without needing to manage separate private keys.
+- **Seamless Cross-Chain Transactions**: Move assets or execute smart contract functions across different chains, without relying on third-party bridges or centralized custodians.
+- **Usage Controls**: rate or time-based restrictions can be enforced by the on-chain contract that manages key usage (e.g., "this key can only send up to 1 ETH per day").
+- **Recovery or Fallback Conditions**: Instead of storing private keys in a single hardware device, you can use a multi-party computation (MPC) setup that offers user-friendly ways to recover accounts.
+- **Signs the Arbitrary State of a Foreign Chain**: Gives your smart contract awareness of whether a transaction it signed went through so that it can perform actions accordingly. For example, it allows for a smart contract to keep track of local chain assets based on the foreign chain's state.
+
+## How It Works?
 
 ### Contract Background
 
