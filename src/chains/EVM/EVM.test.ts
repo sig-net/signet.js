@@ -1,6 +1,14 @@
 import { secp256k1 } from '@noble/curves/secp256k1'
 import BN from 'bn.js'
-import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
+import {
+  createPublicClient,
+  createWalletClient,
+  encodePacked,
+  http,
+  keccak256,
+  parseEther,
+  toBytes,
+} from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
@@ -36,7 +44,7 @@ describe('EVM', () => {
       return {
         r: r.toString(16).padStart(64, '0'),
         s: s.toString(16).padStart(64, '0'),
-        v: recovery,
+        v: recovery + 27,
       }
     },
     getDerivedPublicKey: async () => {
@@ -164,5 +172,80 @@ describe('EVM', () => {
     })
 
     expect(signature).toBe(walletSignature)
+  })
+
+  it('should sign a user operation', async () => {
+    const userOp = {
+      sender: testAccount.address,
+      nonce: 0n,
+      initCode: '0x' as `0x${string}`,
+      callData: '0x' as `0x${string}`,
+      callGasLimit: 21000n,
+      verificationGasLimit: 21000n,
+      preVerificationGas: 21000n,
+      maxFeePerGas: parseEther('0.001'),
+      maxPriorityFeePerGas: parseEther('0.0001'),
+      paymasterAndData: '0x' as `0x${string}`,
+      signature: '0x' as `0x${string}`,
+    }
+
+    const { mpcPayloads } = await evm.getMPCPayloadAndUserOp(userOp)
+
+    const mpcSignature = await contract.sign({
+      payload: mpcPayloads[0],
+      path: '',
+      key_version: 0,
+    })
+
+    const signedUserOp = evm.addUserOpSignature({
+      userOp,
+      mpcSignatures: [mpcSignature],
+    })
+
+    const entryPoint = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+    const chainId = await publicClient.getChainId()
+    const userOpHash = keccak256(
+      encodePacked(
+        ['address', 'uint256', 'bytes32'],
+        [
+          entryPoint,
+          BigInt(chainId),
+          keccak256(
+            encodePacked(
+              [
+                'address',
+                'uint256',
+                'bytes',
+                'bytes',
+                'uint256',
+                'uint256',
+                'uint256',
+                'uint256',
+                'uint256',
+                'bytes',
+              ],
+              [
+                userOp.sender,
+                userOp.nonce,
+                userOp.initCode,
+                userOp.callData,
+                userOp.callGasLimit,
+                userOp.verificationGasLimit,
+                userOp.preVerificationGas,
+                userOp.maxFeePerGas,
+                userOp.maxPriorityFeePerGas,
+                userOp.paymasterAndData,
+              ]
+            )
+          ),
+        ]
+      )
+    )
+    const walletSignature = await walletClient.signMessage({
+      account: testAccount,
+      message: { raw: toBytes(userOpHash) },
+    })
+
+    expect(signedUserOp.signature).toBe(walletSignature)
   })
 })

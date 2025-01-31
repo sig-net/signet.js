@@ -19,6 +19,7 @@ import {
   type Hash,
   concatHex,
   encodePacked,
+  encodeAbiParameters,
 } from 'viem'
 
 import { Chain } from '@chains/Chain'
@@ -95,7 +96,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
       s: signature.s.startsWith('0x')
         ? (signature.s as `0x${string}`)
         : `0x${signature.s}`,
-      v: BigInt(signature.v + 27), // TODO: This should be handled before assigning the RSVSignature
+      v: BigInt(signature.v),
     }
   }
 
@@ -213,45 +214,50 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }> {
     const chainId = await this.client.getChainId()
     const entryPoint =
-      entryPointAddress ||
-      ('0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789' as Address)
-    const userOpHash = keccak256(
+      entryPointAddress || '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+
+    // 1. Compute the inner hash (userOp fields)
+    const innerUserOpHash = keccak256(
       encodePacked(
-        ['address', 'uint256', 'bytes32'],
         [
-          entryPoint,
-          BigInt(chainId),
-          keccak256(
-            encodePacked(
-              [
-                'address',
-                'uint256',
-                'bytes',
-                'bytes',
-                'uint256',
-                'uint256',
-                'uint256',
-                'uint256',
-                'uint256',
-                'bytes',
-              ],
-              [
-                userOp.sender,
-                userOp.nonce,
-                userOp.initCode,
-                userOp.callData,
-                userOp.callGasLimit,
-                userOp.verificationGasLimit,
-                userOp.preVerificationGas,
-                userOp.maxFeePerGas,
-                userOp.maxPriorityFeePerGas,
-                userOp.paymasterAndData,
-              ]
-            )
-          ),
+          'address',
+          'uint256',
+          'bytes',
+          'bytes',
+          'uint256',
+          'uint256',
+          'uint256',
+          'uint256',
+          'uint256',
+          'bytes',
+        ],
+        [
+          userOp.sender,
+          userOp.nonce,
+          userOp.initCode,
+          userOp.callData,
+          userOp.callGasLimit,
+          userOp.verificationGasLimit,
+          userOp.preVerificationGas,
+          userOp.maxFeePerGas,
+          userOp.maxPriorityFeePerGas,
+          userOp.paymasterAndData,
         ]
       )
     )
+
+    // 2. Compute the correct userOpHash with abi.encode
+    const userOpHash = keccak256(
+      encodeAbiParameters(
+        [
+          { type: 'bytes32' }, // innerUserOpHash
+          { type: 'address' }, // entryPoint
+          { type: 'uint256' }, // chainId
+        ],
+        [innerUserOpHash, entryPoint, BigInt(chainId)]
+      )
+    )
+
     const userOpBytes = toBytes(userOpHash)
 
     return {
@@ -274,7 +280,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
       ...transaction,
       r: r.startsWith('0x') ? r : (`0x${r}` as `0x${string}`),
       s: s.startsWith('0x') ? s : (`0x${s}` as `0x${string}`),
-      v: v,
+      v,
     }
     return serializeTransaction(signedTx)
   }

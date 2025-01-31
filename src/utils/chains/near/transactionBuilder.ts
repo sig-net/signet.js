@@ -4,7 +4,7 @@ import type {
   NetworkId,
 } from '@near-wallet-selector/core'
 import BN from 'bn.js'
-import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
+import { getTransactionLastResult } from 'near-api-js/lib/providers'
 
 import {
   type RSVSignature,
@@ -109,22 +109,7 @@ export const responseToMpcSignature = ({
 }: {
   response: FinalExecutionOutcome
 }): RSVSignature | undefined => {
-  const signature: string = response.receipts_outcome.reduce<string>(
-    (acc: string, curr: ExecutionOutcomeWithId) => {
-      if (acc) {
-        return acc
-      }
-      const { status } = curr.outcome
-      return (
-        (typeof status === 'object' &&
-          status.SuccessValue &&
-          status.SuccessValue !== '' &&
-          Buffer.from(status.SuccessValue, 'base64').toString('utf-8')) ||
-        ''
-      )
-    },
-    ''
-  )
+  const signature: string = getTransactionLastResult(response)
 
   if (signature) {
     const parsedJSONSignature = JSON.parse(signature) as {

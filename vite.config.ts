@@ -1,28 +1,9 @@
-import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 import { defineConfig, type UserConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 
-const pkg = JSON.parse(
-  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
-) as {
-  dependencies?: Record<string, string>
-  devDependencies?: Record<string, string>
-  peerDependencies?: Record<string, string>
-}
-
-const external = [
-  ...Object.keys(pkg.dependencies || {}),
-  ...Object.keys(pkg.peerDependencies || {}),
-  'path',
-  'fs',
-  'crypto',
-  'stream',
-  'util',
-  'events',
-  'buffer',
-]
+const external = ['path', 'fs', 'crypto', 'stream', 'util', 'events', 'buffer']
 
 const getCommonConfig = (mode: string): UserConfig => ({
   build: {
