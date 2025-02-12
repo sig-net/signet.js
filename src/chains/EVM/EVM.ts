@@ -8,7 +8,6 @@ import {
   toBytes,
   type Hex,
   serializeTransaction,
-  type TypedDataDefinition,
   type Signature,
   numberToHex,
   getAddress,
@@ -173,16 +172,13 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getMPCPayloadAndMessage(messageRequest: EVMMessage): Promise<{
-    message: string
+  async getMPCPayloadAndMessage(message: EVMMessage): Promise<{
+    message: EVMMessage
     mpcPayloads: MPCPayloads
   }> {
-    const messageHash = hashMessage(messageRequest.message)
-    const messageBytes = toBytes(messageHash)
-
     return {
-      message: messageRequest.message,
-      mpcPayloads: [Array.from(messageBytes)],
+      message,
+      mpcPayloads: [Array.from(toBytes(hashMessage(message)))],
     }
   }
 
@@ -190,13 +186,9 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     typedData: EVMTypedData
     mpcPayloads: MPCPayloads
   }> {
-    const { from, ...typedData } = typedDataRequest
-    const typedDataHash = hashTypedData(typedData as TypedDataDefinition)
-    const typedDataBytes = toBytes(typedDataHash)
-
     return {
       typedData: typedDataRequest,
-      mpcPayloads: [Array.from(typedDataBytes)],
+      mpcPayloads: [Array.from(toBytes(hashTypedData(typedDataRequest)))],
     }
   }
 

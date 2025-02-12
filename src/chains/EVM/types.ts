@@ -2,8 +2,8 @@ import type {
   Address,
   Hex,
   TransactionRequest,
-  TypedDataDomain,
   TypedDataDefinition,
+  SignableMessage,
 } from 'viem'
 
 export type EVMUnsignedTransaction = TransactionRequest & {
@@ -16,15 +16,9 @@ export interface EVMTransactionRequest
   from: Address
 }
 
-export interface EVMMessage {
-  message: string
-  from: Address
-}
+export type EVMMessage = SignableMessage
 
-export interface EVMTypedData extends Omit<TypedDataDefinition, 'domain'> {
-  domain: TypedDataDomain
-  from: Address
-}
+export type EVMTypedData = TypedDataDefinition
 
 export interface UserOperationV7 {
   sender: Hex

@@ -63,10 +63,7 @@ describe('EVM', async () => {
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
-    const { mpcPayloads } = await evm.getMPCPayloadAndMessage({
-      message,
-      from: testAccount.address,
-    })
+    const { mpcPayloads } = await evm.getMPCPayloadAndMessage(message)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -108,10 +105,7 @@ describe('EVM', async () => {
       },
     }
 
-    const { mpcPayloads } = await evm.getMPCPayloadAndTypedData({
-      ...typedData,
-      from: testAccount.address,
-    })
+    const { mpcPayloads } = await evm.getMPCPayloadAndTypedData(typedData)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
