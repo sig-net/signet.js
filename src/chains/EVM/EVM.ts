@@ -200,6 +200,13 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
+  /**
+   * This implementation is a common step for Biconomy and Alchemy.
+   * Key differences between implementations:
+   * - Signature format: Biconomy omits 0x00 prefix when concatenating, Alchemy includes it
+   * - Version support: Biconomy only supports v6, Alchemy supports both v6 and v7
+   * - Validation: Biconomy uses modules for signature validation, Alchemy uses built-in validation
+   */
   async getMPCPayloadAndUserOp(
     userOp: UserOperationV7 | UserOperationV6,
     entryPointAddress?: Address,
@@ -335,7 +342,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return {
       ...userOp,
       signature: concatHex([
-        '0x00', // case where signer is an SCA.
+        '0x00', // Alchemy specific implementation. Biconomy doesn't include the 0x00 prefix.
         r,
         s,
         numberToHex(Number(yParity + 27), { size: 1 }),
