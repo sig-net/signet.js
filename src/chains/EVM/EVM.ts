@@ -1,4 +1,3 @@
-import { fromHex } from '@cosmjs/encoding'
 import {
   createPublicClient,
   http,
@@ -9,10 +8,8 @@ import {
   toBytes,
   type Hex,
   serializeTransaction,
-  type TransactionSerializable,
   type TypedDataDefinition,
   type Signature,
-  toHex,
   numberToHex,
   getAddress,
   type Address,
@@ -90,13 +87,9 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
   private parseSignature(signature: RSVSignature): Signature {
     return {
-      r: signature.r.startsWith('0x')
-        ? (signature.r as `0x${string}`)
-        : `0x${signature.r}`,
-      s: signature.s.startsWith('0x')
-        ? (signature.s as `0x${string}`)
-        : `0x${signature.s}`,
-      v: BigInt(signature.v),
+      r: `0x${signature.r}`,
+      s: `0x${signature.s}`,
+      yParity: signature.v - 27,
     }
   }
 
@@ -116,13 +109,12 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
       throw new Error('Failed to get derived public key')
     }
 
-    const publicKeyNoPrefix: string = uncompressedPubKey.startsWith('04')
-      ? uncompressedPubKey.substring(2)
+    const publicKeyNoPrefix = uncompressedPubKey.startsWith('04')
+      ? uncompressedPubKey.slice(2)
       : uncompressedPubKey
 
-    const publicKeyBytes = toBytes(toHex(fromHex(publicKeyNoPrefix)))
-    const hash = keccak256(publicKeyBytes)
-    const address = getAddress(hash.slice(-40))
+    const hash = keccak256(Buffer.from(publicKeyNoPrefix, 'hex'))
+    const address = getAddress(`0x${hash.slice(-40)}`)
 
     return {
       address,
@@ -167,9 +159,8 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     mpcPayloads: MPCPayloads
   }> {
     const transaction = await this.attachGasAndNonce(transactionRequest)
-    const serializedTx = serializeTransaction(
-      transaction as TransactionSerializable
-    )
+
+    const serializedTx = serializeTransaction(transaction)
     const txHash = toBytes(keccak256(serializedTx))
 
     return {
@@ -272,17 +263,10 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }: {
     transaction: EVMUnsignedTransaction
     mpcSignatures: RSVSignature[]
-  }): string {
-    const { r, s, v } = this.parseSignature(mpcSignatures[0])
-    if (v === undefined || v === null)
-      throw new Error('Invalid signature: missing v value')
-    const signedTx: TransactionSerializable = {
-      ...transaction,
-      r: r.startsWith('0x') ? r : (`0x${r}` as `0x${string}`),
-      s: s.startsWith('0x') ? s : (`0x${s}` as `0x${string}`),
-      v,
-    }
-    return serializeTransaction(signedTx)
+  }): `0x02${string}` {
+    const signature = this.parseSignature(mpcSignatures[0])
+
+    return serializeTransaction(transaction, signature)
   }
 
   addMessageSignature({
@@ -319,10 +303,10 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async broadcastTx(txSerialized: string): Promise<Hash> {
+  async broadcastTx(txSerialized: `0x${string}`): Promise<Hash> {
     try {
       return await this.client.sendRawTransaction({
-        serializedTransaction: txSerialized as Hex,
+        serializedTransaction: txSerialized,
       })
     } catch (error) {
       console.error('Transaction broadcast failed:', error)

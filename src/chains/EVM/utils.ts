@@ -1,7 +1,7 @@
 import { createPublicClient, http, type TransactionRequest } from 'viem'
 
 export interface EVMFeeProperties {
-  gasLimit: bigint
+  gas: bigint
   maxFeePerGas: bigint
   maxPriorityFeePerGas: bigint
 }
@@ -14,7 +14,7 @@ export async function fetchEVMFeeProperties(
     transport: http(providerUrl),
   })
 
-  const [gasLimit, feeData] = await Promise.all([
+  const [gas, feeData] = await Promise.all([
     client.estimateGas(transaction),
     client.estimateFeesPerGas(),
   ])
@@ -24,7 +24,7 @@ export async function fetchEVMFeeProperties(
     feeData.maxPriorityFeePerGas ?? BigInt(10_000_000_000) // 10 gwei
 
   return {
-    gasLimit,
+    gas,
     maxFeePerGas,
     maxPriorityFeePerGas,
   }
