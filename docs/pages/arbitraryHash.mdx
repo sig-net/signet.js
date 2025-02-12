@@ -81,7 +81,7 @@ requestSignature().then(rid => {
 }).catch(console.error);
 ```
 
-- At this point, the aggregator sees the `SignatureRequested` event, does the off-chain ECDSA signing, and calls `respond(...)`.
+- At this point, the mpc network sees the `SignatureRequested` event, does the off-chain ECDSA signing, and calls `respond(...)`.
 
 ### Retrieve the Signature Once Responded
 
