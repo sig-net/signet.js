@@ -118,10 +118,7 @@ describe('EVM', async () => {
       mpcSignatures: [mpcSignature],
     })
 
-    const walletSignature = await walletClient.signTypedData({
-      account: testAccount,
-      ...typedData,
-    })
+    const walletSignature = await walletClient.signTypedData(typedData)
 
     expect(signature).toBe(walletSignature)
   })
@@ -155,10 +152,7 @@ describe('EVM', async () => {
       mpcSignatures: [mpcSignature],
     })
 
-    const walletSignature = await walletClient.signTransaction({
-      account: testAccount,
-      ...transaction,
-    })
+    const walletSignature = await walletClient.signTransaction(transaction)
 
     expect(signature).toBe(walletSignature)
   })
