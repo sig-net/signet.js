@@ -1,24 +1,19 @@
+import { LocalAccountSigner } from '@aa-sdk/core'
+import { alchemy, sepolia as alchemySepolia } from '@account-kit/infra'
+import { createLightAccountAlchemyClient } from '@account-kit/smart-contracts'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import BN from 'bn.js'
-import {
-  createPublicClient,
-  createWalletClient,
-  encodePacked,
-  http,
-  keccak256,
-  parseEther,
-  toBytes,
-} from 'viem'
+import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
 
-import { EVM } from './EVM'
-
 import type { ChainSignatureContract } from '../ChainSignatureContract'
 import type { UncompressedPubKeySEC1 } from '../types'
 
-describe('EVM', () => {
+import { EVM } from './EVM'
+
+describe('EVM', async () => {
   const privateKey =
     '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
   const testAccount = privateKeyToAccount(privateKey)
@@ -30,6 +25,7 @@ describe('EVM', () => {
   })
 
   const walletClient = createWalletClient({
+    account: testAccount,
     chain: hardhat,
     transport: http(rpcUrl),
   })
@@ -84,7 +80,6 @@ describe('EVM', () => {
     })
 
     const walletSignature = await walletClient.signMessage({
-      account: testAccount,
       message,
     })
 
@@ -96,7 +91,7 @@ describe('EVM', () => {
       domain: {
         name: 'Test',
         version: '1',
-        chainId: 31337,
+        chainId: hardhat.id,
         verifyingContract:
           '0x1234567890123456789012345678901234567890' as `0x${string}`,
       },
@@ -149,7 +144,7 @@ describe('EVM', () => {
         address: testAccount.address,
       }),
       type: 'eip1559' as const,
-      chainId: 31337,
+      chainId: hardhat.id,
       accessList: [],
     }
 
@@ -175,21 +170,31 @@ describe('EVM', () => {
   })
 
   it('should sign a user operation', async () => {
+    const lightAccountClient = await createLightAccountAlchemyClient({
+      transport: alchemy({ apiKey: 'er9VowLvLw2YQbgTaRLudG81JPxs77rT' }),
+      chain: alchemySepolia,
+      signer: LocalAccountSigner.privateKeyToAccountSigner(privateKey),
+    })
+
     const userOp = {
       sender: testAccount.address,
-      nonce: 0n,
+      nonce: '0x0' as `0x${string}`,
       initCode: '0x' as `0x${string}`,
       callData: '0x' as `0x${string}`,
-      callGasLimit: 21000n,
-      verificationGasLimit: 21000n,
-      preVerificationGas: 21000n,
-      maxFeePerGas: parseEther('0.001'),
-      maxPriorityFeePerGas: parseEther('0.0001'),
+      callGasLimit: '0x5208' as `0x${string}`,
+      verificationGasLimit: '0x5208' as `0x${string}`,
+      preVerificationGas: '0x5208' as `0x${string}`,
+      maxFeePerGas: '0x38d7ea4c68000' as `0x${string}`,
+      maxPriorityFeePerGas: '0x5af3107a4000' as `0x${string}`,
       paymasterAndData: '0x' as `0x${string}`,
       signature: '0x' as `0x${string}`,
     }
 
-    const { mpcPayloads } = await evm.getMPCPayloadAndUserOp(userOp)
+    const { mpcPayloads } = await evm.getMPCPayloadAndUserOp(
+      userOp,
+      '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
+      11155111
+    )
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -202,50 +207,10 @@ describe('EVM', () => {
       mpcSignatures: [mpcSignature],
     })
 
-    const entryPoint = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
-    const chainId = await publicClient.getChainId()
-    const userOpHash = keccak256(
-      encodePacked(
-        ['address', 'uint256', 'bytes32'],
-        [
-          entryPoint,
-          BigInt(chainId),
-          keccak256(
-            encodePacked(
-              [
-                'address',
-                'uint256',
-                'bytes',
-                'bytes',
-                'uint256',
-                'uint256',
-                'uint256',
-                'uint256',
-                'uint256',
-                'bytes',
-              ],
-              [
-                userOp.sender,
-                userOp.nonce,
-                userOp.initCode,
-                userOp.callData,
-                userOp.callGasLimit,
-                userOp.verificationGasLimit,
-                userOp.preVerificationGas,
-                userOp.maxFeePerGas,
-                userOp.maxPriorityFeePerGas,
-                userOp.paymasterAndData,
-              ]
-            )
-          ),
-        ]
-      )
-    )
-    const walletSignature = await walletClient.signMessage({
-      account: testAccount,
-      message: { raw: toBytes(userOpHash) },
+    const walletSignature = await lightAccountClient.signUserOperation({
+      uoStruct: userOp,
     })
 
-    expect(signedUserOp.signature).toBe(walletSignature)
+    expect(signedUserOp.signature).toBe(walletSignature.signature)
   })
 })

@@ -15,8 +15,11 @@ import {
   type Address,
   type Hash,
   concatHex,
-  encodePacked,
   encodeAbiParameters,
+  hexToBigInt,
+  concat,
+  pad,
+  isAddress,
 } from 'viem'
 
 import { Chain } from '@chains/Chain'
@@ -26,7 +29,8 @@ import type {
   EVMUnsignedTransaction,
   EVMMessage,
   EVMTypedData,
-  EVMUserOperation,
+  UserOperationV6,
+  UserOperationV7,
 } from '@chains/EVM/types'
 import { fetchEVMFeeProperties } from '@chains/EVM/utils'
 import type {
@@ -197,63 +201,82 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }
 
   async getMPCPayloadAndUserOp(
-    userOp: EVMUserOperation,
-    entryPointAddress?: Address
+    userOp: UserOperationV7 | UserOperationV6,
+    entryPointAddress?: Address,
+    chainIdArgs?: number
   ): Promise<{
-    userOp: EVMUserOperation
+    userOp: UserOperationV7 | UserOperationV6
     mpcPayloads: MPCPayloads
   }> {
-    const chainId = await this.client.getChainId()
+    const chainId = chainIdArgs ?? (await this.client.getChainId())
     const entryPoint =
-      entryPointAddress || '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+      entryPointAddress || '0x0000000071727De22E5E9d8BAf0edAc6f37da032'
 
-    // 1. Compute the inner hash (userOp fields)
-    const innerUserOpHash = keccak256(
-      encodePacked(
-        [
-          'address',
-          'uint256',
-          'bytes',
-          'bytes',
-          'uint256',
-          'uint256',
-          'uint256',
-          'uint256',
-          'uint256',
-          'bytes',
-        ],
-        [
-          userOp.sender,
-          userOp.nonce,
-          userOp.initCode,
-          userOp.callData,
-          userOp.callGasLimit,
-          userOp.verificationGasLimit,
-          userOp.preVerificationGas,
-          userOp.maxFeePerGas,
-          userOp.maxPriorityFeePerGas,
-          userOp.paymasterAndData,
-        ]
-      )
+    const encoded = encodeAbiParameters(
+      [{ type: 'bytes32' }, { type: 'address' }, { type: 'uint256' }],
+      [
+        keccak256(
+          encodeAbiParameters(
+            [
+              { type: 'address' },
+              { type: 'uint256' },
+              { type: 'bytes32' },
+              { type: 'bytes32' },
+              { type: 'bytes32' },
+              { type: 'uint256' },
+              { type: 'bytes32' },
+              { type: 'bytes32' },
+            ],
+            [
+              userOp.sender,
+              hexToBigInt(userOp.nonce),
+              keccak256(
+                'factory' in userOp &&
+                  'factoryData' in userOp &&
+                  userOp.factory &&
+                  userOp.factoryData
+                  ? concat([userOp.factory, userOp.factoryData])
+                  : 'initCode' in userOp
+                    ? userOp.initCode
+                    : '0x'
+              ),
+              keccak256(userOp.callData),
+              concat([
+                pad(userOp.verificationGasLimit, { size: 16 }),
+                pad(userOp.callGasLimit, { size: 16 }),
+              ]),
+              hexToBigInt(userOp.preVerificationGas),
+              concat([
+                pad(userOp.maxPriorityFeePerGas, { size: 16 }),
+                pad(userOp.maxFeePerGas, { size: 16 }),
+              ]),
+              keccak256(
+                'paymaster' in userOp &&
+                  userOp.paymaster &&
+                  isAddress(userOp.paymaster)
+                  ? concat([
+                      userOp.paymaster,
+                      pad(userOp.paymasterVerificationGasLimit, { size: 16 }),
+                      pad(userOp.paymasterPostOpGasLimit, { size: 16 }),
+                      userOp.paymasterData,
+                    ])
+                  : 'paymasterAndData' in userOp
+                    ? userOp.paymasterAndData
+                    : '0x'
+              ),
+            ]
+          )
+        ),
+        entryPoint,
+        BigInt(chainId),
+      ]
     )
 
-    // 2. Compute the correct userOpHash with abi.encode
-    const userOpHash = keccak256(
-      encodeAbiParameters(
-        [
-          { type: 'bytes32' }, // innerUserOpHash
-          { type: 'address' }, // entryPoint
-          { type: 'uint256' }, // chainId
-        ],
-        [innerUserOpHash, entryPoint, BigInt(chainId)]
-      )
-    )
-
-    const userOpBytes = toBytes(userOpHash)
+    const userOpHash = keccak256(encoded)
 
     return {
       userOp,
-      mpcPayloads: [Array.from(userOpBytes)],
+      mpcPayloads: [Array.from(toBytes(hashMessage({ raw: userOpHash })))],
     }
   }
 
@@ -275,8 +298,12 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     message: string
     mpcSignatures: RSVSignature[]
   }): Hex {
-    const { r, s, v } = this.parseSignature(mpcSignatures[0])
-    return concatHex([r, s, numberToHex(Number(v), { size: 1 })])
+    const { r, s, yParity } = this.parseSignature(mpcSignatures[0])
+    if (yParity === undefined) {
+      throw new Error('Missing yParity')
+    }
+
+    return concatHex([r, s, numberToHex(Number(yParity + 27), { size: 1 })])
   }
 
   addTypedDataSignature({
@@ -285,21 +312,34 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     typedData: EVMTypedData
     mpcSignatures: RSVSignature[]
   }): Hex {
-    const { r, s, v } = this.parseSignature(mpcSignatures[0])
-    return concatHex([r, s, numberToHex(Number(v), { size: 1 })])
+    const { r, s, yParity } = this.parseSignature(mpcSignatures[0])
+    if (yParity === undefined) {
+      throw new Error('Missing yParity')
+    }
+
+    return concatHex([r, s, numberToHex(Number(yParity + 27), { size: 1 })])
   }
 
   addUserOpSignature({
     userOp,
     mpcSignatures,
   }: {
-    userOp: EVMUserOperation
+    userOp: UserOperationV7 | UserOperationV6
     mpcSignatures: RSVSignature[]
-  }): EVMUserOperation {
-    const { r, s, v } = this.parseSignature(mpcSignatures[0])
+  }): UserOperationV7 | UserOperationV6 {
+    const { r, s, yParity } = this.parseSignature(mpcSignatures[0])
+    if (yParity === undefined) {
+      throw new Error('Missing yParity')
+    }
+
     return {
       ...userOp,
-      signature: concatHex([r, s, numberToHex(Number(v), { size: 1 })]),
+      signature: concatHex([
+        '0x00', // case where signer is an SCA.
+        r,
+        s,
+        numberToHex(Number(yParity + 27), { size: 1 }),
+      ]),
     }
   }
 

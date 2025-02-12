@@ -26,16 +26,34 @@ export interface EVMTypedData extends Omit<TypedDataDefinition, 'domain'> {
   from: Address
 }
 
-export interface EVMUserOperation {
-  sender: Address
-  nonce: bigint
+export interface UserOperationV7 {
+  sender: Hex
+  nonce: Hex
+  factory: Hex
+  factoryData: Hex
+  callData: Hex
+  callGasLimit: Hex
+  verificationGasLimit: Hex
+  preVerificationGas: Hex
+  maxFeePerGas: Hex
+  maxPriorityFeePerGas: Hex
+  paymaster: Hex
+  paymasterVerificationGasLimit: Hex
+  paymasterPostOpGasLimit: Hex
+  paymasterData: Hex
+  signature: Hex
+}
+
+export interface UserOperationV6 {
+  sender: Hex
+  nonce: Hex
   initCode: Hex
   callData: Hex
-  callGasLimit: bigint
-  verificationGasLimit: bigint
-  preVerificationGas: bigint
-  maxFeePerGas: bigint
-  maxPriorityFeePerGas: bigint
+  callGasLimit: Hex
+  verificationGasLimit: Hex
+  preVerificationGas: Hex
+  maxFeePerGas: Hex
+  maxPriorityFeePerGas: Hex
   paymasterAndData: Hex
   signature: Hex
 }
