@@ -1,12 +1,12 @@
-# Signet.js Documentation
+# Signet.js Quick Start
 
 A TypeScript library for handling interactions with Sig Network MPC and Smart Contracts
 
 ## Supported Chains
 
-- [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
-- [Bitcoin](./chains/bitcoin/bitcoin.mdx) - Bitcoin network
-- [Cosmos Chains](./chains/cosmos.mdx) - Cosmos SDK-based networks
+- [EVM Chains](/api-reference/evm.mdx) - Ethereum and compatible networks
+- [Bitcoin](/api-reference/btc.mdx) - Bitcoin network
+- [Cosmos Chains](/api-reference/cosmos.mdx) - Cosmos SDK-based networks
 
 ## Core Features
 
@@ -85,7 +85,7 @@ const txHash = await evmChain.broadcastTx(signedTx)
 
 The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
 
-For more details check the [Chain](./chain.mdx) page.
+For more details check the [Chain](/primitives/chain-interfaces.mdx) page.
 
 ## Utility Functions
 
