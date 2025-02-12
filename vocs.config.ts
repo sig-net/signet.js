@@ -18,48 +18,92 @@ export default defineConfig({
   },
   sidebar: [
     {
-      text: 'Chain Signatures',
+      text: 'Introduction',
       items: [
         { text: 'Introduction to Chain Signatures', link: '/' },
+        { text: 'Signet.js Quickstart', link: '/introduction/signet-quick-start' },
+      ],
+    },
+    {
+      text: 'Primitives',
+      items: [
+        { text: 'Chain Interfaces', link: '/primitives/chain-interfaces' },
         {
-          text: 'Signing an arbitrary payload hash using Chain Signatures',
-          link: '/arbitraryHash',
+          text: 'Chain Contract Interfaces',
+          link: '/primitives/chain-contract-interfaces',
         },
       ],
     },
     {
-      text: 'Signet.js',
+      text: 'Examples',
       items: [
+        { text: 'Signing an arbitrary hash', link: '/examples/arbitrary-hash' },
         {
-          text: 'Getting Started',
-          items: [
-            { text: 'Overview', link: '/signetjs' },
-            { text: 'Chain Interface', link: '/signetjs/chain' },
-            {
-              text: 'Chain Signatures Contract',
-              link: '/signetjs/chain-signatures-contract',
-            },
-          ],
-        },
-        {
-          text: 'Supported Chains',
-          items: [
-            { text: 'EVM Chains', link: '/signetjs/chains/evm' },
-            {
-              text: 'Bitcoin',
-              items: [
-                { text: 'Overview', link: '/signetjs/chains/bitcoin/bitcoin' },
-                {
-                  text: 'RPC Adapter',
-                  link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
-                },
-              ],
-            },
-            { text: 'Cosmos', link: '/signetjs/chains/cosmos' },
-          ],
+          text: 'Use Ethereum chain signatures to securely sponsor gas fees for calling your Base smart contract',
+          link: '/examples/sponsor-foreign-chain-gas',
         },
       ],
     },
+    {
+      text: 'API Reference',
+      items: [
+        { text: 'EVM', link: '/api-reference/evm' },
+        { text: 'Bitcoin', link: '/api-reference/btc' },
+        { text: 'Cosmos', link: '/api-reference/cosmos' },
+      ],
+    },
+    {
+      text: 'Advanced',
+      items: [
+        {
+          text: 'Implementing a custom Bitcoin RPC adapter',
+          link: '/advanced/btc-rpc-adapter',
+        },
+      ],
+    },
+    // {
+    //   text: 'Chain Signatures',
+    //   items: [
+    //     { text: 'Introduction to Chain Signatures', link: '/' },
+    //     {
+    //       text: 'Signing an arbitrary payload hash using Chain Signatures',
+    //       link: '/arbitraryHash',
+    //     },
+    //   ],
+    // },
+    // {
+    //   text: 'Signet.js',
+    //   items: [
+    //     {
+    //       text: 'Getting Started',
+    //       items: [
+    //         { text: 'Overview', link: '/signetjs' },
+    //         { text: 'Chain Interface', link: '/signetjs/chain' },
+    //         {
+    //           text: 'Chain Signatures Contract',
+    //           link: '/signetjs/chain-signatures-contract',
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       text: 'Supported Chains',
+    //       items: [
+    //         { text: 'EVM Chains', link: '/signetjs/chains/evm' },
+    //         {
+    //           text: 'Bitcoin',
+    //           items: [
+    //             { text: 'Overview', link: '/signetjs/chains/bitcoin/bitcoin' },
+    //             {
+    //               text: 'RPC Adapter',
+    //               link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
+    //             },
+    //           ],
+    //         },
+    //         { text: 'Cosmos', link: '/signetjs/chains/cosmos' },
+    //       ],
+    //     },
+    //   ],
+    // },
   ],
 
   socials: [
