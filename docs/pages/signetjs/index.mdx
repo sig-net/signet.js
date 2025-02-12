@@ -1,0 +1,99 @@
+# Signet.js Documentation
+
+A TypeScript library for handling interactions with Sig Network MPC and Smart Contracts
+
+## Supported Chains
+
+- [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
+- [Bitcoin](./chains/bitcoin/bitcoin.mdx) - Bitcoin network
+- [Cosmos Chains](./chains/cosmos.mdx) - Cosmos SDK-based networks
+
+## Core Features
+
+- **Balance Checking**: Query account balances across different chains
+- **Address and Public Key Derivation**: Derive addresses and public keys following Sig Network derivation function
+- **Transaction Management**: Create, store, and retrieve transactions
+- **Signature Handling**: Process MPC signatures for transactions
+- **Transaction Broadcasting**: Submit signed transactions to the network
+
+## Installation
+
+```bash
+npm install signet.js
+# or
+yarn add signet.js
+# or
+pnpm add signet.js
+```
+
+## Quick Start
+
+Here's a basic example using the EVM implementation:
+
+```ts twoslash
+import { EVM, utils } from 'signet.js'
+// [!include ~/snippets/code/env.ts]
+
+const contract = new utils.chains.near.ChainSignatureContract({
+  networkId: 'testnet',
+  contractId: 'v1.signer-prod.testnet',
+  accountId,
+  keypair,
+})
+
+const evmChain = new EVM({
+  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
+  contract,
+})
+
+// Derive address and public key
+const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
+  accountId,
+  'any_string'
+)
+
+// Check balance
+const balance = await evmChain.getBalance(address)
+
+// Create and sign transaction
+const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
+  {
+    from: '0x...',
+    to: '0x...',
+    value: '1000000000000000000',
+  }
+)
+
+// Sign with MPC
+const signature = await contract.sign({
+  payload: mpcPayloads[0],
+  path: 'any_string',
+  key_version: 0,
+})
+
+// Add signature
+const signedTx = evmChain.addSignature({
+  transaction,
+  mpcSignatures: [signature],
+})
+
+// Broadcast transaction
+const txHash = await evmChain.broadcastTx(signedTx)
+```
+
+## Architecture
+
+The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
+
+For more details check the [Chain](./chain.mdx) page.
+
+## Utility Functions
+
+Besides the Chain classes the library also provide utility functions to assist you on building transactions, requesting signature in wrapped methods.
+
+Currently we support only Near, but we are working on adding support for other chains.
+
+## Repositories
+
+- Signet.js: [https://github.com/sig-net/signet.js](https://github.com/sig-net/signet.js).
+- MPC: [https://github.com/sig-net/mpc](https://github.com/sig-net/mpc).
