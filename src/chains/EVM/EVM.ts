@@ -69,7 +69,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   private async attachGasAndNonce(
     transaction: EVMTransactionRequest
   ): Promise<EVMUnsignedTransaction> {
-    const fees = await fetchEVMFeeProperties(this.rpcUrl, transaction)
+    const fees = await fetchEVMFeeProperties(this.client, transaction)
     const nonce = await this.client.getTransactionCount({
       address: transaction.from,
     })

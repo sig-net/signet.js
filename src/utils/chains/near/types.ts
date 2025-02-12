@@ -17,8 +17,6 @@ Available ChainSignature contracts:
 */
 export type ChainSignatureContractIds = string
 
-export type NFTKeysContracts = string
-
 export type NearNetworkIds = 'mainnet' | 'testnet'
 
 export interface ChainProvider {

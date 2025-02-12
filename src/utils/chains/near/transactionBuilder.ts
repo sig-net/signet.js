@@ -15,10 +15,7 @@ import {
 import { cryptography } from '@utils'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
-import {
-  type NFTKeysContracts,
-  type ChainSignatureContractIds,
-} from '@utils/chains/near/types'
+import { type ChainSignatureContractIds } from '@utils/chains/near/types'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -53,49 +50,6 @@ export const mpcPayloadsToChainSigTransaction = async ({
             path,
             key_version: 0,
           },
-        },
-        gas: NEAR_MAX_GAS.div(new BN(mpcPayloads.length)).toString(),
-        deposit: currentContractFee?.toString() || '1',
-      },
-    })),
-  }
-}
-
-export const mpcPayloadsToNFTKeysTransaction = async ({
-  networkId,
-  chainSigContract,
-  nftKeysContract,
-  mpcPayloads,
-  path,
-  tokenId,
-}: {
-  networkId: NetworkId
-  chainSigContract: ChainSignatureContractIds
-  nftKeysContract: NFTKeysContracts
-  mpcPayloads: MPCPayloads
-  path: KeyDerivationPath
-  tokenId: string
-}): Promise<{
-  receiverId: string
-  actions: Action[]
-}> => {
-  const contract = new ChainSignatureContract({
-    networkId,
-    contractId: chainSigContract,
-  })
-
-  const currentContractFee = await contract.getCurrentSignatureDeposit()
-
-  return {
-    receiverId: nftKeysContract,
-    actions: mpcPayloads.map((payload) => ({
-      type: 'FunctionCall',
-      params: {
-        methodName: 'ckt_sign_hash',
-        args: {
-          token_id: tokenId,
-          path,
-          payload: Array.from(payload),
         },
         gas: NEAR_MAX_GAS.div(new BN(mpcPayloads.length)).toString(),
         deposit: currentContractFee?.toString() || '1',
