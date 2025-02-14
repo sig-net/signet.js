@@ -22,10 +22,10 @@ const chain = new EVM({
 
 ## Methods
 
-<ChainGetBalance nativeToken={'ETH'} chainName={'Ethereum'} />
+<ChainGetBalance />
 <ChainDeriveAddressAndPublicKey chainName={'Ethereum'} />
 
-### processTransactionForSigning
+### getMPCPayloadAndTransaction
 
 Prepares a transaction for MPC signing.
 
@@ -37,12 +37,12 @@ import { EVMTransactionRequest } from 'signet.js'
 const transactionRequest: EVMTransactionRequest = {
   to: '0x...',
   from: '0x...',
-  value: '100000000000000000',
+  value: 100000000000000000n,
   data: '0x...',
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await chain.processTransactionForSigning(transactionRequest)
+  await chain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
 The transaction is enhanced with:

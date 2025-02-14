@@ -60,7 +60,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    *          - mpcPayloads: Array of payloads to be signed by MPC. The order of these payloads must match
    *                         the order of signatures provided to addTransactionSignature()
    */
-  abstract processTransactionForSigning(
+  abstract getMPCPayloadAndTransaction(
     transactionRequest: TransactionRequest
   ): Promise<{
     transaction: UnsignedTransaction
@@ -73,7 +73,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * @param params - Parameters for adding signatures
    * @param params.transaction - The unsigned transaction to add signatures to
    * @param params.mpcSignatures - Array of RSV signatures generated through MPC. Must be in the same order
-   *                              as the payloads returned by processTransactionForSigning()
+   *                              as the payloads returned by getMPCPayloadAndTransaction()
    * @returns The serialized signed transaction ready for broadcast
    */
   abstract addTransactionSignature(params: {

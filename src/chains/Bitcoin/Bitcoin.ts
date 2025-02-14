@@ -226,7 +226,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  async processTransactionForSigning(
+  async getMPCPayloadAndTransaction(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction

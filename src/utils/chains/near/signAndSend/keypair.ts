@@ -34,7 +34,7 @@ export const EVMTransaction = async (
       contract,
     })
 
-    const { transaction, mpcPayloads } = await evm.processTransactionForSigning(
+    const { transaction, mpcPayloads } = await evm.getMPCPayloadAndTransaction(
       req.transaction
     )
 
@@ -88,7 +88,7 @@ export const BTCTransaction = async (
       network: req.chainConfig.network,
     })
 
-    const { transaction, mpcPayloads } = await btc.processTransactionForSigning(
+    const { transaction, mpcPayloads } = await btc.getMPCPayloadAndTransaction(
       req.transaction
     )
 
@@ -146,7 +146,7 @@ export const CosmosTransaction = async (
     })
 
     const { transaction, mpcPayloads } =
-      await cosmos.processTransactionForSigning(req.transaction)
+      await cosmos.getMPCPayloadAndTransaction(req.transaction)
 
     const signatures = await Promise.all(
       mpcPayloads.map(

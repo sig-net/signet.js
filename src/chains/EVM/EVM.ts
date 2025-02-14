@@ -139,7 +139,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return JSON.parse(serialized)
   }
 
-  async processTransactionForSigning(
+  async getMPCPayloadAndTransaction(
     transactionRequest: EVMTransactionRequest
   ): Promise<{
     transaction: EVMUnsignedTransaction
@@ -156,7 +156,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async processMessageForSigning(message: EVMMessage): Promise<{
+  async getMPCPayloadAndMessage(message: EVMMessage): Promise<{
     message: EVMMessage
     mpcPayloads: MPCPayloads
   }> {
@@ -166,7 +166,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async processTypedDataForSigning(typedDataRequest: EVMTypedData): Promise<{
+  async getMPCPayloadAndTypedData(typedDataRequest: EVMTypedData): Promise<{
     typedData: EVMTypedData
     mpcPayloads: MPCPayloads
   }> {

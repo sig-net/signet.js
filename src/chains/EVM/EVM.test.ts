@@ -70,7 +70,7 @@ describe('EVM', async () => {
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
-    const { mpcPayloads } = await evm.processMessageForSigning(message)
+    const { mpcPayloads } = await evm.getMPCPayloadAndMessage(message)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -118,7 +118,7 @@ describe('EVM', async () => {
       },
     }
 
-    const { mpcPayloads } = await evm.processTypedDataForSigning(typedData)
+    const { mpcPayloads } = await evm.getMPCPayloadAndTypedData(typedData)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -165,7 +165,7 @@ describe('EVM', async () => {
     }
 
     const { mpcPayloads, transaction } =
-      await evm.processTransactionForSigning(transactionInput)
+      await evm.getMPCPayloadAndTransaction(transactionInput)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
