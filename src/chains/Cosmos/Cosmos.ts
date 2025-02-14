@@ -138,27 +138,12 @@ export class Cosmos extends Chain<
     return { address, publicKey: derivedKey }
   }
 
-  setTransaction(
-    transaction: CosmosUnsignedTransaction,
-    storageKey: string
-  ): void {
+  serializeTransaction(transaction: CosmosUnsignedTransaction): string {
     const serialized = TxRaw.encode(transaction).finish()
-    window.localStorage.setItem(storageKey, toBase64(serialized))
+    return toBase64(serialized)
   }
 
-  getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): CosmosUnsignedTransaction | undefined {
-    const serialized = window.localStorage.getItem(storageKey)
-    if (!serialized) return undefined
-
-    if (options?.remove) {
-      window.localStorage.removeItem(storageKey)
-    }
-
+  deserializeTransaction(serialized: string): CosmosUnsignedTransaction {
     return TxRaw.decode(fromBase64(serialized))
   }
 

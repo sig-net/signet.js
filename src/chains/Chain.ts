@@ -29,31 +29,22 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   }>
 
   /**
-   * Stores an unsigned transaction in local storage for later use.
-   * Particularly useful for browser-based wallets that redirects the user to a different page.
+   * Serializes an unsigned transaction to a string format.
+   * This is useful for storing or transmitting the transaction.
    *
-   * @param transaction - The unsigned transaction to store
-   * @param storageKey - Unique key to identify the stored transaction
+   * @param transaction - The unsigned transaction to serialize
+   * @returns The serialized transaction string
    */
-  abstract setTransaction(
-    transaction: UnsignedTransaction,
-    storageKey: string
-  ): void
+  abstract serializeTransaction(transaction: UnsignedTransaction): string
 
   /**
-   * Retrieves a previously stored transaction from local storage.
+   * Deserializes a transaction string back into an unsigned transaction object.
+   * This reverses the serialization done by serializeTransaction().
    *
-   * @param storageKey - The key used to store the transaction
-   * @param options - Additional options
-   * @param options.remove - If true, removes the transaction from storage after retrieval
-   * @returns The stored transaction or undefined if not found
+   * @param serialized - The serialized transaction string
+   * @returns The deserialized unsigned transaction
    */
-  abstract getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): UnsignedTransaction | undefined
+  abstract deserializeTransaction(serialized: string): UnsignedTransaction
 
   /**
    * Prepares a transaction for Sig Network MPC signing by creating the necessary payloads.

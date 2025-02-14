@@ -45,7 +45,6 @@ import type {
 export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   private readonly client: PublicClient
   private readonly contract: BaseChainSignatureContract
-  private readonly rpcUrl: string
 
   /**
    * Creates a new EVM chain instance
@@ -63,7 +62,6 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     super()
 
     this.contract = contract
-    this.rpcUrl = rpcUrl
     this.client = createPublicClient({
       transport: http(rpcUrl),
     })
@@ -131,27 +129,14 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     })
   }
 
-  setTransaction(
-    transaction: EVMUnsignedTransaction,
-    storageKey: string
-  ): void {
-    const serializedTransaction = JSON.stringify(transaction, (_, value) =>
+  serializeTransaction(transaction: EVMUnsignedTransaction): string {
+    return JSON.stringify(transaction, (_, value) =>
       typeof value === 'bigint' ? value.toString() : value
     )
-    window.localStorage.setItem(storageKey, serializedTransaction)
   }
 
-  getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): EVMUnsignedTransaction | undefined {
-    const txSerialized = window.localStorage.getItem(storageKey)
-    if (options?.remove) {
-      window.localStorage.removeItem(storageKey)
-    }
-    return txSerialized ? JSON.parse(txSerialized) : undefined
+  deserializeTransaction(serialized: string): EVMUnsignedTransaction {
+    return JSON.parse(serialized)
   }
 
   async processTransactionForSigning(
