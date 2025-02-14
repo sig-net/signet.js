@@ -6,12 +6,17 @@ import type {
 
 export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   /**
-   * Gets the native token balance for a given address
+   * Gets the native token balance and decimals for a given address
    *
    * @param address - The address to check
-   * @returns Promise resolving to the balance as a bigint, on the chain base units
+   * @returns Promise resolving to an object containing:
+   *          - balance: The balance as a bigint, in the chain's base units
+   *          - decimals: The number of decimals used to format the balance
    */
-  abstract getBalance(address: string): Promise<bigint>
+  abstract getBalance(address: string): Promise<{
+    balance: bigint
+    decimals: number
+  }>
 
   /**
    * Uses Sig Network Key Derivation Function to derive the address and public key. from a signer ID and string path.

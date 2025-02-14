@@ -123,10 +123,16 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getBalance(address: string): Promise<bigint> {
-    return await this.client.getBalance({
+  async getBalance(
+    address: string
+  ): Promise<{ balance: bigint; decimals: number }> {
+    const balance = await this.client.getBalance({
       address: address as Address,
     })
+    return {
+      balance,
+      decimals: 18,
+    }
   }
 
   serializeTransaction(transaction: EVMUnsignedTransaction): string {

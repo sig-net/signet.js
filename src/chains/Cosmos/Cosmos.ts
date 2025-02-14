@@ -90,9 +90,11 @@ export class Cosmos extends Chain<
     }
   }
 
-  async getBalance(address: string): Promise<bigint> {
+  async getBalance(
+    address: string
+  ): Promise<{ balance: bigint; decimals: number }> {
     try {
-      const { restUrl, denom } = await this.getChainInfo()
+      const { restUrl, denom, decimals } = await this.getChainInfo()
 
       const response = await fetch(
         `${restUrl}/cosmos/bank/v1beta1/balances/${address}`
@@ -106,7 +108,10 @@ export class Cosmos extends Chain<
       const balance = data.balances.find((b) => b.denom === denom)
       const amount = balance?.amount ?? '0'
 
-      return BigInt(amount)
+      return {
+        balance: BigInt(amount),
+        decimals,
+      }
     } catch (error) {
       console.error('Failed to fetch Cosmos balance:', error)
       throw new Error('Failed to fetch Cosmos balance')
