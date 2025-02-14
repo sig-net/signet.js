@@ -58,7 +58,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to an object containing:
    *          - transaction: The unsigned transaction
    *          - mpcPayloads: Array of payloads to be signed by MPC. The order of these payloads must match
-   *                         the order of signatures provided to addSignature()
+   *                         the order of signatures provided to addTransactionSignature()
    */
   abstract processTransactionForSigning(
     transactionRequest: TransactionRequest
