@@ -62,15 +62,16 @@ const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
 )
 
 // Check balance
-const balance = await evmChain.getBalance(address)
+const { balance, decimals } = await evmChain.getBalance(address)
 
 // Create and sign transaction
-const { transaction, mpcPayloads } =
-  await evmChain.processTransactionForSigning({
+const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
+  {
     from: '0x...',
     to: '0x...',
     value: '1000000000000000000',
-  })
+  }
+)
 
 // Sign with MPC
 const signature = await contract.sign({
@@ -99,4 +100,4 @@ For detailed documentation, including:
 - Implementation guides
 - API reference
 
-Visit our [documentation site](https://signet-js.vercel.app/).
+Visit our [documentation site](https://docs.sig.network/).

@@ -123,10 +123,16 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getBalance(address: string): Promise<bigint> {
-    return await this.client.getBalance({
+  async getBalance(
+    address: string
+  ): Promise<{ balance: bigint; decimals: number }> {
+    const balance = await this.client.getBalance({
       address: address as Address,
     })
+    return {
+      balance,
+      decimals: 18,
+    }
   }
 
   serializeTransaction(transaction: EVMUnsignedTransaction): string {
@@ -139,7 +145,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return JSON.parse(serialized)
   }
 
-  async processTransactionForSigning(
+  async getMPCPayloadAndTransaction(
     transactionRequest: EVMTransactionRequest
   ): Promise<{
     transaction: EVMUnsignedTransaction
@@ -156,7 +162,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async processMessageForSigning(message: EVMMessage): Promise<{
+  async getMPCPayloadAndMessage(message: EVMMessage): Promise<{
     message: EVMMessage
     mpcPayloads: MPCPayloads
   }> {
@@ -166,7 +172,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async processTypedDataForSigning(typedDataRequest: EVMTypedData): Promise<{
+  async getMPCPayloadAndTypedData(typedDataRequest: EVMTypedData): Promise<{
     typedData: EVMTypedData
     mpcPayloads: MPCPayloads
   }> {

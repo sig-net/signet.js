@@ -160,8 +160,14 @@ export class Bitcoin extends Chain<
     return psbt
   }
 
-  async getBalance(address: string): Promise<bigint> {
-    return BigInt(await this.btcRpcAdapter.getBalance(address))
+  async getBalance(
+    address: string
+  ): Promise<{ balance: bigint; decimals: number }> {
+    const balance = BigInt(await this.btcRpcAdapter.getBalance(address))
+    return {
+      balance,
+      decimals: 8,
+    }
   }
 
   async deriveAddressAndPublicKey(
@@ -226,7 +232,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  async processTransactionForSigning(
+  async getMPCPayloadAndTransaction(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction

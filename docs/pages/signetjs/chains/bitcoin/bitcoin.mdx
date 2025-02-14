@@ -40,10 +40,10 @@ For detailed implementation and configuration options, see the [RPC Adapter](/si
 
 ## Methods
 
-<ChainGetBalance nativeToken={'BTC'} chainName={'Bitcoin'} />
+<ChainGetBalance />
 <ChainDeriveAddressAndPublicKey chainName={'Bitcoin P2WPKH'} />
 
-### processTransactionForSigning
+### getMPCPayloadAndTransaction
 
 Prepares a transaction for MPC signing.
 
@@ -61,7 +61,7 @@ const transactionRequest: BTCTransactionRequest = {
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await bitcoinChain.processTransactionForSigning(transactionRequest)
+  await bitcoinChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
 ### addTransactionSignature

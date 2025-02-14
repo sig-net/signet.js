@@ -21,10 +21,10 @@ const cosmosChain = new Cosmos({
 
 ## Methods
 
-<ChainGetBalance nativeToken={'ATOM'} chainName={'Cosmos'} />
+<ChainGetBalance />
 <ChainDeriveAddressAndPublicKey chainName={'Cosmos (bech32)'} />
 
-### processTransactionForSigning
+### getMPCPayloadAndTransaction
 
 Prepares a transaction for MPC signing.
 
@@ -57,7 +57,7 @@ const transactionRequest: CosmosTransactionRequest = {
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await cosmosChain.processTransactionForSigning(transactionRequest)
+  await cosmosChain.getMPCPayloadAndTransaction(transactionRequest)
 ```
 
 ### addTransactionSignature
