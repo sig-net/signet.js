@@ -160,9 +160,8 @@ export class Bitcoin extends Chain<
     return psbt
   }
 
-  async getBalance(address: string): Promise<string> {
-    const balance = await this.btcRpcAdapter.getBalance(address)
-    return Bitcoin.toBTC(balance).toString()
+  async getBalance(address: string): Promise<bigint> {
+    return BigInt(await this.btcRpcAdapter.getBalance(address))
   }
 
   async deriveAddressAndPublicKey(

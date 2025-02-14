@@ -9,9 +9,9 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * Gets the native token balance for a given address
    *
    * @param address - The address to check
-   * @returns Promise resolving to the balance as a string, formatted according to the chain's decimal places (e.g. ETH, BTC, etc.)
+   * @returns Promise resolving to the balance as a bigint, on the chain base units
    */
-  abstract getBalance(address: string): Promise<string>
+  abstract getBalance(address: string): Promise<bigint>
 
   /**
    * Uses Sig Network Key Derivation Function to derive the address and public key. from a signer ID and string path.
