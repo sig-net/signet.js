@@ -1,6 +1,6 @@
-import ChainGetBalance from '../../snippets/docs/chain/get-balance.mdx'
-import ChainDeriveAddressAndPublicKey from '../../snippets/docs/chain/derive-address-and-public-key.mdx'
-import ChainBroadcastTx from '../../snippets/docs/chain/broadcast-tx.mdx'
+import ChainGetBalance from '../../../snippets/docs/chain/get-balance.mdx'
+import ChainDeriveAddressAndPublicKey from '../../../snippets/docs/chain/derive-address-and-public-key.mdx'
+import ChainBroadcastTx from '../../../snippets/docs/chain/broadcast-tx.mdx'
 
 # Cosmos Chain Implementation
 
@@ -24,7 +24,7 @@ const cosmosChain = new Cosmos({
 <ChainGetBalance nativeToken={'ATOM'} chainName={'Cosmos'} />
 <ChainDeriveAddressAndPublicKey chainName={'Cosmos (bech32)'} />
 
-### getMPCPayloadAndTransaction
+### processTransactionForSigning
 
 Prepares a transaction for MPC signing.
 
@@ -57,10 +57,10 @@ const transactionRequest: CosmosTransactionRequest = {
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await cosmosChain.getMPCPayloadAndTransaction(transactionRequest)
+  await cosmosChain.processTransactionForSigning(transactionRequest)
 ```
 
-### addSignature
+### addTransactionSignature
 
 Adds signatures to a transaction.
 
@@ -78,7 +78,7 @@ const mpcSignatures: RSVSignature[] = [
   },
 ]
 
-const signedTx = cosmosChain.addSignature({
+const signedTx = cosmosChain.addTransactionSignature({
   transaction: unsignedTransaction,
   mpcSignatures,
 })

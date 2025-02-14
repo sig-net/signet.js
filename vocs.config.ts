@@ -1,9 +1,9 @@
 import { defineConfig, type Config } from 'vocs'
 
 export default defineConfig({
-  title: 'Signet.js',
+  title: 'Sig Network',
   description:
-    'A TypeScript library for handling multi-chain transactions and signatures using MPC',
+    'Manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions',
   twoslash: {
     compilerOptions: {
       strict: true,
@@ -18,28 +18,46 @@ export default defineConfig({
   },
   sidebar: [
     {
-      text: 'Getting Started',
+      text: 'Chain Signatures',
       items: [
-        { text: 'Overview', link: '/' },
-        { text: 'Chain Interface', link: '/chain' },
+        { text: 'Introduction to Chain Signatures', link: '/' },
         {
-          text: 'Chain Signatures Contract',
-          link: '/chain-signatures-contract',
+          text: 'Signing an arbitrary payload hash using Chain Signatures',
+          link: '/arbitraryHash',
         },
       ],
     },
     {
-      text: 'Supported Chains',
+      text: 'Signet.js',
       items: [
-        { text: 'EVM Chains', link: '/chains/evm' },
         {
-          text: 'Bitcoin',
+          text: 'Getting Started',
           items: [
-            { text: 'Overview', link: '/chains/bitcoin/bitcoin' },
-            { text: 'RPC Adapter', link: '/chains/bitcoin/btc-rpc-adapter' },
+            { text: 'Overview', link: '/signetjs' },
+            { text: 'Chain Interface', link: '/signetjs/chain' },
+            {
+              text: 'Chain Signatures Contract',
+              link: '/signetjs/chain-signatures-contract',
+            },
           ],
         },
-        { text: 'Cosmos', link: '/chains/cosmos' },
+        {
+          text: 'Supported Chains',
+          items: [
+            { text: 'EVM Chains', link: '/signetjs/chains/evm' },
+            {
+              text: 'Bitcoin',
+              items: [
+                { text: 'Overview', link: '/signetjs/chains/bitcoin/bitcoin' },
+                {
+                  text: 'RPC Adapter',
+                  link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
+                },
+              ],
+            },
+            { text: 'Cosmos', link: '/signetjs/chains/cosmos' },
+          ],
+        },
       ],
     },
   ],

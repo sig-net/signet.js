@@ -111,6 +111,11 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "hardhat.config.mts",
+    "vitest.config.ts"
+  ],
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "node_modules", "dist"]
 }

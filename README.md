@@ -65,13 +65,12 @@ const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
 const balance = await evmChain.getBalance(address)
 
 // Create and sign transaction
-const { transaction, mpcPayloads } = await evmChain.getMPCPayloadAndTransaction(
-  {
+const { transaction, mpcPayloads } =
+  await evmChain.processTransactionForSigning({
     from: '0x...',
     to: '0x...',
     value: '1000000000000000000',
-  }
-)
+  })
 
 // Sign with MPC
 const signature = await contract.sign({
@@ -81,7 +80,7 @@ const signature = await contract.sign({
 })
 
 // Add signature
-const signedTx = evmChain.addSignature({
+const signedTx = evmChain.addTransactionSignature({
   transaction,
   mpcSignatures: [signature],
 })

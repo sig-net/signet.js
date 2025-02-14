@@ -4,7 +4,7 @@ import type {
   NetworkId,
 } from '@near-wallet-selector/core'
 import BN from 'bn.js'
-import { type ExecutionOutcomeWithId } from 'near-api-js/lib/providers'
+import { getTransactionLastResult } from 'near-api-js/lib/providers'
 
 import {
   type RSVSignature,
@@ -15,10 +15,7 @@ import {
 import { cryptography } from '@utils'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
 import { NEAR_MAX_GAS } from '@utils/chains/near/constants'
-import {
-  type NFTKeysContracts,
-  type ChainSignatureContractIds,
-} from '@utils/chains/near/types'
+import { type ChainSignatureContractIds } from '@utils/chains/near/types'
 
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
@@ -61,77 +58,15 @@ export const mpcPayloadsToChainSigTransaction = async ({
   }
 }
 
-export const mpcPayloadsToNFTKeysTransaction = async ({
-  networkId,
-  chainSigContract,
-  nftKeysContract,
-  mpcPayloads,
-  path,
-  tokenId,
-}: {
-  networkId: NetworkId
-  chainSigContract: ChainSignatureContractIds
-  nftKeysContract: NFTKeysContracts
-  mpcPayloads: MPCPayloads
-  path: KeyDerivationPath
-  tokenId: string
-}): Promise<{
-  receiverId: string
-  actions: Action[]
-}> => {
-  const contract = new ChainSignatureContract({
-    networkId,
-    contractId: chainSigContract,
-  })
-
-  const currentContractFee = await contract.getCurrentSignatureDeposit()
-
-  return {
-    receiverId: nftKeysContract,
-    actions: mpcPayloads.map((payload) => ({
-      type: 'FunctionCall',
-      params: {
-        methodName: 'ckt_sign_hash',
-        args: {
-          token_id: tokenId,
-          path,
-          payload: Array.from(payload),
-        },
-        gas: NEAR_MAX_GAS.div(new BN(mpcPayloads.length)).toString(),
-        deposit: currentContractFee?.toString() || '1',
-      },
-    })),
-  }
-}
-
 export const responseToMpcSignature = ({
   response,
 }: {
   response: FinalExecutionOutcome
 }): RSVSignature | undefined => {
-  const signature: string = response.receipts_outcome.reduce<string>(
-    (acc: string, curr: ExecutionOutcomeWithId) => {
-      if (acc) {
-        return acc
-      }
-      const { status } = curr.outcome
-      return (
-        (typeof status === 'object' &&
-          status.SuccessValue &&
-          status.SuccessValue !== '' &&
-          Buffer.from(status.SuccessValue, 'base64').toString('utf-8')) ||
-        ''
-      )
-    },
-    ''
-  )
+  const signature: MPCSignature = getTransactionLastResult(response)
 
   if (signature) {
-    const parsedJSONSignature = JSON.parse(signature) as {
-      Ok: MPCSignature
-    }
-
-    return cryptography.toRSV(parsedJSONSignature.Ok)
+    return cryptography.toRSV(signature)
   } else {
     return undefined
   }

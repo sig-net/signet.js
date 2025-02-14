@@ -90,9 +90,9 @@ export class Cosmos extends Chain<
     }
   }
 
-  async getBalance(address: string): Promise<string> {
+  async getBalance(address: string): Promise<bigint> {
     try {
-      const { restUrl, denom, decimals } = await this.getChainInfo()
+      const { restUrl, denom } = await this.getChainInfo()
 
       const response = await fetch(
         `${restUrl}/cosmos/bank/v1beta1/balances/${address}`
@@ -106,10 +106,7 @@ export class Cosmos extends Chain<
       const balance = data.balances.find((b) => b.denom === denom)
       const amount = balance?.amount ?? '0'
 
-      const formattedBalance = (
-        parseInt(amount) / Math.pow(10, decimals)
-      ).toString()
-      return formattedBalance
+      return BigInt(amount)
     } catch (error) {
       console.error('Failed to fetch Cosmos balance:', error)
       throw new Error('Failed to fetch Cosmos balance')
@@ -141,31 +138,16 @@ export class Cosmos extends Chain<
     return { address, publicKey: derivedKey }
   }
 
-  setTransaction(
-    transaction: CosmosUnsignedTransaction,
-    storageKey: string
-  ): void {
+  serializeTransaction(transaction: CosmosUnsignedTransaction): string {
     const serialized = TxRaw.encode(transaction).finish()
-    window.localStorage.setItem(storageKey, toBase64(serialized))
+    return toBase64(serialized)
   }
 
-  getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): CosmosUnsignedTransaction | undefined {
-    const serialized = window.localStorage.getItem(storageKey)
-    if (!serialized) return undefined
-
-    if (options?.remove) {
-      window.localStorage.removeItem(storageKey)
-    }
-
+  deserializeTransaction(serialized: string): CosmosUnsignedTransaction {
     return TxRaw.decode(fromBase64(serialized))
   }
 
-  async getMPCPayloadAndTransaction(
+  async processTransactionForSigning(
     transactionRequest: CosmosTransactionRequest
   ): Promise<{
     transaction: CosmosUnsignedTransaction
@@ -238,7 +220,7 @@ export class Cosmos extends Chain<
     }
   }
 
-  addSignature({
+  addTransactionSignature({
     transaction,
     mpcSignatures,
   }: {

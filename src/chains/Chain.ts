@@ -9,9 +9,9 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * Gets the native token balance for a given address
    *
    * @param address - The address to check
-   * @returns Promise resolving to the balance as a string, formatted according to the chain's decimal places (e.g. ETH, BTC, etc.)
+   * @returns Promise resolving to the balance as a bigint, on the chain base units
    */
-  abstract getBalance(address: string): Promise<string>
+  abstract getBalance(address: string): Promise<bigint>
 
   /**
    * Uses Sig Network Key Derivation Function to derive the address and public key. from a signer ID and string path.
@@ -29,31 +29,22 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   }>
 
   /**
-   * Stores an unsigned transaction in local storage for later use.
-   * Particularly useful for browser-based wallets that redirects the user to a different page.
+   * Serializes an unsigned transaction to a string format.
+   * This is useful for storing or transmitting the transaction.
    *
-   * @param transaction - The unsigned transaction to store
-   * @param storageKey - Unique key to identify the stored transaction
+   * @param transaction - The unsigned transaction to serialize
+   * @returns The serialized transaction string
    */
-  abstract setTransaction(
-    transaction: UnsignedTransaction,
-    storageKey: string
-  ): void
+  abstract serializeTransaction(transaction: UnsignedTransaction): string
 
   /**
-   * Retrieves a previously stored transaction from local storage.
+   * Deserializes a transaction string back into an unsigned transaction object.
+   * This reverses the serialization done by serializeTransaction().
    *
-   * @param storageKey - The key used to store the transaction
-   * @param options - Additional options
-   * @param options.remove - If true, removes the transaction from storage after retrieval
-   * @returns The stored transaction or undefined if not found
+   * @param serialized - The serialized transaction string
+   * @returns The deserialized unsigned transaction
    */
-  abstract getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): UnsignedTransaction | undefined
+  abstract deserializeTransaction(serialized: string): UnsignedTransaction
 
   /**
    * Prepares a transaction for Sig Network MPC signing by creating the necessary payloads.
@@ -67,9 +58,9 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to an object containing:
    *          - transaction: The unsigned transaction
    *          - mpcPayloads: Array of payloads to be signed by MPC. The order of these payloads must match
-   *                         the order of signatures provided to addSignature()
+   *                         the order of signatures provided to addTransactionSignature()
    */
-  abstract getMPCPayloadAndTransaction(
+  abstract processTransactionForSigning(
     transactionRequest: TransactionRequest
   ): Promise<{
     transaction: UnsignedTransaction
@@ -82,10 +73,10 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * @param params - Parameters for adding signatures
    * @param params.transaction - The unsigned transaction to add signatures to
    * @param params.mpcSignatures - Array of RSV signatures generated through MPC. Must be in the same order
-   *                              as the payloads returned by getMPCPayloadAndTransaction()
+   *                              as the payloads returned by processTransactionForSigning()
    * @returns The serialized signed transaction ready for broadcast
    */
-  abstract addSignature(params: {
+  abstract addTransactionSignature(params: {
     transaction: UnsignedTransaction
     mpcSignatures: RSVSignature[]
   }): string

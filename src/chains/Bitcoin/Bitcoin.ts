@@ -160,9 +160,8 @@ export class Bitcoin extends Chain<
     return psbt
   }
 
-  async getBalance(address: string): Promise<string> {
-    const balance = await this.btcRpcAdapter.getBalance(address)
-    return Bitcoin.toBTC(balance).toString()
+  async getBalance(address: string): Promise<bigint> {
+    return BigInt(await this.btcRpcAdapter.getBalance(address))
   }
 
   async deriveAddressAndPublicKey(
@@ -196,17 +195,15 @@ export class Bitcoin extends Chain<
     return { address, publicKey: derivedKey }
   }
 
-  setTransaction(
-    transaction: BTCUnsignedTransaction,
-    storageKey: string
-  ): void {
-    window.localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        psbt: transaction.psbt.toHex(),
-        publicKey: transaction.publicKey,
-      })
-    )
+  serializeTransaction(transaction: BTCUnsignedTransaction): string {
+    return JSON.stringify({
+      psbt: transaction.psbt.toHex(),
+      publicKey: transaction.publicKey,
+    })
+  }
+
+  deserializeTransaction(serialized: string): BTCUnsignedTransaction {
+    return JSON.parse(serialized)
   }
 
   getTransaction(
@@ -229,7 +226,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  async getMPCPayloadAndTransaction(
+  async processTransactionForSigning(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction
@@ -267,7 +264,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  addSignature({
+  addTransactionSignature({
     transaction: { psbt, publicKey },
     mpcSignatures,
   }: {
