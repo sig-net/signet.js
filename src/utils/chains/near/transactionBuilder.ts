@@ -63,14 +63,10 @@ export const responseToMpcSignature = ({
 }: {
   response: FinalExecutionOutcome
 }): RSVSignature | undefined => {
-  const signature: string = getTransactionLastResult(response)
+  const signature: MPCSignature = getTransactionLastResult(response)
 
   if (signature) {
-    const parsedJSONSignature = JSON.parse(signature) as {
-      Ok: MPCSignature
-    }
-
-    return cryptography.toRSV(parsedJSONSignature.Ok)
+    return cryptography.toRSV(signature)
   } else {
     return undefined
   }
