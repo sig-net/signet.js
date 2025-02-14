@@ -3,7 +3,14 @@ import { alchemy, sepolia as alchemySepolia } from '@account-kit/infra'
 import { createLightAccountAlchemyClient } from '@account-kit/smart-contracts'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import BN from 'bn.js'
-import { createPublicClient, createWalletClient, http, parseEther } from 'viem'
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  parseEther,
+  recoverMessageAddress,
+  recoverTypedDataAddress,
+} from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
@@ -80,6 +87,12 @@ describe('EVM', async () => {
       message,
     })
 
+    const recoveredAddress = await recoverMessageAddress({
+      message,
+      signature: walletSignature,
+    })
+
+    expect(recoveredAddress).toBe(testAccount.address)
     expect(signature).toBe(walletSignature)
   })
 
@@ -120,11 +133,23 @@ describe('EVM', async () => {
 
     const walletSignature = await walletClient.signTypedData(typedData)
 
+    const recoveredAddress = await recoverTypedDataAddress({
+      ...typedData,
+      signature: walletSignature,
+    })
+
+    expect(recoveredAddress).toBe(testAccount.address)
     expect(signature).toBe(walletSignature)
   })
 
   it('should sign a transaction', async () => {
-    const transaction = {
+    await publicClient.request({
+      // @ts-expect-error: hardhat_setBalance is valid as we are using a hardhat client
+      method: 'hardhat_setBalance',
+      params: [testAccount.address, '0x4563918244f400000000'], // 5 ETH
+    })
+
+    const transactionInput = {
       from: testAccount.address,
       to: '0x1234567890123456789012345678901234567890' as `0x${string}`,
       value: parseEther('1'),
@@ -139,7 +164,8 @@ describe('EVM', async () => {
       accessList: [],
     }
 
-    const { mpcPayloads } = await evm.getMPCPayloadAndTransaction(transaction)
+    const { mpcPayloads, transaction } =
+      await evm.getMPCPayloadAndTransaction(transactionInput)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -152,9 +178,22 @@ describe('EVM', async () => {
       mpcSignatures: [mpcSignature],
     })
 
-    const walletSignature = await walletClient.signTransaction(transaction)
+    const walletSignature = await walletClient.signTransaction(transactionInput)
 
     expect(signature).toBe(walletSignature)
+
+    const tx = evm.addSignature({
+      transaction,
+      mpcSignatures: [{ mpcSignature }],
+    })
+
+    const txHash = await evm.broadcastTx(tx)
+
+    const txReceipt = await publicClient.getTransactionReceipt({
+      hash: txHash,
+    })
+
+    expect(txReceipt.status).toBe('success')
   })
 
   it('should sign a user operation', async () => {
