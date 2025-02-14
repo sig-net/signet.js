@@ -155,7 +155,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return txSerialized ? JSON.parse(txSerialized) : undefined
   }
 
-  async getMPCPayloadAndTransaction(
+  async processTransactionForSigning(
     transactionRequest: EVMTransactionRequest
   ): Promise<{
     transaction: EVMUnsignedTransaction
@@ -172,7 +172,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getMPCPayloadAndMessage(message: EVMMessage): Promise<{
+  async processMessageForSigning(message: EVMMessage): Promise<{
     message: EVMMessage
     mpcPayloads: MPCPayloads
   }> {
@@ -182,7 +182,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getMPCPayloadAndTypedData(typedDataRequest: EVMTypedData): Promise<{
+  async processTypedDataForSigning(typedDataRequest: EVMTypedData): Promise<{
     typedData: EVMTypedData
     mpcPayloads: MPCPayloads
   }> {
@@ -199,7 +199,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
    * - Version support: Biconomy only supports v6, Alchemy supports both v6 and v7
    * - Validation: Biconomy uses modules for signature validation, Alchemy uses built-in validation
    */
-  async getMPCPayloadAndUserOp(
+  async processUserOpForSigning(
     userOp: UserOperationV7 | UserOperationV6,
     entryPointAddress?: Address,
     chainIdArgs?: number
@@ -279,7 +279,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  addSignature({
+  addTransactionSignature({
     transaction,
     mpcSignatures,
   }: {

@@ -70,7 +70,7 @@ describe('EVM', async () => {
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
-    const { mpcPayloads } = await evm.getMPCPayloadAndMessage(message)
+    const { mpcPayloads } = await evm.processMessageForSigning(message)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -118,7 +118,7 @@ describe('EVM', async () => {
       },
     }
 
-    const { mpcPayloads } = await evm.getMPCPayloadAndTypedData(typedData)
+    const { mpcPayloads } = await evm.processTypedDataForSigning(typedData)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -165,7 +165,7 @@ describe('EVM', async () => {
     }
 
     const { mpcPayloads, transaction } =
-      await evm.getMPCPayloadAndTransaction(transactionInput)
+      await evm.processTransactionForSigning(transactionInput)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -173,19 +173,14 @@ describe('EVM', async () => {
       key_version: 0,
     })
 
-    const signature = evm.addSignature({
+    const tx = evm.addTransactionSignature({
       transaction,
       mpcSignatures: [mpcSignature],
     })
 
     const walletSignature = await walletClient.signTransaction(transactionInput)
 
-    expect(signature).toBe(walletSignature)
-
-    const tx = evm.addSignature({
-      transaction,
-      mpcSignatures: [{ mpcSignature }],
-    })
+    expect(tx).toBe(walletSignature)
 
     const txHash = await evm.broadcastTx(tx)
 
@@ -217,7 +212,7 @@ describe('EVM', async () => {
       signature: '0x' as `0x${string}`,
     }
 
-    const { mpcPayloads } = await evm.getMPCPayloadAndUserOp(
+    const { mpcPayloads } = await evm.processUserOpForSigning(
       userOp,
       '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
       11155111

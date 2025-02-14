@@ -229,7 +229,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  async getMPCPayloadAndTransaction(
+  async processTransactionForSigning(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction
@@ -267,7 +267,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  addSignature({
+  addTransactionSignature({
     transaction: { psbt, publicKey },
     mpcSignatures,
   }: {
