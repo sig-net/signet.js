@@ -70,7 +70,7 @@ describe('EVM', async () => {
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
-    const { mpcPayloads } = await evm.getMPCPayloadAndMessage(message)
+    const { mpcPayloads } = await evm.prepareMessageForSigning(message)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -78,7 +78,7 @@ describe('EVM', async () => {
       key_version: 0,
     })
 
-    const signature = evm.addMessageSignature({
+    const signature = evm.attachMessageSignature({
       message,
       mpcSignatures: [mpcSignature],
     })
@@ -118,7 +118,7 @@ describe('EVM', async () => {
       },
     }
 
-    const { mpcPayloads } = await evm.getMPCPayloadAndTypedData(typedData)
+    const { mpcPayloads } = await evm.prepareTypedDataForSigning(typedData)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -126,7 +126,7 @@ describe('EVM', async () => {
       key_version: 0,
     })
 
-    const signature = evm.addTypedDataSignature({
+    const signature = evm.attachTypedDataSignature({
       typedData,
       mpcSignatures: [mpcSignature],
     })
@@ -165,7 +165,7 @@ describe('EVM', async () => {
     }
 
     const { mpcPayloads, transaction } =
-      await evm.getMPCPayloadAndTransaction(transactionInput)
+      await evm.prepareTransactionForSigning(transactionInput)
 
     const mpcSignature = await contract.sign({
       payload: mpcPayloads[0],
@@ -173,7 +173,7 @@ describe('EVM', async () => {
       key_version: 0,
     })
 
-    const tx = evm.addTransactionSignature({
+    const tx = evm.attachTransactionSignature({
       transaction,
       mpcSignatures: [mpcSignature],
     })
@@ -212,7 +212,7 @@ describe('EVM', async () => {
       signature: '0x' as `0x${string}`,
     }
 
-    const { mpcPayloads } = await evm.processUserOpForSigning(
+    const { mpcPayloads } = await evm.prepareUserOpForSigning(
       userOp,
       '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
       11155111
@@ -224,7 +224,7 @@ describe('EVM', async () => {
       key_version: 0,
     })
 
-    const signedUserOp = evm.addUserOpSignature({
+    const signedUserOp = evm.attachUserOpSignature({
       userOp,
       mpcSignatures: [mpcSignature],
     })
