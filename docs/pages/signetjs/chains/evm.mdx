@@ -25,7 +25,7 @@ const chain = new EVM({
 <ChainGetBalance />
 <ChainDeriveAddressAndPublicKey chainName={'Ethereum'} />
 
-### getMPCPayloadAndTransaction
+### prepareTransactionForSigning
 
 Prepares a transaction for MPC signing.
 
@@ -42,7 +42,7 @@ const transactionRequest: EVMTransactionRequest = {
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await chain.getMPCPayloadAndTransaction(transactionRequest)
+  await chain.prepareTransactionForSigning(transactionRequest)
 ```
 
 The transaction is enhanced with:
@@ -52,7 +52,7 @@ The transaction is enhanced with:
 - Chain ID
 - EIP-1559 fee parameters
 
-### addTransactionSignature
+### attachTransactionSignature
 
 Adds a signature to an unsigned transaction.
 
@@ -70,7 +70,7 @@ const mpcSignatures: RSVSignature[] = [
   },
 ]
 
-const txSerialized = await chain.addTransactionSignature({
+const txSerialized = await chain.attachTransactionSignature({
   transaction: unsignedTransaction,
   mpcSignatures,
 })

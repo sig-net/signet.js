@@ -1,6 +1,7 @@
 import {
   createPublicClient,
   http,
+  parseTransaction,
   type PublicClient,
   hashMessage,
   hashTypedData,
@@ -79,10 +80,10 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
     return {
       ...fees,
-      ...rest,
-      chainId: Number(await this.client.getChainId()),
       nonce,
+      chainId: Number(await this.client.getChainId()),
       type: 'eip1559',
+      ...rest,
     }
   }
 
@@ -135,17 +136,15 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  serializeTransaction(transaction: EVMUnsignedTransaction): string {
-    return JSON.stringify(transaction, (_, value) =>
-      typeof value === 'bigint' ? value.toString() : value
-    )
+  serializeTransaction(transaction: EVMUnsignedTransaction): `0x${string}` {
+    return serializeTransaction(transaction)
   }
 
-  deserializeTransaction(serialized: string): EVMUnsignedTransaction {
-    return JSON.parse(serialized)
+  deserializeTransaction(serialized: `0x${string}`): EVMUnsignedTransaction {
+    return parseTransaction(serialized) as EVMUnsignedTransaction
   }
 
-  async getMPCPayloadAndTransaction(
+  async prepareTransactionForSigning(
     transactionRequest: EVMTransactionRequest
   ): Promise<{
     transaction: EVMUnsignedTransaction
@@ -162,7 +161,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getMPCPayloadAndMessage(message: EVMMessage): Promise<{
+  async prepareMessageForSigning(message: EVMMessage): Promise<{
     message: EVMMessage
     mpcPayloads: MPCPayloads
   }> {
@@ -172,7 +171,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  async getMPCPayloadAndTypedData(typedDataRequest: EVMTypedData): Promise<{
+  async prepareTypedDataForSigning(typedDataRequest: EVMTypedData): Promise<{
     typedData: EVMTypedData
     mpcPayloads: MPCPayloads
   }> {
@@ -189,7 +188,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
    * - Version support: Biconomy only supports v6, Alchemy supports both v6 and v7
    * - Validation: Biconomy uses modules for signature validation, Alchemy uses built-in validation
    */
-  async processUserOpForSigning(
+  async prepareUserOpForSigning(
     userOp: UserOperationV7 | UserOperationV6,
     entryPointAddress?: Address,
     chainIdArgs?: number
@@ -269,7 +268,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  addTransactionSignature({
+  attachTransactionSignature({
     transaction,
     mpcSignatures,
   }: {
@@ -281,7 +280,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return serializeTransaction(transaction, signature)
   }
 
-  addMessageSignature({
+  attachMessageSignature({
     mpcSignatures,
   }: {
     message: string
@@ -295,7 +294,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return concatHex([r, s, numberToHex(Number(yParity + 27), { size: 1 })])
   }
 
-  addTypedDataSignature({
+  attachTypedDataSignature({
     mpcSignatures,
   }: {
     typedData: EVMTypedData
@@ -309,7 +308,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return concatHex([r, s, numberToHex(Number(yParity + 27), { size: 1 })])
   }
 
-  addUserOpSignature({
+  attachUserOpSignature({
     userOp,
     mpcSignatures,
   }: {

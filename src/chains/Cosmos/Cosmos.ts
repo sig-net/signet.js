@@ -152,7 +152,7 @@ export class Cosmos extends Chain<
     return TxRaw.decode(fromBase64(serialized))
   }
 
-  async getMPCPayloadAndTransaction(
+  async prepareTransactionForSigning(
     transactionRequest: CosmosTransactionRequest
   ): Promise<{
     transaction: CosmosUnsignedTransaction
@@ -225,7 +225,7 @@ export class Cosmos extends Chain<
     }
   }
 
-  addTransactionSignature({
+  attachTransactionSignature({
     transaction,
     mpcSignatures,
   }: {

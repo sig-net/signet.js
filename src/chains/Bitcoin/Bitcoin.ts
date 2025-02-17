@@ -144,15 +144,21 @@ export class Bitcoin extends Chain<
     )
 
     outputs.forEach((out: BTCOutput) => {
-      if (out.address) {
+      if ('address' in out) {
         psbt.addOutput({
           address: out.address,
           value: out.value,
         })
-      } else if (out.script) {
+      } else if ('script' in out) {
         psbt.addOutput({
           script: out.script,
           value: out.value,
+        })
+      } else if (transactionRequest.from !== undefined) {
+        // Include change address from coinselect
+        psbt.addOutput({
+          value: Number(out.value),
+          address: transactionRequest.from,
         })
       }
     })
@@ -232,7 +238,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  async getMPCPayloadAndTransaction(
+  async prepareTransactionForSigning(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction
@@ -270,7 +276,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  addTransactionSignature({
+  attachTransactionSignature({
     transaction: { psbt, publicKey },
     mpcSignatures,
   }: {
