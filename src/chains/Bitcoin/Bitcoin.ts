@@ -215,23 +215,7 @@ export class Bitcoin extends Chain<
   }
 
   deserializeTransaction(serialized: string): BTCUnsignedTransaction {
-    return JSON.parse(serialized)
-  }
-
-  getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): BTCUnsignedTransaction | undefined {
-    const txSerialized = window.localStorage.getItem(storageKey)
-    if (!txSerialized) return undefined
-
-    if (options?.remove) {
-      window.localStorage.removeItem(storageKey)
-    }
-
-    const transactionJSON = JSON.parse(txSerialized)
+    const transactionJSON = JSON.parse(serialized)
     return {
       psbt: bitcoin.Psbt.fromHex(transactionJSON.psbt as string),
       publicKey: transactionJSON.publicKey,
