@@ -144,15 +144,21 @@ export class Bitcoin extends Chain<
     )
 
     outputs.forEach((out: BTCOutput) => {
-      if (out.address) {
+      if ('address' in out) {
         psbt.addOutput({
           address: out.address,
           value: out.value,
         })
-      } else if (out.script) {
+      } else if ('script' in out) {
         psbt.addOutput({
           script: out.script,
           value: out.value,
+        })
+      } else if (transactionRequest.from !== undefined) {
+        // Include change address from coinselect
+        psbt.addOutput({
+          value: Number(out.value),
+          address: transactionRequest.from,
         })
       }
     })
@@ -160,9 +166,14 @@ export class Bitcoin extends Chain<
     return psbt
   }
 
-  async getBalance(address: string): Promise<string> {
-    const balance = await this.btcRpcAdapter.getBalance(address)
-    return Bitcoin.toBTC(balance).toString()
+  async getBalance(
+    address: string
+  ): Promise<{ balance: bigint; decimals: number }> {
+    const balance = BigInt(await this.btcRpcAdapter.getBalance(address))
+    return {
+      balance,
+      decimals: 8,
+    }
   }
 
   async deriveAddressAndPublicKey(
@@ -196,40 +207,22 @@ export class Bitcoin extends Chain<
     return { address, publicKey: derivedKey }
   }
 
-  setTransaction(
-    transaction: BTCUnsignedTransaction,
-    storageKey: string
-  ): void {
-    window.localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        psbt: transaction.psbt.toHex(),
-        publicKey: transaction.publicKey,
-      })
-    )
+  serializeTransaction(transaction: BTCUnsignedTransaction): string {
+    return JSON.stringify({
+      psbt: transaction.psbt.toHex(),
+      publicKey: transaction.publicKey,
+    })
   }
 
-  getTransaction(
-    storageKey: string,
-    options?: {
-      remove?: boolean
-    }
-  ): BTCUnsignedTransaction | undefined {
-    const txSerialized = window.localStorage.getItem(storageKey)
-    if (!txSerialized) return undefined
-
-    if (options?.remove) {
-      window.localStorage.removeItem(storageKey)
-    }
-
-    const transactionJSON = JSON.parse(txSerialized)
+  deserializeTransaction(serialized: string): BTCUnsignedTransaction {
+    const transactionJSON = JSON.parse(serialized)
     return {
       psbt: bitcoin.Psbt.fromHex(transactionJSON.psbt as string),
       publicKey: transactionJSON.publicKey,
     }
   }
 
-  async getMPCPayloadAndTransaction(
+  async prepareTransactionForSigning(
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction
@@ -267,7 +260,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  addSignature({
+  attachTransactionSignature({
     transaction: { psbt, publicKey },
     mpcSignatures,
   }: {
