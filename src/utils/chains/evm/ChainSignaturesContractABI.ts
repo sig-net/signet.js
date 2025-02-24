@@ -1,46 +1,79 @@
 export const abi = [
   {
-    inputs: [],
+    inputs: [
+      { internalType: 'address', name: '_mpc_network', type: 'address' },
+      { internalType: 'uint256', name: '_signatureDeposit', type: 'uint256' },
+    ],
     stateMutability: 'nonpayable',
     type: 'constructor',
   },
-  {
-    inputs: [],
-    name: 'InvalidInitialization',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'NotInitializing',
-    type: 'error',
-  },
+  { inputs: [], name: 'AccessControlBadConfirmation', type: 'error' },
   {
     inputs: [
-      {
-        internalType: 'uint256',
-        name: 'value',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'length',
-        type: 'uint256',
-      },
+      { internalType: 'address', name: 'account', type: 'address' },
+      { internalType: 'bytes32', name: 'neededRole', type: 'bytes32' },
     ],
-    name: 'StringsInsufficientHexLength',
+    name: 'AccessControlUnauthorizedAccount',
     type: 'error',
   },
   {
     anonymous: false,
     inputs: [
+      { indexed: true, internalType: 'bytes32', name: 'role', type: 'bytes32' },
       {
-        indexed: false,
-        internalType: 'uint64',
-        name: 'version',
-        type: 'uint64',
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'previousAdminRole',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'newAdminRole',
+        type: 'bytes32',
       },
     ],
-    name: 'Initialized',
+    name: 'RoleAdminChanged',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'sender',
+        type: 'address',
+      },
+    ],
+    name: 'RoleGranted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'sender',
+        type: 'address',
+      },
+    ],
+    name: 'RoleRevoked',
     type: 'event',
   },
   {
@@ -55,25 +88,54 @@ export const abi = [
       {
         indexed: false,
         internalType: 'address',
-        name: 'requester',
+        name: 'responder',
+        type: 'address',
+      },
+      { indexed: false, internalType: 'string', name: 'error', type: 'string' },
+    ],
+    name: 'SignatureError',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'sender',
         type: 'address',
       },
       {
         indexed: false,
+        internalType: 'bytes32',
+        name: 'payload',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint32',
+        name: 'keyVersion',
+        type: 'uint32',
+      },
+      {
+        indexed: false,
         internalType: 'uint256',
-        name: 'epsilon',
+        name: 'deposit',
         type: 'uint256',
       },
       {
         indexed: false,
         internalType: 'uint256',
-        name: 'payloadHash',
+        name: 'chainId',
         type: 'uint256',
       },
+      { indexed: false, internalType: 'string', name: 'path', type: 'string' },
+      { indexed: false, internalType: 'string', name: 'algo', type: 'string' },
+      { indexed: false, internalType: 'string', name: 'dest', type: 'string' },
       {
         indexed: false,
         internalType: 'string',
-        name: 'path',
+        name: 'params',
         type: 'string',
       },
     ],
@@ -90,38 +152,28 @@ export const abi = [
         type: 'bytes32',
       },
       {
+        indexed: false,
+        internalType: 'address',
+        name: 'responder',
+        type: 'address',
+      },
+      {
         components: [
           {
             components: [
-              {
-                internalType: 'uint256',
-                name: 'x',
-                type: 'uint256',
-              },
-              {
-                internalType: 'uint256',
-                name: 'y',
-                type: 'uint256',
-              },
+              { internalType: 'uint256', name: 'x', type: 'uint256' },
+              { internalType: 'uint256', name: 'y', type: 'uint256' },
             ],
             internalType: 'struct ChainSignatures.AffinePoint',
             name: 'bigR',
             type: 'tuple',
           },
-          {
-            internalType: 'uint256',
-            name: 's',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint8',
-            name: 'recoveryId',
-            type: 'uint8',
-          },
+          { internalType: 'uint256', name: 's', type: 'uint256' },
+          { internalType: 'uint8', name: 'recoveryId', type: 'uint8' },
         ],
         indexed: false,
-        internalType: 'struct ChainSignatures.SignatureResponse',
-        name: 'response',
+        internalType: 'struct ChainSignatures.Signature',
+        name: 'signature',
         type: 'tuple',
       },
     ],
@@ -129,325 +181,102 @@ export const abi = [
     type: 'event',
   },
   {
+    anonymous: false,
     inputs: [
       {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
-    ],
-    name: 'depositToRefund',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'string',
-        name: 'path',
-        type: 'string',
-      },
-      {
+        indexed: true,
         internalType: 'address',
-        name: 'requester',
+        name: 'owner',
         type: 'address',
       },
-    ],
-    name: 'deriveEpsilon',
-    outputs: [
       {
+        indexed: false,
         internalType: 'uint256',
-        name: '',
+        name: 'amount',
         type: 'uint256',
       },
     ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        components: [
-          {
-            internalType: 'uint256',
-            name: 'x',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'y',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct ChainSignatures.PublicKey',
-        name: '_publicKey',
-        type: 'tuple',
-      },
-      {
-        internalType: 'uint256',
-        name: 'epsilon',
-        type: 'uint256',
-      },
-    ],
-    name: 'deriveKey',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'uint256',
-            name: 'x',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'y',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct ChainSignatures.PublicKey',
-        name: '',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'string',
-        name: 'path',
-        type: 'string',
-      },
-      {
-        internalType: 'address',
-        name: '_predecessor',
-        type: 'address',
-      },
-    ],
-    name: 'derivedPublicKey',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'uint256',
-            name: 'x',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'y',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct ChainSignatures.PublicKey',
-        name: '',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
+    name: 'Withdraw',
+    type: 'event',
   },
   {
     inputs: [],
-    name: 'getPublicKey',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'uint256',
-            name: 'x',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'y',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct ChainSignatures.PublicKey',
-        name: '',
-        type: 'tuple',
-      },
-    ],
+    name: 'DEFAULT_ADMIN_ROLE',
+    outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'bytes32', name: 'role', type: 'bytes32' }],
+    name: 'getRoleAdmin',
+    outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [],
     name: 'getSignatureDeposit',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [
-      {
-        components: [
-          {
-            internalType: 'uint256',
-            name: 'x',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'y',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct ChainSignatures.PublicKey',
-        name: '_publicKey',
-        type: 'tuple',
-      },
+      { internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      { internalType: 'address', name: 'account', type: 'address' },
     ],
-    name: 'initialize',
+    name: 'grantRole',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },
   {
-    inputs: [],
-    name: 'latestKeyVersion',
-    outputs: [
-      {
-        internalType: 'uint32',
-        name: '',
-        type: 'uint32',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
     inputs: [
-      {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
+      { internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      { internalType: 'address', name: 'account', type: 'address' },
     ],
-    name: 'pendingRequests',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: 'epsilon',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'payloadHash',
-        type: 'uint256',
-      },
-      {
-        internalType: 'address',
-        name: 'requester',
-        type: 'address',
-      },
-      {
-        components: [
-          {
-            internalType: 'uint256',
-            name: 'x',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'y',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct ChainSignatures.PublicKey',
-        name: 'derivedPublicKey',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'publicKey',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: 'x',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'y',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'requestCounter',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
+    name: 'hasRole',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
     stateMutability: 'view',
     type: 'function',
   },
   {
     inputs: [
-      {
-        internalType: 'bytes32',
-        name: '_requestId',
-        type: 'bytes32',
-      },
+      { internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      { internalType: 'address', name: 'callerConfirmation', type: 'address' },
+    ],
+    name: 'renounceRole',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
       {
         components: [
+          { internalType: 'bytes32', name: 'requestId', type: 'bytes32' },
           {
             components: [
               {
-                internalType: 'uint256',
-                name: 'x',
-                type: 'uint256',
+                components: [
+                  { internalType: 'uint256', name: 'x', type: 'uint256' },
+                  { internalType: 'uint256', name: 'y', type: 'uint256' },
+                ],
+                internalType: 'struct ChainSignatures.AffinePoint',
+                name: 'bigR',
+                type: 'tuple',
               },
-              {
-                internalType: 'uint256',
-                name: 'y',
-                type: 'uint256',
-              },
+              { internalType: 'uint256', name: 's', type: 'uint256' },
+              { internalType: 'uint8', name: 'recoveryId', type: 'uint8' },
             ],
-            internalType: 'struct ChainSignatures.AffinePoint',
-            name: 'bigR',
+            internalType: 'struct ChainSignatures.Signature',
+            name: 'signature',
             type: 'tuple',
           },
-          {
-            internalType: 'uint256',
-            name: 's',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint8',
-            name: 'recoveryId',
-            type: 'uint8',
-          },
         ],
-        internalType: 'struct ChainSignatures.SignatureResponse',
-        name: '_response',
-        type: 'tuple',
+        internalType: 'struct ChainSignatures.Response[]',
+        name: '_responses',
+        type: 'tuple[]',
       },
     ],
     name: 'respond',
@@ -459,38 +288,46 @@ export const abi = [
     inputs: [
       {
         components: [
-          {
-            internalType: 'bytes32',
-            name: 'payload',
-            type: 'bytes32',
-          },
-          {
-            internalType: 'string',
-            name: 'path',
-            type: 'string',
-          },
-          {
-            internalType: 'uint32',
-            name: 'keyVersion',
-            type: 'uint32',
-          },
-          {
-            components: [
-              {
-                internalType: 'uint256',
-                name: 'x',
-                type: 'uint256',
-              },
-              {
-                internalType: 'uint256',
-                name: 'y',
-                type: 'uint256',
-              },
-            ],
-            internalType: 'struct ChainSignatures.PublicKey',
-            name: 'derivedPublicKey',
-            type: 'tuple',
-          },
+          { internalType: 'bytes32', name: 'requestId', type: 'bytes32' },
+          { internalType: 'string', name: 'errorMessage', type: 'string' },
+        ],
+        internalType: 'struct ChainSignatures.ErrorResponse[]',
+        name: '_errors',
+        type: 'tuple[]',
+      },
+    ],
+    name: 'respondError',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      { internalType: 'address', name: 'account', type: 'address' },
+    ],
+    name: 'revokeRole',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: '_amount', type: 'uint256' }],
+    name: 'setSignatureDeposit',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        components: [
+          { internalType: 'bytes32', name: 'payload', type: 'bytes32' },
+          { internalType: 'string', name: 'path', type: 'string' },
+          { internalType: 'uint32', name: 'keyVersion', type: 'uint32' },
+          { internalType: 'string', name: 'algo', type: 'string' },
+          { internalType: 'string', name: 'dest', type: 'string' },
+          { internalType: 'string', name: 'params', type: 'string' },
         ],
         internalType: 'struct ChainSignatures.SignRequest',
         name: '_request',
@@ -498,27 +335,25 @@ export const abi = [
       },
     ],
     name: 'sign',
-    outputs: [
-      {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
-    ],
+    outputs: [],
     stateMutability: 'payable',
     type: 'function',
   },
   {
-    inputs: [],
-    name: 'threshold',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
+    inputs: [{ internalType: 'bytes4', name: 'interfaceId', type: 'bytes4' }],
+    name: 'supportsInterface',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+      { internalType: 'address', name: '_receiver', type: 'address' },
+    ],
+    name: 'withdraw',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
 ]

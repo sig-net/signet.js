@@ -41,6 +41,9 @@ importers:
       '@near-wallet-selector/core':
         specifier: ^8.9.5
         version: 8.9.15(near-api-js@3.0.4)
+      '@scure/base':
+        specifier: ^1.2.4
+        version: 1.2.4
       bech32:
         specifier: ^2.0.0
         version: 2.0.0
@@ -62,6 +65,9 @@ importers:
       cosmjs-types:
         specifier: ^0.9.0
         version: 0.9.0
+      elliptic:
+        specifier: ^6.6.1
+        version: 6.6.1
       near-api-js:
         specifier: ^3.0.4
         version: 3.0.4
@@ -87,6 +93,9 @@ importers:
       '@types/bn.js':
         specifier: ^5.1.5
         version: 5.1.6
+      '@types/elliptic':
+        specifier: ^6.4.18
+        version: 6.4.18
       '@types/node':
         specifier: ^22.10.10
         version: 22.10.10
@@ -2105,6 +2114,9 @@ packages:
 
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
+
+  '@types/elliptic@6.4.18':
+    resolution: {integrity: sha512-UseG6H5vjRiNpQvrhy4VF/JXdA3V/Fp5amvveaL+fs28BZ6xIKJBPnUPRlEaZpysD9MbpfaLi8lbl7PGUAkpWw==}
 
   '@types/estree-jsx@1.0.5':
     resolution: {integrity: sha512-52CcUVNFyfb1A2ALocQw/Dd1BQFNmSdkuC3BkZ6iqhdMfQz7JWOFRuJFloOzjk+6WijU56m9oKXFAXc7o3Towg==}
@@ -9067,6 +9079,10 @@ snapshots:
   '@types/debug@4.1.12':
     dependencies:
       '@types/ms': 2.1.0
+
+  '@types/elliptic@6.4.18':
+    dependencies:
+      '@types/bn.js': 5.1.6
 
   '@types/estree-jsx@1.0.5':
     dependencies:
