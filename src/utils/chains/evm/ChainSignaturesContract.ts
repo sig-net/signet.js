@@ -16,7 +16,7 @@ import type {
   UncompressedPubKeySEC1,
 } from '@chains/types'
 import { cryptography } from '@utils'
-import { ROOT_PUBLIC_SIG_NET_TESTNET } from '@utils/constants'
+import { ROOT_PUBLIC_KEY_SIG_NET_TESTNET } from '@utils/constants'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 
 import { abi } from './ChainSignaturesContractABI'
@@ -48,7 +48,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     if (args.rootPublicKey) {
       this.rootPublicKey = args.rootPublicKey
     } else if (this.publicClient.chain?.testnet) {
-      this.rootPublicKey = ROOT_PUBLIC_SIG_NET_TESTNET
+      this.rootPublicKey = ROOT_PUBLIC_KEY_SIG_NET_TESTNET
     } else {
       throw new Error('EVM main net is not supported yet')
     }
@@ -263,11 +263,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       if (signatureData.signature) {
         const { bigR, s, recoveryId } = signatureData.signature
 
-        return cryptography.toRSV({
-          big_r: bigR.x.toString() + bigR.y.toString(),
-          s: s.toString(),
-          recovery_id: recoveryId,
-        })
+        return {
+          r: bigR.x.toString(16).padStart(64, '0'),
+          s: s.toString(16).padStart(64, '0'),
+          v: recoveryId,
+        }
       }
     }
 
