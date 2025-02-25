@@ -1,20 +1,11 @@
-import type BN from 'bn.js'
-import type {
-  Address,
-  BlockNumber,
-  BlockTag,
-  Hash,
-  Log,
-  PublicClient as ViemPublicClient,
-  WalletClient as ViemWalletClient,
-} from 'viem'
+import type { Hex, PublicClient, WalletClient } from 'viem'
 
 import type { NajPublicKey } from '@chains/types'
 
 export interface ChainSignatureContractArgs {
   publicClient: PublicClient
   walletClient: WalletClient
-  contractAddress: `0x${string}`
+  contractAddress: Hex
   rootPublicKey?: NajPublicKey
 }
 
@@ -44,23 +35,11 @@ export interface SignatureErrorData {
   error: string
 }
 
-export interface GetContractEventsParameters {
-  address: Address | Address[]
-  abi: any
-  eventName: string
-  args?: Record<string, any>
-  fromBlock?: BlockNumber | BlockTag
-  toBlock?: BlockNumber | BlockTag
-  blockHash?: Hash
-  strict?: boolean
-}
-
-export type PublicClient = Pick<ViemPublicClient, 'chain'> & {
-  readContract: (args: any) => Promise<any>
-  waitForTransactionReceipt: (args: { hash: `0x${string}` }) => Promise<any>
-  getContractEvents: (args: GetContractEventsParameters) => Promise<Log[]>
-}
-
-export type WalletClient = Pick<ViemWalletClient, 'account'> & {
-  writeContract: (args: any) => Promise<`0x${string}`>
+export interface SignRequest {
+  payload: Hex
+  path: string
+  keyVersion: number
+  algo: string
+  dest: string
+  params: string
 }

@@ -1,10 +1,11 @@
 import BN from 'bn.js'
 import {
-  type PublicClient,
-  type WalletClient,
   encodeAbiParameters,
   keccak256,
+  type TransactionReceipt,
   withRetry,
+  type PublicClient,
+  type WalletClient,
 } from 'viem'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
@@ -19,13 +20,18 @@ import { ROOT_PUBLIC_SIG_NET_TESTNET } from '@utils/constants'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 
 import { abi } from './ChainSignaturesContractABI'
-
-interface ChainSignatureContractArgs {
-  publicClient: PublicClient
-  walletClient: WalletClient
-  contractAddress: `0x${string}`
-  rootPublicKey?: NajPublicKey
-}
+import {
+  SignatureNotFoundError,
+  SignatureContractError,
+  SigningError,
+} from './errors'
+import type {
+  ChainSignatureContractArgs,
+  SignOptions,
+  SignRequest,
+  SignatureData,
+  SignatureErrorData,
+} from './types'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
@@ -87,17 +93,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   async sign(
     args: SignArgs,
-    options: {
-      sign: {
-        algo?: string
-        dest?: string
-        params?: string
-      }
-      retry: {
-        delay?: number
-        retryCount?: number
-      }
-    } = {
+    options: SignOptions = {
       sign: {
         algo: '',
         dest: '',
@@ -113,15 +109,81 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       throw new Error('Wallet client required for signing operations')
     }
 
-    const deposit = await this.getCurrentSignatureDeposit()
-
-    const request = {
+    const request: SignRequest = {
       payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,
       algo: options.sign.algo ?? '',
       dest: options.sign.dest ?? '',
       params: options.sign.params ?? '',
+    }
+
+    const requestId = this.getRequestId(request)
+
+    const hash = await this.walletClient.writeContract({
+      address: this.contractAddress,
+      abi,
+      chain: this.publicClient.chain,
+      account: this.walletClient.account,
+      functionName: 'sign',
+      args: [request],
+      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+    })
+
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+
+    try {
+      const result = await withRetry(
+        async () => {
+          const result = await this.getSignatureFromEvents(requestId, receipt)
+          if (result) {
+            return result
+          } else {
+            throw new Error('Signature not found yet')
+          }
+        },
+        {
+          delay: options.retry.delay,
+          retryCount: options.retry.retryCount,
+          shouldRetry: ({ count, error }) => {
+            // TODO: Should be enabled only on debug mode
+            console.log(
+              `Retrying get signature: ${count}/${options.retry.retryCount}`
+            )
+            return error.message === 'Signature not found yet'
+          },
+        }
+      )
+
+      if (result) {
+        return result
+      } else {
+        const errorData = await this.getErrorFromEvents(requestId, receipt)
+        if (errorData) {
+          throw new SignatureContractError(errorData.error, requestId, receipt)
+        } else {
+          throw new SignatureNotFoundError(requestId, receipt)
+        }
+      }
+    } catch (error) {
+      if (
+        error instanceof SignatureNotFoundError ||
+        error instanceof SignatureContractError
+      ) {
+        throw error
+      } else {
+        throw new SigningError(
+          requestId,
+          receipt,
+          error instanceof Error ? error : undefined
+        )
+      }
+    }
+  }
+
+  private getRequestId(request: SignRequest): `0x${string}` {
+    if (!this.walletClient?.account) {
+      throw new Error('Wallet client required for signing operations')
     }
 
     const encoded = encodeAbiParameters(
@@ -137,7 +199,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       ],
       [
         this.walletClient.account.address,
-        request.payload as `0x${string}`,
+        request.payload,
         request.path,
         Number(request.keyVersion),
         this.publicClient.chain?.id ? BigInt(this.publicClient.chain.id) : 0n,
@@ -147,66 +209,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       ]
     )
 
-    const requestId = keccak256(encoded)
+    return keccak256(encoded)
+  }
 
-    const hash = await this.walletClient.writeContract({
-      address: this.contractAddress,
-      abi,
-      chain: this.publicClient.chain,
-      account: this.walletClient.account,
-      functionName: 'sign',
-      args: [request],
-      value: BigInt(deposit.toString()),
-    })
-
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
-
-    const result = await withRetry(
-      async () => {
-        const logs = await this.publicClient.getContractEvents({
-          address: this.contractAddress,
-          abi,
-          eventName: 'SignatureResponded',
-          args: {
-            requestId,
-          },
-          fromBlock: receipt.blockNumber,
-          toBlock: 'latest',
-        })
-
-        if (logs.length > 0) {
-          const { args: signatureData } = logs[logs.length - 1] as unknown as {
-            args: {
-              signature: {
-                bigR: { x: bigint; y: bigint }
-                s: bigint
-                recoveryId: number
-              }
-            }
-          }
-
-          if (signatureData.signature) {
-            const { bigR, s, recoveryId } = signatureData.signature
-
-            return cryptography.toRSV({
-              big_r: bigR.x.toString() + bigR.y.toString(),
-              s: s.toString(),
-              recovery_id: recoveryId,
-            })
-          }
-        }
-
-        throw new Error('Signature not found yet')
-      },
-      {
-        delay: options.retry.delay,
-        retryCount: options.retry.retryCount,
-        shouldRetry: ({ error }) => {
-          return error.message === 'Signature not found yet'
-        },
-      }
-    )
-
+  async getErrorFromEvents(
+    requestId: `0x${string}`,
+    receipt: TransactionReceipt
+  ): Promise<SignatureErrorData | undefined> {
     const errorLogs = await this.publicClient.getContractEvents({
       address: this.contractAddress,
       abi,
@@ -222,22 +231,46 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       const { args: errorData } = errorLogs[
         errorLogs.length - 1
       ] as unknown as {
-        args: {
-          requestId: string
-          responder: string
-          error: string
-        }
+        args: SignatureErrorData
       }
 
-      console.error('Signature error for our request:', {
-        requestId: errorData.requestId,
-        responder: errorData.responder,
-        error: errorData.error,
-      })
-
-      throw new Error(`Signature error: ${errorData.error || 'Unknown error'}`)
+      return errorData
     }
 
-    return result
+    return undefined
+  }
+
+  async getSignatureFromEvents(
+    requestId: `0x${string}`,
+    receipt: TransactionReceipt
+  ): Promise<RSVSignature | undefined> {
+    const logs = await this.publicClient.getContractEvents({
+      address: this.contractAddress,
+      abi,
+      eventName: 'SignatureResponded',
+      args: {
+        requestId,
+      },
+      fromBlock: receipt.blockNumber,
+      toBlock: 'latest',
+    })
+
+    if (logs.length > 0) {
+      const { args: signatureData } = logs[logs.length - 1] as unknown as {
+        args: SignatureData
+      }
+
+      if (signatureData.signature) {
+        const { bigR, s, recoveryId } = signatureData.signature
+
+        return cryptography.toRSV({
+          big_r: bigR.x.toString() + bigR.y.toString(),
+          s: s.toString(),
+          recovery_id: recoveryId,
+        })
+      }
+    }
+
+    return undefined
   }
 }
