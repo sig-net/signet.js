@@ -2,9 +2,9 @@ import BN from 'bn.js'
 import {
   type PublicClient,
   type WalletClient,
-  decodeEventLog,
   encodeAbiParameters,
   keccak256,
+  withRetry,
 } from 'viem'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
@@ -85,21 +85,43 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return Number(version)
   }
 
-  async sign(args: SignArgs): Promise<RSVSignature> {
+  async sign(
+    args: SignArgs,
+    options: {
+      sign: {
+        algo?: string
+        dest?: string
+        params?: string
+      }
+      retry: {
+        delay?: number
+        retryCount?: number
+      }
+    } = {
+      sign: {
+        algo: '',
+        dest: '',
+        params: '',
+      },
+      retry: {
+        delay: 5000,
+        retryCount: 12,
+      },
+    }
+  ): Promise<RSVSignature> {
     if (!this.walletClient?.account) {
       throw new Error('Wallet client required for signing operations')
     }
 
     const deposit = await this.getCurrentSignatureDeposit()
 
-    // Updated sign request according to the new ABI
     const request = {
       payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,
-      algo: '',
-      dest: '',
-      params: '',
+      algo: options.sign.algo ?? '',
+      dest: options.sign.dest ?? '',
+      params: options.sign.params ?? '',
     }
 
     const encoded = encodeAbiParameters(
@@ -125,7 +147,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       ]
     )
 
-    console.log({ encoded: keccak256(encoded) })
+    const requestId = keccak256(encoded)
 
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
@@ -139,92 +161,83 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
 
-    // Decode all relevant events from the receipt
-    for (const log of receipt.logs) {
-      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) {
-        continue
-      }
-
-      try {
-        const decodedLog = decodeEventLog({
+    const result = await withRetry(
+      async () => {
+        const logs = await this.publicClient.getContractEvents({
+          address: this.contractAddress,
           abi,
-          data: log.data,
-          topics: log.topics,
-          strict: false,
-        }) as {
-          eventName: string
+          eventName: 'SignatureResponded',
           args: {
-            signature?: {
-              bigR: { x: bigint; y: bigint }
-              s: bigint
-              recoveryId: number
+            requestId,
+          },
+          fromBlock: receipt.blockNumber,
+          toBlock: 'latest',
+        })
+
+        if (logs.length > 0) {
+          const { args: signatureData } = logs[logs.length - 1] as unknown as {
+            args: {
+              signature: {
+                bigR: { x: bigint; y: bigint }
+                s: bigint
+                recoveryId: number
+              }
             }
-            sender?: string
-            payload?: string
-            keyVersion?: number
-            deposit?: bigint
-            chainId?: bigint
-            path?: string
-            algo?: string
-            dest?: string
-            params?: string
-            requestId?: string
-            responder?: string
-            error?: string
+          }
+
+          if (signatureData.signature) {
+            const { bigR, s, recoveryId } = signatureData.signature
+
+            return cryptography.toRSV({
+              big_r: bigR.x.toString() + bigR.y.toString(),
+              s: s.toString(),
+              recovery_id: recoveryId,
+            })
           }
         }
 
-        console.log('Decoded event:', {
-          name: decodedLog.eventName,
-          args: decodedLog.args,
-        })
-
-        // Handle SignatureResponded event
-        if (
-          decodedLog.eventName === 'SignatureResponded' &&
-          decodedLog.args.signature
-        ) {
-          return cryptography.toRSV({
-            big_r:
-              decodedLog.args.signature.bigR.x.toString() +
-              decodedLog.args.signature.bigR.y.toString(),
-            s: decodedLog.args.signature.s.toString(),
-            recovery_id: decodedLog.args.signature.recoveryId,
-          })
-        }
-
-        // Handle SignatureRequested event
-        if (decodedLog.eventName === 'SignatureRequested') {
-          console.log('Signature request details:', {
-            sender: decodedLog.args.sender,
-            payload: decodedLog.args.payload,
-            keyVersion: decodedLog.args.keyVersion,
-            deposit: decodedLog.args.deposit,
-            chainId: decodedLog.args.chainId,
-            path: decodedLog.args.path,
-            algo: decodedLog.args.algo,
-            dest: decodedLog.args.dest,
-            params: decodedLog.args.params,
-          })
-        }
-
-        // Handle SignatureError event
-        if (
-          decodedLog.eventName === 'SignatureError' &&
-          decodedLog.args.error
-        ) {
-          console.error('Signature error:', {
-            requestId: decodedLog.args.requestId,
-            responder: decodedLog.args.responder,
-            error: decodedLog.args.error,
-          })
-          throw new Error(`Signature error: ${decodedLog.args.error}`)
-        }
-      } catch (err) {
-        console.warn('Failed to decode log:', err)
+        throw new Error('Signature not found yet')
+      },
+      {
+        delay: options.retry.delay,
+        retryCount: options.retry.retryCount,
+        shouldRetry: ({ error }) => {
+          return error.message === 'Signature not found yet'
+        },
       }
+    )
+
+    const errorLogs = await this.publicClient.getContractEvents({
+      address: this.contractAddress,
+      abi,
+      eventName: 'SignatureError',
+      args: {
+        requestId,
+      },
+      fromBlock: receipt.blockNumber,
+      toBlock: 'latest',
+    })
+
+    if (errorLogs.length > 0) {
+      const { args: errorData } = errorLogs[
+        errorLogs.length - 1
+      ] as unknown as {
+        args: {
+          requestId: string
+          responder: string
+          error: string
+        }
+      }
+
+      console.error('Signature error for our request:', {
+        requestId: errorData.requestId,
+        responder: errorData.responder,
+        error: errorData.error,
+      })
+
+      throw new Error(`Signature error: ${errorData.error || 'Unknown error'}`)
     }
 
-    throw new Error('No SignatureResponded event found in transaction receipt')
+    return result
   }
 }
