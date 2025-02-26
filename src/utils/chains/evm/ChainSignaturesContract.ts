@@ -1,39 +1,59 @@
 import BN from 'bn.js'
 import {
+  encodeAbiParameters,
+  keccak256,
+  type TransactionReceipt,
+  withRetry,
   type PublicClient,
   type WalletClient,
-  decodeEventLog,
-  keccak256,
-  toBytes,
 } from 'viem'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import type { SignArgs } from '@chains/ChainSignatureContract'
 import type {
-  MPCSignature,
+  NajPublicKey,
   RSVSignature,
   UncompressedPubKeySEC1,
 } from '@chains/types'
 import { cryptography } from '@utils'
+import { KDF_CHAIN_IDS, ROOT_PUBLIC_KEYS } from '@utils/constants'
+import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 
 import { abi } from './ChainSignaturesContractABI'
-
-interface ChainSignatureContractArgs {
-  publicClient: PublicClient
-  walletClient: WalletClient
-  contractAddress: `0x${string}`
-}
+import {
+  SignatureNotFoundError,
+  SignatureContractError,
+  SigningError,
+} from './errors'
+import type {
+  ChainSignatureContractArgs,
+  SignOptions,
+  SignRequest,
+  SignatureData,
+  SignatureErrorData,
+} from './types'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
-  private readonly walletClient?: WalletClient
+  private readonly walletClient: WalletClient
   private readonly contractAddress: `0x${string}`
+  private readonly rootPublicKey: NajPublicKey
 
   constructor(args: ChainSignatureContractArgs) {
     super()
     this.publicClient = args.publicClient
     this.walletClient = args.walletClient
     this.contractAddress = args.contractAddress
+
+    if (args.rootPublicKey) {
+      this.rootPublicKey = args.rootPublicKey
+    } else if (this.publicClient.chain?.testnet) {
+      this.rootPublicKey = ROOT_PUBLIC_KEYS.TESTNET_DEV
+    } else if (!this.publicClient.chain?.testnet) {
+      this.rootPublicKey = ROOT_PUBLIC_KEYS.MAINNET
+    } else {
+      throw new Error('Chain not supported')
+    }
   }
 
   async getCurrentSignatureDeposit(): Promise<BN> {
@@ -50,24 +70,18 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     path: string
     predecessor: string
   }): Promise<UncompressedPubKeySEC1> {
-    const pubKey = (await this.publicClient.readContract({
-      address: this.contractAddress,
-      abi,
-      functionName: 'derivedPublicKey',
-      args: [args.path, args.predecessor as `0x${string}`],
-    })) as { x: bigint; y: bigint }
+    const pubKey = cryptography.deriveChildPublicKey(
+      await this.getPublicKey(),
+      args.predecessor.toLowerCase(),
+      args.path,
+      KDF_CHAIN_IDS.ETHEREUM
+    )
 
-    return `04${pubKey.x.toString(16).padStart(64, '0')}${pubKey.y.toString(16).padStart(64, '0')}`
+    return pubKey
   }
 
   async getPublicKey(): Promise<UncompressedPubKeySEC1> {
-    const pubKey = (await this.publicClient.readContract({
-      address: this.contractAddress,
-      abi,
-      functionName: 'getPublicKey',
-    })) as { x: bigint; y: bigint }
-
-    return `04${pubKey.x.toString(16).padStart(64, '0')}${pubKey.y.toString(16).padStart(64, '0')}`
+    return najToUncompressedPubKeySEC1(this.rootPublicKey)
   }
 
   async getLatestKeyVersion(): Promise<number> {
@@ -80,28 +94,34 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return Number(version)
   }
 
-  async sign(args: SignArgs): Promise<RSVSignature> {
+  async sign(
+    args: SignArgs,
+    options: SignOptions = {
+      sign: {
+        algo: '',
+        dest: '',
+        params: '',
+      },
+      retry: {
+        delay: 5000,
+        retryCount: 12,
+      },
+    }
+  ): Promise<RSVSignature> {
     if (!this.walletClient?.account) {
       throw new Error('Wallet client required for signing operations')
     }
 
-    const [address] = await this.walletClient.getAddresses()
-    const deposit = await this.getCurrentSignatureDeposit()
-
-    const derivedKey = await this.getDerivedPublicKey({
-      path: args.path,
-      predecessor: address,
-    })
-
-    const request = {
+    const request: SignRequest = {
       payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,
-      derivedPublicKey: {
-        x: BigInt(`0x${derivedKey.slice(2, 66)}`),
-        y: BigInt(`0x${derivedKey.slice(66)}`),
-      },
+      algo: options.sign.algo ?? '',
+      dest: options.sign.dest ?? '',
+      params: options.sign.params ?? '',
     }
+
+    const requestId = this.getRequestId(request)
 
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
@@ -110,37 +130,150 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       account: this.walletClient.account,
       functionName: 'sign',
       args: [request],
-      value: BigInt(deposit.toString()),
+      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
     })
 
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
 
-    const signatureEvent = receipt.logs.find(
-      (log) =>
-        log.address.toLowerCase() === this.contractAddress.toLowerCase() &&
-        log.topics[0] ===
-          keccak256(
-            toBytes(
-              'SignatureResponded(bytes32,((uint256,uint256),uint256,uint8))'
+    try {
+      const result = await withRetry(
+        async () => {
+          const result = await this.getSignatureFromEvents(requestId, receipt)
+          if (result) {
+            return result
+          } else {
+            throw new Error('Signature not found yet')
+          }
+        },
+        {
+          delay: options.retry.delay,
+          retryCount: options.retry.retryCount,
+          shouldRetry: ({ count, error }) => {
+            // TODO: Should be enabled only on debug mode
+            console.log(
+              `Retrying get signature: ${count}/${options.retry.retryCount}`
             )
-          )
-    ) // SignatureResponded topic
+            return error.message === 'Signature not found yet'
+          },
+        }
+      )
 
-    if (!signatureEvent) {
-      throw new Error('Signature event not found in transaction receipt')
+      if (result) {
+        return result
+      } else {
+        const errorData = await this.getErrorFromEvents(requestId, receipt)
+        if (errorData) {
+          throw new SignatureContractError(errorData.error, requestId, receipt)
+        } else {
+          throw new SignatureNotFoundError(requestId, receipt)
+        }
+      }
+    } catch (error) {
+      if (
+        error instanceof SignatureNotFoundError ||
+        error instanceof SignatureContractError
+      ) {
+        throw error
+      } else {
+        throw new SigningError(
+          requestId,
+          receipt,
+          error instanceof Error ? error : undefined
+        )
+      }
+    }
+  }
+
+  private getRequestId(request: SignRequest): `0x${string}` {
+    if (!this.walletClient?.account) {
+      throw new Error('Wallet client required for signing operations')
     }
 
-    console.log(signatureEvent)
+    const encoded = encodeAbiParameters(
+      [
+        { type: 'address' },
+        { type: 'bytes' },
+        { type: 'string' },
+        { type: 'uint32' },
+        { type: 'uint256' },
+        { type: 'string' },
+        { type: 'string' },
+        { type: 'string' },
+      ],
+      [
+        this.walletClient.account.address,
+        request.payload,
+        request.path,
+        Number(request.keyVersion),
+        this.publicClient.chain?.id ? BigInt(this.publicClient.chain.id) : 0n,
+        request.algo,
+        request.dest,
+        request.params,
+      ]
+    )
 
-    const signature = decodeEventLog({
+    return keccak256(encoded)
+  }
+
+  async getErrorFromEvents(
+    requestId: `0x${string}`,
+    receipt: TransactionReceipt
+  ): Promise<SignatureErrorData | undefined> {
+    const errorLogs = await this.publicClient.getContractEvents({
+      address: this.contractAddress,
       abi,
-      data: signatureEvent.data,
-      topics: signatureEvent.topics,
-      strict: false, // Allow partial decoding
-    }) as unknown as { response: MPCSignature }
+      eventName: 'SignatureError',
+      args: {
+        requestId,
+      },
+      fromBlock: receipt.blockNumber,
+      toBlock: 'latest',
+    })
 
-    console.log(signature)
+    if (errorLogs.length > 0) {
+      const { args: errorData } = errorLogs[
+        errorLogs.length - 1
+      ] as unknown as {
+        args: SignatureErrorData
+      }
 
-    return cryptography.toRSV(signature.response)
+      return errorData
+    }
+
+    return undefined
+  }
+
+  async getSignatureFromEvents(
+    requestId: `0x${string}`,
+    receipt: TransactionReceipt
+  ): Promise<RSVSignature | undefined> {
+    const logs = await this.publicClient.getContractEvents({
+      address: this.contractAddress,
+      abi,
+      eventName: 'SignatureResponded',
+      args: {
+        requestId,
+      },
+      fromBlock: receipt.blockNumber,
+      toBlock: 'latest',
+    })
+
+    if (logs.length > 0) {
+      const { args: signatureData } = logs[logs.length - 1] as unknown as {
+        args: SignatureData
+      }
+
+      if (signatureData.signature) {
+        const { bigR, s, recoveryId } = signatureData.signature
+
+        return {
+          r: bigR.x.toString(16).padStart(64, '0'),
+          s: s.toString(16).padStart(64, '0'),
+          v: recoveryId + 27,
+        }
+      }
+    }
+
+    return undefined
   }
 }

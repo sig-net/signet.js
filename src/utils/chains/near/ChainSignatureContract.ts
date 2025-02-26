@@ -1,8 +1,6 @@
-import { type Account, Contract } from '@near-js/accounts'
+import { Contract } from '@near-js/accounts'
 import { KeyPair } from '@near-js/crypto'
-import { actionCreators } from '@near-js/transactions'
 import BN from 'bn.js'
-import { base_decode } from 'near-api-js/lib/utils/serialize'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import type { SignArgs } from '@chains/ChainSignatureContract'
@@ -10,22 +8,19 @@ import type {
   RSVSignature,
   MPCSignature,
   UncompressedPubKeySEC1,
+  NajPublicKey,
 } from '@chains/types'
-import { cryptography, chains } from '@utils'
+import { cryptography } from '@utils'
 import { getNearAccount } from '@utils/chains/near/account'
 import {
   DONT_CARE_ACCOUNT_ID,
   NEAR_MAX_GAS,
 } from '@utils/chains/near/constants'
-import { parseSignedDelegateForRelayer } from '@utils/chains/near/relayer'
 import {
   type NearNetworkIds,
   type ChainSignatureContractIds,
 } from '@utils/chains/near/types'
-
-const najToUncompressedPubKey = (najPubKey: string): UncompressedPubKeySEC1 => {
-  return `04${Buffer.from(base_decode(najPubKey.split(':')[1])).toString('hex')}`
-}
+import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 
 const requireAccount = (accountId: string): void => {
   if (accountId === DONT_CARE_ACCOUNT_ID) {
@@ -36,7 +31,7 @@ const requireAccount = (accountId: string): void => {
 }
 
 type NearContract = Contract & {
-  public_key: () => Promise<string>
+  public_key: () => Promise<NajPublicKey>
   sign: (args: {
     args: { request: SignArgs }
     gas: BN
@@ -46,7 +41,7 @@ type NearContract = Contract & {
   derived_public_key: (args: {
     path: string
     predecessor: string
-  }) => Promise<string>
+  }) => Promise<NajPublicKey>
 }
 
 interface ChainSignatureContractArgs {
@@ -117,14 +112,14 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const contract = await this.getContract()
 
     const najPubKey = await contract.derived_public_key(args)
-    return najToUncompressedPubKey(najPubKey)
+    return najToUncompressedPubKeySEC1(najPubKey)
   }
 
   async getPublicKey(): Promise<UncompressedPubKeySEC1> {
     const contract = await this.getContract()
 
     const najPubKey = await contract.public_key()
-    return najToUncompressedPubKey(najPubKey)
+    return najToUncompressedPubKeySEC1(najPubKey)
   }
 
   async sign(args: SignArgs): Promise<RSVSignature> {
@@ -140,62 +135,5 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     })
 
     return cryptography.toRSV(signature)
-  }
-
-  static async signWithRelayer({
-    account,
-    contract,
-    signArgs,
-    deposit,
-    relayerUrl,
-  }: {
-    account: Account
-    contract: ChainSignatureContractIds
-    signArgs: SignArgs
-    deposit: BN
-    relayerUrl: string
-  }): Promise<RSVSignature> {
-    const functionCall = actionCreators.functionCall(
-      'sign',
-      { request: signArgs },
-      BigInt(NEAR_MAX_GAS.toString()),
-      BigInt(deposit.toString())
-    )
-
-    const signedDelegate = await account.signedDelegate({
-      receiverId: contract,
-      actions: [functionCall],
-      blockHeightTtl: 60,
-    })
-
-    // Remove the cached access key to prevent nonce reuse
-    delete account.accessKeyByPublicKeyCache[
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      signedDelegate.delegateAction.publicKey.toString()
-    ]
-
-    const res = await fetch(`${relayerUrl}/send_meta_tx_async`, {
-      method: 'POST',
-      mode: 'cors',
-      body: JSON.stringify(parseSignedDelegateForRelayer(signedDelegate)),
-      headers: new Headers({ 'Content-Type': 'application/json' }),
-    })
-
-    const txHash = await res.text()
-    const txStatus = await account.connection.provider.txStatus(
-      txHash,
-      account.accountId,
-      'FINAL'
-    )
-
-    const signature = chains.near.transactionBuilder.responseToMpcSignature({
-      response: txStatus,
-    })
-
-    if (!signature) {
-      throw new Error('Signature error, please retry')
-    }
-
-    return signature
   }
 }

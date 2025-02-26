@@ -4,10 +4,5 @@
     "noEmit": true,
     "types": ["@types/node"]
   },
-  "include": [
-    "vite.config.ts",
-    ".eslintrc.cjs",
-    "vite.config.ts",
-    "src/**/*.ts"
-  ]
+  "include": [".eslintrc.cjs", "src/**/*.ts", "tsup.config.ts"]
 }
