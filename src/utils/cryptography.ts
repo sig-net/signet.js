@@ -75,13 +75,13 @@ export const najToUncompressedPubKeySEC1 = (
 export function deriveChildPublicKey(
   rootUncompressedPubKeySEC1: UncompressedPubKeySEC1,
   predecessorId: string,
-  path: string = ''
+  path: string = '',
+  chainId: string
 ): UncompressedPubKeySEC1 {
   const ec = new EC('secp256k1')
 
-  const CHAIN_ID_ETHEREUM = '0x1'
   const EPSILON_DERIVATION_PREFIX = 'sig.network v1.0.0 epsilon derivation'
-  const derivationPath = `${EPSILON_DERIVATION_PREFIX},${CHAIN_ID_ETHEREUM},${predecessorId},${path}`
+  const derivationPath = `${EPSILON_DERIVATION_PREFIX},${chainId},${predecessorId},${path}`
 
   const scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
 

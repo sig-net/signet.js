@@ -16,7 +16,7 @@ import type {
   UncompressedPubKeySEC1,
 } from '@chains/types'
 import { cryptography } from '@utils'
-import { ROOT_PUBLIC_KEY_SIG_NET_TESTNET } from '@utils/constants'
+import { KDF_CHAIN_IDS, ROOT_PUBLIC_KEYS } from '@utils/constants'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 
 import { abi } from './ChainSignaturesContractABI'
@@ -35,7 +35,7 @@ import type {
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
-  private readonly walletClient?: WalletClient
+  private readonly walletClient: WalletClient
   private readonly contractAddress: `0x${string}`
   private readonly rootPublicKey: NajPublicKey
 
@@ -48,9 +48,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     if (args.rootPublicKey) {
       this.rootPublicKey = args.rootPublicKey
     } else if (this.publicClient.chain?.testnet) {
-      this.rootPublicKey = ROOT_PUBLIC_KEY_SIG_NET_TESTNET
+      this.rootPublicKey = ROOT_PUBLIC_KEYS.TESTNET_DEV
+    } else if (!this.publicClient.chain?.testnet) {
+      this.rootPublicKey = ROOT_PUBLIC_KEYS.MAINNET
     } else {
-      throw new Error('EVM main net is not supported yet')
+      throw new Error('Chain not supported')
     }
   }
 
@@ -70,8 +72,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }): Promise<UncompressedPubKeySEC1> {
     const pubKey = cryptography.deriveChildPublicKey(
       await this.getPublicKey(),
-      args.predecessor,
-      args.path
+      args.predecessor.toLowerCase(),
+      args.path,
+      KDF_CHAIN_IDS.ETHEREUM
     )
 
     return pubKey
@@ -266,7 +269,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         return {
           r: bigR.x.toString(16).padStart(64, '0'),
           s: s.toString(16).padStart(64, '0'),
-          v: recoveryId,
+          v: recoveryId + 27,
         }
       }
     }
