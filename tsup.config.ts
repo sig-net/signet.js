@@ -30,7 +30,7 @@ export default defineConfig((options) => {
     },
     sourcemap: true,
     minify: true,
-    clean: false, // Don't clean the dist folder on each build
+    clean: true,
     dts: isNode,
     external: isNode
       ? ['path', 'fs', 'crypto', 'stream', 'util', 'events', 'buffer']

@@ -1,6 +1,6 @@
 {
   "name": "signet.js",
-  "version": "0.0.2-beta.3",
+  "version": "0.0.2-beta.5",
   "description": "",
   "type": "module",
   "exports": {
@@ -22,10 +22,11 @@
   "browser": "./browser/index.browser.js",
   "types": "./types/index.d.ts",
   "scripts": {
-    "watch": "vite build --watch",
-    "build": "rm -rf dist && npm run build:browser && npm run build:node && cp package.json README.md LICENSE dist/",
-    "build:browser": "vite build --mode browser",
-    "build:node": "vite build --mode node",
+    "watch": "tsup --watch --env.TARGET=browser",
+    "build": "rm -rf dist && npm run build:browser && npm run build:node && npm run build:post && cp package.json README.md LICENSE dist/",
+    "build:browser": "tsup --env.TARGET=browser",
+    "build:node": "tsup --env.TARGET=node",
+    "build:post": "mkdir -p dist/types && cp dist/node/index.d.ts dist/node/index.d.cts dist/types/ && rm dist/node/index.d.ts dist/node/index.d.cts",
     "pre:deploy": "npm run build && npm run docs:build",
     "publish-npm": "npm run pre:deploy && npm publish",
     "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
@@ -62,8 +63,6 @@
     "prettier": "^3.2.5",
     "tsup": "^8.4.0",
     "typescript": "^5.4.3",
-    "vite": "^6.0.7",
-    "vite-plugin-dts": "^4.4.0",
     "vitest": "^3.0.4",
     "vocs": "1.0.0-alpha.62"
   },
