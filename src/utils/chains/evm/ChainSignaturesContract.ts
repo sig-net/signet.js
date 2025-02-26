@@ -20,8 +20,7 @@ import type {
 import { cryptography } from '@utils'
 import { CHAINS, KDF_CHAIN_IDS } from '@utils/constants'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
-
-import { getRootPublicKey } from '../utils'
+import { getRootPublicKey } from '@utils/publicKey'
 
 import { abi } from './ChainSignaturesContractABI'
 import {

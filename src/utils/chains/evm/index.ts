@@ -1,3 +1,3 @@
 export * from './ChainSignaturesContract'
-export * as chainSignaturesContractABI from './ChainSignaturesContractABI'
+export * from './ChainSignaturesContractABI'
 export * as errors from './errors'
