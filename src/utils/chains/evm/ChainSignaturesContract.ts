@@ -30,12 +30,29 @@ import {
 } from './errors'
 import type { SignOptions, SignRequest, SignatureErrorData } from './types'
 
+/**
+ * Implementation of the ChainSignatureContract for EVM chains.
+ *
+ * When signing data, the contract emits a SignatureRequested event with a requestId.
+ * This requestId is used to track the signature request and retrieve the signature
+ * once it's available. The sign method handles this process automatically by polling
+ * for the signature using the requestId.
+ */
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
   private readonly walletClient: WalletClient
   private readonly contractAddress: Hex
   private readonly rootPublicKey: NajPublicKey
 
+  /**
+   * Creates a new instance of the ChainSignatureContract for EVM chains.
+   *
+   * @param args - Configuration options for the contract
+   * @param args.publicClient - A Viem PublicClient instance for reading from the blockchain
+   * @param args.walletClient - A Viem WalletClient instance for sending transactions
+   * @param args.contractAddress - The address of the deployed ChainSignatures contract (e.g. `0x857ED3A242B59cC24144814a0DF41C397a3811E6`)
+   * @param args.rootPublicKey - Optional root public key. If not provided, it will be derived from the contract address
+   */
   constructor(args: {
     publicClient: PublicClient
     walletClient: WalletClient

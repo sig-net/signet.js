@@ -11,6 +11,11 @@ export const CHAINS = {
   NEAR: 'NEAR',
 } as const
 
+/**
+ * Root public keys for the Sig Network Smart Contracts across different environments.
+ *
+ * These keys should never change.
+ */
 export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
   [ENVS.TESTNET_DEV]:
     'secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq',
@@ -20,11 +25,26 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
     'secp256k1:4tY4qMzusmgX5wYdG35663Y3Qar3CTbpApotwk9ZKLoF79XA4DjG8XoByaKdNHKQX9Lz5hd7iJqsWdTKyA7dKa6Z',
 }
 
+/**
+ * Chain IDs used in the key derivation function (KDF) for deriving child public keys to
+ * distinguish between different chains.
+ *
+ * @see {@link deriveChildPublicKey} in cryptography.ts for usage details
+ */
 export const KDF_CHAIN_IDS = {
   [CHAINS.ETHEREUM]: '0x1',
   [CHAINS.NEAR]: '0x18d',
 } as const
 
+/**
+ * Contract addresses for different chains and environments.
+ *
+ * - Testnet Dev: Used for internal development and testing
+ * - Testnet: Used for integration testing and staging
+ * - Mainnet: Production contract address
+ *
+ * @see ChainSignatureContract documentation for implementation details
+ */
 export const CONTRACT_ADDRESSES: Record<
   keyof typeof CHAINS,
   Record<keyof typeof ENVS, string>

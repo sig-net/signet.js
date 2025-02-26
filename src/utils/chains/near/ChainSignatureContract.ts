@@ -52,8 +52,13 @@ interface ChainSignatureContractArgs {
 }
 
 /**
- * This contract will default to view methods only.
- * If you want to use the change methods, you need to provide an account and keypair.
+ * Implementation of the ChainSignatureContract for NEAR chains.
+ *
+ * This class provides an interface to interact with the ChainSignatures contract
+ * deployed on NEAR. It supports both view methods (which don't require authentication)
+ * and change methods (which require a valid NEAR account and keypair).
+ *
+ * @extends AbstractChainSignatureContract
  */
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly networkId: NearNetworkIds
@@ -61,13 +66,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly accountId: string
   private readonly keypair: KeyPair
 
-  // TODO: Should use the hardcoded ROOT_PUBLIC_KEY as in the EVM ChainSignatureContract
+  /**
+   * Creates a new instance of the ChainSignatureContract for NEAR chains.
+   *
+   * @param args - Configuration options for the contract
+   * @param args.networkId - The NEAR network ID (e.g. 'testnet', 'mainnet')
+   * @param args.contractId - The contract ID of the deployed ChainSignatures contract
+   * @param args.accountId - Optional NEAR account ID for signing transactions. Required for change methods.
+   * @param args.keypair - Optional NEAR KeyPair for signing transactions. Required for change methods.
+   */
   constructor({
     networkId,
     contractId,
     accountId = DONT_CARE_ACCOUNT_ID,
     keypair = KeyPair.fromRandom('ed25519'),
   }: ChainSignatureContractArgs) {
+    // TODO: Should use the hardcoded ROOT_PUBLIC_KEY as in the EVM ChainSignatureContract
     super()
 
     this.networkId = networkId
