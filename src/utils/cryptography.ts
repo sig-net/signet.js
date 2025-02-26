@@ -10,14 +10,26 @@ import {
 } from '@chains/types'
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
-  if (typeof signature.big_r === 'object' && typeof signature.s === 'object') {
+  // Handle NearNearMpcSignature
+  if (
+    'big_r' in signature &&
+    typeof signature.big_r === 'object' &&
+    'affine_point' in signature.big_r &&
+    's' in signature &&
+    typeof signature.s === 'object' &&
+    'scalar' in signature.s
+  ) {
     return {
       r: signature.big_r.affine_point.substring(2),
       s: signature.s.scalar,
       v: signature.recovery_id + 27,
     }
-  } else if (
+  }
+  // Handle SigNetNearMpcSignature
+  else if (
+    'big_r' in signature &&
     typeof signature.big_r === 'string' &&
+    's' in signature &&
     typeof signature.s === 'string'
   ) {
     return {
@@ -26,6 +38,20 @@ export const toRSV = (signature: MPCSignature): RSVSignature => {
       v: signature.recovery_id + 27,
     }
   }
+  // Handle SigNetEvmMpcSignature
+  else if (
+    'bigR' in signature &&
+    'x' in signature.bigR &&
+    's' in signature &&
+    typeof signature.s === 'bigint'
+  ) {
+    return {
+      r: signature.bigR.x.toString(16).padStart(64, '0'),
+      s: signature.s.toString(16).padStart(64, '0'),
+      v: signature.recoveryId + 27,
+    }
+  }
+
   throw new Error('Invalid signature format')
 }
 
@@ -56,6 +82,12 @@ export const compressPubKey = (
   return prefix + x
 }
 
+/**
+ * Converts a NAJ public key to an uncompressed SEC1 public key.
+ *
+ * @param najPublicKey - The NAJ public key to convert (e.g. secp256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5)
+ * @returns The uncompressed SEC1 public key (e.g. 04 || x || y)
+ */
 export const najToUncompressedPubKeySEC1 = (
   najPublicKey: NajPublicKey
 ): UncompressedPubKeySEC1 => {
@@ -65,10 +97,10 @@ export const najToUncompressedPubKeySEC1 = (
 
 /**
  * Derives a child public key from a parent public key using the sig.network v1.0.0 epsilon derivation scheme.
- * The parent public keys are defined in @constants.ts as ROOT_PUBLIC_KEY_V1_SIG_NET_TESTNET and ROOT_PUBLIC_KEY_DEV_V1_SIG_NET_TESTNET.
+ * The parent public keys are defined in @constants.ts
  *
- * @param najPublicKey - The parent public key in NAJ format (e.g. secp256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5)
- * @param predecessorId - The predecessor ID calling the signer contract
+ * @param najPublicKey - The parent public key in uncompressed SEC1 format (e.g. 04 || x || y)
+ * @param predecessorId - The predecessor ID is the address of the account calling the signer contract (e.g EOA or Contract Address)
  * @param path - Optional derivation path suffix (defaults to empty string)
  * @returns The derived child public key in uncompressed SEC1 format (04 || x || y)
  */

@@ -6,6 +6,11 @@ export const ENVS = {
   MAINNET: 'MAINNET',
 } as const
 
+export const CHAINS = {
+  ETHEREUM: 'ETHEREUM',
+  NEAR: 'NEAR',
+} as const
+
 export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
   [ENVS.TESTNET_DEV]:
     'secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq',
@@ -16,22 +21,22 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
 }
 
 export const KDF_CHAIN_IDS = {
-  ETHEREUM: '0x1',
-  NEAR: '0x18d',
-}
+  [CHAINS.ETHEREUM]: '0x1',
+  [CHAINS.NEAR]: '0x18d',
+} as const
 
 export const CONTRACT_ADDRESSES: Record<
-  keyof typeof KDF_CHAIN_IDS,
+  keyof typeof CHAINS,
   Record<keyof typeof ENVS, string>
 > = {
-  NEAR: {
-    [ENVS.MAINNET]: 'v1.sig-net.near',
-    [ENVS.TESTNET]: 'v1.sig-net.testnet',
+  [CHAINS.NEAR]: {
     [ENVS.TESTNET_DEV]: 'dev.sig-net.testnet',
+    [ENVS.TESTNET]: 'v1.sig-net.testnet',
+    [ENVS.MAINNET]: 'v1.sig-net.near',
   },
-  ETHEREUM: {
-    [ENVS.MAINNET]: '0xf8bdC0612361a1E49a8E01423d4C0cFc5dF4791A',
-    [ENVS.TESTNET]: '0x83458E8Bf8206131Fe5c05127007FA164c0948A2',
+  [CHAINS.ETHEREUM]: {
     [ENVS.TESTNET_DEV]: '0x69C6b28Fdc74618817fa380De29a653060e14009',
+    [ENVS.TESTNET]: '0x83458E8Bf8206131Fe5c05127007FA164c0948A2',
+    [ENVS.MAINNET]: '0xf8bdC0612361a1E49a8E01423d4C0cFc5dF4791A',
   },
 }

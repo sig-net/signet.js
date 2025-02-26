@@ -6,6 +6,7 @@ import {
   withRetry,
   type PublicClient,
   type WalletClient,
+  type Hex,
 } from 'viem'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
@@ -13,11 +14,14 @@ import type { SignArgs } from '@chains/ChainSignatureContract'
 import type {
   NajPublicKey,
   RSVSignature,
+  SigNetEvmMpcSignature,
   UncompressedPubKeySEC1,
 } from '@chains/types'
 import { cryptography } from '@utils'
-import { KDF_CHAIN_IDS, ROOT_PUBLIC_KEYS } from '@utils/constants'
+import { CHAINS, KDF_CHAIN_IDS } from '@utils/constants'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+
+import { getRootPublicKey } from '../utils'
 
 import { abi } from './ChainSignaturesContractABI'
 import {
@@ -25,35 +29,28 @@ import {
   SignatureContractError,
   SigningError,
 } from './errors'
-import type {
-  ChainSignatureContractArgs,
-  SignOptions,
-  SignRequest,
-  SignatureData,
-  SignatureErrorData,
-} from './types'
+import type { SignOptions, SignRequest, SignatureErrorData } from './types'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
   private readonly walletClient: WalletClient
-  private readonly contractAddress: `0x${string}`
+  private readonly contractAddress: Hex
   private readonly rootPublicKey: NajPublicKey
 
-  constructor(args: ChainSignatureContractArgs) {
+  constructor(args: {
+    publicClient: PublicClient
+    walletClient: WalletClient
+    contractAddress: Hex
+    rootPublicKey?: NajPublicKey
+  }) {
     super()
     this.publicClient = args.publicClient
     this.walletClient = args.walletClient
     this.contractAddress = args.contractAddress
 
-    if (args.rootPublicKey) {
-      this.rootPublicKey = args.rootPublicKey
-    } else if (this.publicClient.chain?.testnet) {
-      this.rootPublicKey = ROOT_PUBLIC_KEYS.TESTNET_DEV
-    } else if (!this.publicClient.chain?.testnet) {
-      this.rootPublicKey = ROOT_PUBLIC_KEYS.MAINNET
-    } else {
-      throw new Error('Chain not supported')
-    }
+    this.rootPublicKey =
+      args.rootPublicKey ||
+      getRootPublicKey(this.contractAddress, CHAINS.ETHEREUM)
   }
 
   async getCurrentSignatureDeposit(): Promise<BN> {
@@ -260,18 +257,12 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
     if (logs.length > 0) {
       const { args: signatureData } = logs[logs.length - 1] as unknown as {
-        args: SignatureData
-      }
-
-      if (signatureData.signature) {
-        const { bigR, s, recoveryId } = signatureData.signature
-
-        return {
-          r: bigR.x.toString(16).padStart(64, '0'),
-          s: s.toString(16).padStart(64, '0'),
-          v: recoveryId + 27,
+        args: {
+          signature: SigNetEvmMpcSignature
         }
       }
+
+      return cryptography.toRSV(signatureData.signature)
     }
 
     return undefined

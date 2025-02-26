@@ -1,13 +1,4 @@
-import type { Hex, PublicClient, WalletClient } from 'viem'
-
-import type { NajPublicKey } from '@chains/types'
-
-export interface ChainSignatureContractArgs {
-  publicClient: PublicClient
-  walletClient: WalletClient
-  contractAddress: Hex
-  rootPublicKey?: NajPublicKey
-}
+import type { Hex } from 'viem'
 
 export interface SignOptions {
   sign: {
@@ -18,14 +9,6 @@ export interface SignOptions {
   retry: {
     delay?: number
     retryCount?: number
-  }
-}
-
-export interface SignatureData {
-  signature: {
-    bigR: { x: bigint; y: bigint }
-    s: bigint
-    recoveryId: number
   }
 }
 

@@ -61,6 +61,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly accountId: string
   private readonly keypair: KeyPair
 
+  // TODO: Should use the hardcoded ROOT_PUBLIC_KEY as in the EVM ChainSignatureContract
   constructor({
     networkId,
     contractId,
@@ -122,6 +123,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return najToUncompressedPubKeySEC1(najPubKey)
   }
 
+  // TODO: Should call the contract without the Contract instance as it doesn't allow for proper timeout handling on the BE
   async sign(args: SignArgs): Promise<RSVSignature> {
     requireAccount(this.accountId)
 
