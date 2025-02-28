@@ -1,7 +1,7 @@
 import { type NajPublicKey } from '@chains'
 
 export const ENVS = {
-  TESTNET_DEV: 'TESTNET_DEV', // Internal use only, very unstable
+  TESTNET_DEV: 'TESTNET_DEV',
   TESTNET: 'TESTNET',
   MAINNET: 'MAINNET',
 } as const
@@ -39,8 +39,8 @@ export const KDF_CHAIN_IDS = {
 /**
  * Contract addresses for different chains and environments.
  *
- * - Testnet Dev: Used for internal development and testing
- * - Testnet: Used for integration testing and staging
+ * - Testnet Dev: Used for internal development, very unstable
+ * - Testnet: Used for external development, stable
  * - Mainnet: Production contract address
  *
  * @see ChainSignatureContract documentation for implementation details

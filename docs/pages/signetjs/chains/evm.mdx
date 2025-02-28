@@ -9,7 +9,7 @@ This implementation supports all EVM-compatible networks (Ethereum, Binance Smar
 ## Configuration
 
 ```ts twoslash filename="base.ts"
-// [!include ~/snippets/code/contract.ts]
+// [!include ~/snippets/code/near/contract.ts]
 // ---cut---
 import { EVM } from 'signet.js'
 
@@ -92,7 +92,7 @@ const txSerialized = await chain.attachTransactionSignature({
 To add support for a new EVM-compatible chain, you only need to configure the provider URL. The chain ID and network configuration are automatically retrieved from the provider.
 
 ```ts twoslash
-// [!include ~/snippets/code/contract.ts]
+// [!include ~/snippets/code/near/contract.ts]
 // ---cut---
 import { EVM } from 'signet.js'
 

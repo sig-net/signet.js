@@ -19,28 +19,13 @@ export default defineConfig({
   sidebar: [
     {
       text: 'Chain Signatures',
-      items: [
-        { text: 'Introduction to Chain Signatures', link: '/' },
-        {
-          text: 'Signing an arbitrary payload hash using Chain Signatures',
-          link: '/arbitraryHash',
-        },
-      ],
+      items: [{ text: 'Introduction to Chain Signatures', link: '/' }],
     },
     {
       text: 'Signet.js',
       items: [
-        {
-          text: 'Getting Started',
-          items: [
-            { text: 'Overview', link: '/signetjs' },
-            { text: 'Chain Interface', link: '/signetjs/chain' },
-            {
-              text: 'Chain Signatures Contract',
-              link: '/signetjs/chain-signatures-contract',
-            },
-          ],
-        },
+        { text: 'Quick Start', link: '/signetjs' },
+        { text: 'Contract Addresses', link: '/signetjs/contract-addresses' },
         {
           text: 'Supported Chains',
           items: [
@@ -56,6 +41,16 @@ export default defineConfig({
               ],
             },
             { text: 'Cosmos', link: '/signetjs/chains/cosmos' },
+          ],
+        },
+        {
+          text: 'Advanced',
+          items: [
+            { text: 'Chain Interface', link: '/signetjs/advanced/chain' },
+            {
+              text: 'Chain Signatures Contract',
+              link: '/signetjs/advanced/chain-signatures-contract',
+            },
           ],
         },
       ],
