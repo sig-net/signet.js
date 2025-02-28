@@ -1,18 +1,10 @@
 # Contract Addresses
 
-This page provides the reference constants for the Sig Network interactions across different environments and chains.
-
-## Constants file
-
-All the constants are exported from the `constants.ts` file and can be used in your code as follows:
-
-```ts twoslash
-// [!include ~/../src/utils/constants.ts]
-```
+All the necessary constants to interact with the Sig Network are exported from the `constants.ts` file.
 
 ## Using the Constants in your code
 
-The contract addresses are exported as constants in the `constants.ts` file. You can import and use them in your code as follows:
+You can import and use them in your code as follows:
 
 ```ts twoslash
 import { utils } from 'signet.js'
@@ -24,4 +16,12 @@ console.log(evmTestnetAddress) // '0x83458E8Bf8206131Fe5c05127007FA164c0948A2'
 const testnetPublicKey = utils.constants.ROOT_PUBLIC_KEYS.TESTNET
 
 console.log(testnetPublicKey) // 'secp256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5'
+```
+
+## Constants file
+
+For reference, here is the file with the full list of constants and their explanations:
+
+```ts twoslash
+// [!include ~/../src/utils/constants.ts]
 ```

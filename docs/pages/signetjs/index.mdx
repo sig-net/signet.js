@@ -16,7 +16,6 @@ Here's a basic example using the EVM implementation:
 
 ```ts twoslash
 import { utils, EVM } from 'signet.js'
-import { BN } from 'bn.js'
 // [!include ~/snippets/code/evm/env.ts]
 
 const chainSigContract = new utils.chains.evm.ChainSignatureContract({
@@ -32,7 +31,7 @@ const evm = new EVM({
 })
 
 const path = 'eth' // The path is an arbitrary string, it can be anything, each path will map to a different address/key
-const predecessorId = walletClient.account.address // The predecessor ID is your wallet/contract address that will call the contract
+const predecessorId = walletClient.account.address // The predecessor ID is your wallet/contract address that will call the ChainSignatureContract
 
 const { address: from, publicKey } = await evm.deriveAddressAndPublicKey(
   predecessorId,
@@ -40,7 +39,6 @@ const { address: from, publicKey } = await evm.deriveAddressAndPublicKey(
 )
 
 const { balance, decimals } = await evm.getBalance(from)
-console.log({ balance, decimals })
 
 const { transaction, mpcPayloads } = await evm.prepareTransactionForSigning({
   from: from as `0x${string}`,
@@ -54,10 +52,6 @@ const rsvSignature = await chainSigContract?.sign({
   key_version: 0, // The version of the key to use (usually 0)
 })
 
-if (!rsvSignature) {
-  throw new Error('Failed to sign transaction')
-}
-
 const tx = evm.attachTransactionSignature({
   transaction,
   mpcSignatures: [rsvSignature],
@@ -68,15 +62,15 @@ const txHash = await evm.broadcastTx(tx)
 
 ## Supported Chains
 
-- [EVM Chains](./chains/evm.mdx) - Ethereum and compatible networks
-- [Bitcoin](./chains/bitcoin/bitcoin.mdx) - Bitcoin network
-- [Cosmos Chains](./chains/cosmos.mdx) - Cosmos SDK-based networks
+- [EVM Chains](/signetjs/chains/evm.mdx) - Ethereum and compatible networks
+- [Bitcoin](/signetjs/chains/bitcoin/bitcoin.mdx) - Bitcoin network
+- [Cosmos Chains](/signetjs/chains/cosmos.mdx) - Cosmos SDK-based networks
 
 ## Architecture
 
 The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
 
-For more details check the [Chain](./chain.mdx) page.
+For more details check the [Chain](/signetjs/advanced/chain.mdx) page.
 
 ## Utility Functions
 
