@@ -1,0 +1,38 @@
+# prepareTransactionForSigning
+
+The `prepareTransactionForSigning` method prepares a Cosmos transaction for MPC signing by creating the transaction structure and computing the hash that needs to be signed.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+const { transaction, hashesToSign } =
+  await cosmosChain.prepareTransactionForSigning({
+    address: 'cosmos1...',
+    publicKey: '0350e8...',
+    messages: [
+      {
+        typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+        value: {
+          fromAddress: 'cosmos1...',
+          toAddress: 'cosmos1...',
+          amount: [{ denom: 'uatom', amount: '1000000' }],
+        },
+      },
+    ],
+    memo: 'Token transfer',
+  })
+```
+
+## Parameters
+
+| Parameter            | Type                       | Description                                                                                                |
+| -------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `transactionRequest` | `CosmosTransactionRequest` | The transaction request object containing address, publicKey, messages, and optional memo and fee settings |
+
+## Returns
+
+| Type                                           | Description                                                            |
+| ---------------------------------------------- | ---------------------------------------------------------------------- |
+| `{ transaction: any, hashesToSign: string[] }` | Object containing the unsigned transaction and array of hashes to sign |

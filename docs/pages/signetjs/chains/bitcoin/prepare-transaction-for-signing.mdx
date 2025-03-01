@@ -1,0 +1,29 @@
+# prepareTransactionForSigning
+
+The `prepareTransactionForSigning` method prepares a Bitcoin transaction for MPC signing by creating a PSBT (Partially Signed Bitcoin Transaction) and computing the hash that needs to be signed.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+const { transaction, hashesToSign } =
+  await btcChain.prepareTransactionForSigning({
+    from: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    to: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+    value: '0.001', // 0.001 BTC
+    publicKey: '0235a3...',
+  })
+```
+
+## Parameters
+
+| Parameter            | Type                    | Description                                                                                          |
+| -------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `transactionRequest` | `BTCTransactionRequest` | The transaction request object containing from, to, value, publicKey, and optional feeRate and utxos |
+
+## Returns
+
+| Type                                           | Description                                                     |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `{ transaction: any, hashesToSign: string[] }` | Object containing the unsigned PSBT and array of hashes to sign |

@@ -1,0 +1,28 @@
+# getBalance
+
+The `getBalance` method retrieves the native token balance of an address on the EVM chain.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+const { balance, decimals } = await evmChain.getBalance(
+  '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199'
+)
+```
+
+## Parameters
+
+| Parameter | Type     | Description                              |
+| --------- | -------- | ---------------------------------------- |
+| `address` | `string` | The EVM address to check the balance for |
+
+## Returns
+
+The method returns a Promise that resolves to an object containing:
+
+| Property   | Type     | Description                                                         |
+| ---------- | -------- | ------------------------------------------------------------------- |
+| `balance`  | `bigint` | The balance in the chain's base units (wei for Ethereum)            |
+| `decimals` | `number` | The number of decimals used to format the balance (18 for Ethereum) |

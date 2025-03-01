@@ -27,20 +27,87 @@ export default defineConfig({
         { text: 'Quick Start', link: '/signetjs' },
         { text: 'Contract Addresses', link: '/signetjs/contract-addresses' },
         {
-          text: 'Supported Chains',
+          text: 'API Reference',
           items: [
-            { text: 'EVM Chains', link: '/signetjs/chains/evm' },
+            {
+              text: 'EVM Chains',
+              items: [
+                { text: 'Overview', link: '/signetjs/chains/evm' },
+                {
+                  text: 'prepareTransactionForSigning',
+                  link: '/signetjs/chains/evm/prepare-transaction-for-signing',
+                },
+                {
+                  text: 'finalizeTransactionSigning',
+                  link: '/signetjs/chains/evm/finalize-transaction-signing',
+                },
+                {
+                  text: 'prepareMessageForSigning',
+                  link: '/signetjs/chains/evm/prepare-message-for-signing',
+                },
+                {
+                  text: 'finalizeMessageSigning',
+                  link: '/signetjs/chains/evm/finalize-message-signing',
+                },
+                {
+                  text: 'prepareTypedDataForSigning',
+                  link: '/signetjs/chains/evm/prepare-typed-data-for-signing',
+                },
+                {
+                  text: 'finalizeTypedDataSigning',
+                  link: '/signetjs/chains/evm/finalize-typed-data-signing',
+                },
+              ],
+            },
             {
               text: 'Bitcoin',
               items: [
-                { text: 'Overview', link: '/signetjs/chains/bitcoin/bitcoin' },
+                { text: 'Overview', link: '/signetjs/chains/bitcoin' },
                 {
                   text: 'RPC Adapter',
                   link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
                 },
+                {
+                  text: 'prepareTransactionForSigning',
+                  link: '/signetjs/chains/bitcoin/prepare-transaction-for-signing',
+                },
+                {
+                  text: 'finalizeTransactionSigning',
+                  link: '/signetjs/chains/bitcoin/finalize-transaction-signing',
+                },
               ],
             },
-            { text: 'Cosmos', link: '/signetjs/chains/cosmos' },
+            {
+              text: 'Cosmos Chains',
+              items: [
+                { text: 'Overview', link: '/signetjs/chains/cosmos' },
+                {
+                  text: 'prepareTransactionForSigning',
+                  link: '/signetjs/chains/cosmos/prepare-transaction-for-signing',
+                },
+                {
+                  text: 'finalizeTransactionSigning',
+                  link: '/signetjs/chains/cosmos/finalize-transaction-signing',
+                },
+              ],
+            },
+            {
+              text: 'Common Methods',
+              items: [
+                {
+                  text: 'deriveAddressAndPublicKey',
+                  link: '/signetjs/chains/derive-address-and-public-key',
+                },
+                {
+                  text: 'getBalance',
+                  link: '/signetjs/chains/get-balance',
+                },
+                {
+                  text: 'broadcastTx',
+                  link: '/signetjs/chains/broadcast-tx',
+                },
+              ],
+            },
           ],
         },
         {
