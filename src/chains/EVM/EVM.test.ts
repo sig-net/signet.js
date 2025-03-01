@@ -70,16 +70,16 @@ describe('EVM', async () => {
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
-    const { hashesToSign } = await evm.prepareMessageForSigning(message)
+    const { hashToSign } = await evm.prepareMessageForSigning(message)
 
     const mpcSignature = await contract.sign({
-      payload: hashesToSign[0],
+      payload: hashToSign,
       path: '',
       key_version: 0,
     })
 
-    const signature = evm.assembleMessageSignature({
-      rsvSignatures: [mpcSignature],
+    const signature = evm.finalizeMessageSigning({
+      rsvSignature: mpcSignature,
     })
 
     const walletSignature = await walletClient.signMessage({
@@ -117,16 +117,16 @@ describe('EVM', async () => {
       },
     }
 
-    const { hashesToSign } = await evm.prepareTypedDataForSigning(typedData)
+    const { hashToSign } = await evm.prepareTypedDataForSigning(typedData)
 
     const mpcSignature = await contract.sign({
-      payload: hashesToSign[0],
+      payload: hashToSign,
       path: '',
       key_version: 0,
     })
 
-    const signature = evm.assembleTypedDataSignature({
-      rsvSignatures: [mpcSignature],
+    const signature = evm.finalizeTypedDataSigning({
+      rsvSignature: mpcSignature,
     })
 
     const walletSignature = await walletClient.signTypedData(typedData)
@@ -171,7 +171,7 @@ describe('EVM', async () => {
       key_version: 0,
     })
 
-    const tx = evm.attachTransactionSignature({
+    const tx = evm.finalizeTransactionSigning({
       transaction,
       rsvSignatures: [mpcSignature],
     })
@@ -210,21 +210,21 @@ describe('EVM', async () => {
       signature: '0x' as `0x${string}`,
     }
 
-    const { hashesToSign } = await evm.prepareUserOpForSigning(
+    const { hashToSign } = await evm.prepareUserOpForSigning(
       userOp,
       '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
       11155111
     )
 
     const mpcSignature = await contract.sign({
-      payload: hashesToSign[0],
+      payload: hashToSign,
       path: '',
       key_version: 0,
     })
 
-    const signedUserOp = evm.attachUserOpSignature({
+    const signedUserOp = evm.finalizeUserOpSigning({
       userOp,
-      rsvSignatures: [mpcSignature],
+      rsvSignature: mpcSignature,
     })
 
     const walletSignature = await lightAccountClient.signUserOperation({

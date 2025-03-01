@@ -168,18 +168,18 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }
 
   async prepareMessageForSigning(message: EVMMessage): Promise<{
-    hashesToSign: HashToSign[]
+    hashToSign: HashToSign
   }> {
     return {
-      hashesToSign: [Array.from(toBytes(hashMessage(message)))],
+      hashToSign: Array.from(toBytes(hashMessage(message))),
     }
   }
 
   async prepareTypedDataForSigning(typedDataRequest: EVMTypedData): Promise<{
-    hashesToSign: HashToSign[]
+    hashToSign: HashToSign
   }> {
     return {
-      hashesToSign: [Array.from(toBytes(hashTypedData(typedDataRequest)))],
+      hashToSign: Array.from(toBytes(hashTypedData(typedDataRequest))),
     }
   }
 
@@ -196,7 +196,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     chainIdArgs?: number
   ): Promise<{
     userOp: UserOperationV7 | UserOperationV6
-    hashesToSign: HashToSign[]
+    hashToSign: HashToSign
   }> {
     const chainId = chainIdArgs ?? (await this.client.getChainId())
     const entryPoint =
@@ -266,11 +266,11 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
     return {
       userOp,
-      hashesToSign: [Array.from(toBytes(hashMessage({ raw: userOpHash })))],
+      hashToSign: Array.from(toBytes(hashMessage({ raw: userOpHash }))),
     }
   }
 
-  attachTransactionSignature({
+  finalizeTransactionSigning({
     transaction,
     rsvSignatures,
   }: {
@@ -282,30 +282,30 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     return serializeTransaction(transaction, signature)
   }
 
-  assembleMessageSignature({
-    rsvSignatures,
+  finalizeMessageSigning({
+    rsvSignature,
   }: {
-    rsvSignatures: RSVSignature[]
+    rsvSignature: RSVSignature
   }): Hex {
-    return this.assembleSignature(rsvSignatures[0])
+    return this.assembleSignature(rsvSignature)
   }
 
-  assembleTypedDataSignature({
-    rsvSignatures,
+  finalizeTypedDataSigning({
+    rsvSignature,
   }: {
-    rsvSignatures: RSVSignature[]
+    rsvSignature: RSVSignature
   }): Hex {
-    return this.assembleSignature(rsvSignatures[0])
+    return this.assembleSignature(rsvSignature)
   }
 
-  attachUserOpSignature({
+  finalizeUserOpSigning({
     userOp,
-    rsvSignatures,
+    rsvSignature,
   }: {
     userOp: UserOperationV7 | UserOperationV6
-    rsvSignatures: RSVSignature[]
+    rsvSignature: RSVSignature
   }): UserOperationV7 | UserOperationV6 {
-    const { r, s, yParity } = this.transformRSVSignature(rsvSignatures[0])
+    const { r, s, yParity } = this.transformRSVSignature(rsvSignature)
     if (yParity === undefined) {
       throw new Error('Missing yParity')
     }

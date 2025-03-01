@@ -100,7 +100,7 @@ const { transaction: unsignedTransaction, hashesToSign } =
   await chain.prepareTransactionForSigning(transactionRequest)
 ```
 
-### attachTransactionSignature
+### finalizeTransactionSigning
 
 Adds signatures to a PSBT.
 
@@ -118,7 +118,7 @@ const rsvSignatures: RSVSignature[] = [
   },
 ]
 
-const signedTx = chain.attachTransactionSignature({
+const signedTx = chain.finalizeTransactionSigning({
   transaction: unsignedTransaction,
   rsvSignatures,
 })

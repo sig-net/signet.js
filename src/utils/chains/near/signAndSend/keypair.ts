@@ -43,7 +43,7 @@ export const EVMTransaction = async (
       key_version: 0,
     })
 
-    const txSerialized = evm.attachTransactionSignature({
+    const txSerialized = evm.finalizeTransactionSigning({
       transaction,
       rsvSignatures: [signature],
     })
@@ -101,7 +101,7 @@ export const BTCTransaction = async (
       )
     )
 
-    const txSerialized = btc.attachTransactionSignature({
+    const txSerialized = btc.finalizeTransactionSigning({
       transaction,
       rsvSignatures: signatures,
     })
@@ -157,7 +157,7 @@ export const CosmosTransaction = async (
       )
     )
 
-    const txSerialized = cosmos.attachTransactionSignature({
+    const txSerialized = cosmos.finalizeTransactionSigning({
       transaction,
       rsvSignatures: signatures,
     })

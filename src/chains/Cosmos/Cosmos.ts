@@ -221,7 +221,7 @@ export class Cosmos extends Chain<
     }
   }
 
-  attachTransactionSignature({
+  finalizeTransactionSigning({
     transaction,
     rsvSignatures,
   }: {

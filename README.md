@@ -80,7 +80,7 @@ const signature = await contract.sign({
 })
 
 // Add signature
-const signedTx = evmChain.attachTransactionSignature({
+const signedTx = evmChain.finalizeTransactionSigning({
   transaction,
   rsvSignatures: [signature],
 })
