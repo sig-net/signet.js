@@ -70,17 +70,16 @@ describe('EVM', async () => {
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
-    const { mpcPayloads } = await evm.prepareMessageForSigning(message)
+    const { hashesToSign } = await evm.prepareMessageForSigning(message)
 
     const mpcSignature = await contract.sign({
-      payload: mpcPayloads[0],
+      payload: hashesToSign[0],
       path: '',
       key_version: 0,
     })
 
-    const signature = evm.attachMessageSignature({
-      message,
-      mpcSignatures: [mpcSignature],
+    const signature = evm.assembleMessageSignature({
+      rsvSignatures: [mpcSignature],
     })
 
     const walletSignature = await walletClient.signMessage({
@@ -118,17 +117,16 @@ describe('EVM', async () => {
       },
     }
 
-    const { mpcPayloads } = await evm.prepareTypedDataForSigning(typedData)
+    const { hashesToSign } = await evm.prepareTypedDataForSigning(typedData)
 
     const mpcSignature = await contract.sign({
-      payload: mpcPayloads[0],
+      payload: hashesToSign[0],
       path: '',
       key_version: 0,
     })
 
-    const signature = evm.attachTypedDataSignature({
-      typedData,
-      mpcSignatures: [mpcSignature],
+    const signature = evm.assembleTypedDataSignature({
+      rsvSignatures: [mpcSignature],
     })
 
     const walletSignature = await walletClient.signTypedData(typedData)
@@ -164,18 +162,18 @@ describe('EVM', async () => {
       accessList: [],
     }
 
-    const { mpcPayloads, transaction } =
+    const { hashesToSign, transaction } =
       await evm.prepareTransactionForSigning(transactionInput)
 
     const mpcSignature = await contract.sign({
-      payload: mpcPayloads[0],
+      payload: hashesToSign[0],
       path: '',
       key_version: 0,
     })
 
     const tx = evm.attachTransactionSignature({
       transaction,
-      mpcSignatures: [mpcSignature],
+      rsvSignatures: [mpcSignature],
     })
 
     const walletSignature = await walletClient.signTransaction(transactionInput)
@@ -212,21 +210,21 @@ describe('EVM', async () => {
       signature: '0x' as `0x${string}`,
     }
 
-    const { mpcPayloads } = await evm.prepareUserOpForSigning(
+    const { hashesToSign } = await evm.prepareUserOpForSigning(
       userOp,
       '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
       11155111
     )
 
     const mpcSignature = await contract.sign({
-      payload: mpcPayloads[0],
+      payload: hashesToSign[0],
       path: '',
       key_version: 0,
     })
 
     const signedUserOp = evm.attachUserOpSignature({
       userOp,
-      mpcSignatures: [mpcSignature],
+      rsvSignatures: [mpcSignature],
     })
 
     const walletSignature = await lightAccountClient.signUserOperation({

@@ -77,7 +77,7 @@ const transactionRequest: EVMTransactionRequest = {
   data: '0x...',
 }
 
-const { transaction: unsignedTransaction, mpcPayloads } =
+const { transaction: unsignedTransaction, hashesToSign } =
   await chain.prepareTransactionForSigning(transactionRequest)
 ```
 
@@ -98,7 +98,7 @@ Adds a signature to an unsigned transaction.
 import { RSVSignature } from 'signet.js'
 
 // Ideally it would be a request to the Sig Network Smart Contract
-const mpcSignatures: RSVSignature[] = [
+const rsvSignatures: RSVSignature[] = [
   {
     r: '0x...',
     s: '0x...',
@@ -108,14 +108,14 @@ const mpcSignatures: RSVSignature[] = [
 
 const txSerialized = await chain.attachTransactionSignature({
   transaction: unsignedTransaction,
-  mpcSignatures,
+  rsvSignatures,
 })
 ```
 
 **Parameters:**
 
 - `transaction`: The unsigned transaction
-- `mpcSignatures`: Array of RSV signatures from MPC
+- `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
 
@@ -150,7 +150,7 @@ import { EVMMessage } from 'signet.js'
 
 const message: EVMMessage = 'Sign this message'
 
-const { mpcPayloads } = await chain.prepareMessageForSigning(message)
+const { hashesToSign } = await chain.prepareMessageForSigning(message)
 ```
 
 **Parameters:**
@@ -162,7 +162,7 @@ const { mpcPayloads } = await chain.prepareMessageForSigning(message)
 - Object containing:
 
   - `message`: The original message
-  - `mpcPayloads`: Array of payloads for MPC signing
+  - `hashesToSign`: Array of payloads for MPC signing
 
 ### attachMessageSignature
 
@@ -174,7 +174,7 @@ Adds a signature to a message.
 import { RSVSignature } from 'signet.js'
 
 // Ideally it would be a request to the Sig Network Smart Contract
-const mpcSignatures: RSVSignature[] = [
+const rsvSignatures: RSVSignature[] = [
   {
     r: '0x...',
     s: '0x...',
@@ -184,14 +184,14 @@ const mpcSignatures: RSVSignature[] = [
 
 const signature = chain.attachMessageSignature({
   message,
-  mpcSignatures,
+  rsvSignatures,
 })
 ```
 
 **Parameters:**
 
 - `message`: The message that was signed
-- `mpcSignatures`: Array of RSV signatures from MPC
+- `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
 
@@ -226,7 +226,7 @@ const typedData: EVMTypedData = {
   },
 }
 
-const { typedData: preparedTypedData, mpcPayloads } =
+const { typedData: preparedTypedData, hashesToSign } =
   await chain.prepareTypedDataForSigning(typedData)
 ```
 
@@ -238,7 +238,7 @@ const { typedData: preparedTypedData, mpcPayloads } =
 
 - Object containing:
   - `typedData`: The original typed data
-  - `mpcPayloads`: Array of payloads for MPC signing
+  - `hashesToSign`: Array of payloads for MPC signing
 
 ### attachTypedDataSignature
 
@@ -250,7 +250,7 @@ Adds a signature to typed data.
 import { RSVSignature } from 'signet.js'
 
 // Ideally it would be a request to the Sig Network Smart Contract
-const mpcSignatures: RSVSignature[] = [
+const rsvSignatures: RSVSignature[] = [
   {
     r: '0x...',
     s: '0x...',
@@ -260,14 +260,14 @@ const mpcSignatures: RSVSignature[] = [
 
 const signature = chain.attachTypedDataSignature({
   typedData: preparedTypedData,
-  mpcSignatures,
+  rsvSignatures,
 })
 ```
 
 **Parameters:**
 
 - `typedData`: The typed data that was signed
-- `mpcSignatures`: Array of RSV signatures from MPC
+- `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
 

@@ -1,8 +1,4 @@
-import type {
-  KeyDerivationPath,
-  MPCPayloads,
-  RSVSignature,
-} from '@chains/types'
+import type { KeyDerivationPath, HashToSign, RSVSignature } from '@chains/types'
 
 export abstract class Chain<TransactionRequest, UnsignedTransaction> {
   /**
@@ -62,14 +58,14 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * @param transactionRequest - The transaction request containing parameters like recipient, amount, etc.
    * @returns Promise resolving to an object containing:
    *          - transaction: The unsigned transaction
-   *          - mpcPayloads: Array of payloads to be signed by MPC. The order of these payloads must match
+   *          - hashesToSign: Array of payloads to be signed by MPC. The order of these payloads must match
    *                         the order of signatures provided to attachTransactionSignature()
    */
   abstract prepareTransactionForSigning(
     transactionRequest: TransactionRequest
   ): Promise<{
     transaction: UnsignedTransaction
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }>
 
   /**
@@ -77,13 +73,13 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    *
    * @param params - Parameters for adding signatures
    * @param params.transaction - The unsigned transaction to add signatures to
-   * @param params.mpcSignatures - Array of RSV signatures generated through MPC. Must be in the same order
+   * @param params.rsvSignatures - Array of RSV signatures generated through MPC. Must be in the same order
    *                              as the payloads returned by prepareTransactionForSigning()
    * @returns The serialized signed transaction ready for broadcast
    */
   abstract attachTransactionSignature(params: {
     transaction: UnsignedTransaction
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): string
 
   /**

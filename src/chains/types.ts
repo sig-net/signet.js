@@ -1,6 +1,6 @@
 import { type SignArgs } from '@chains/ChainSignatureContract'
 
-export type MPCPayloads = Array<SignArgs['payload']>
+export type HashToSign = SignArgs['payload']
 
 type Base58String = string
 

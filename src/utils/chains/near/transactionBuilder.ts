@@ -10,7 +10,7 @@ import {
   type RSVSignature,
   type KeyDerivationPath,
   type MPCSignature,
-  type MPCPayloads,
+  type HashToSign,
 } from '@chains/types'
 import { cryptography } from '@utils'
 import { ChainSignatureContract } from '@utils/chains/near/ChainSignatureContract'
@@ -20,12 +20,12 @@ import { type ChainSignatureContractIds } from '@utils/chains/near/types'
 export const mpcPayloadsToChainSigTransaction = async ({
   networkId,
   contractId,
-  mpcPayloads,
+  hashesToSign,
   path,
 }: {
   networkId: NetworkId
   contractId: ChainSignatureContractIds
-  mpcPayloads: MPCPayloads
+  hashesToSign: HashToSign[]
   path: KeyDerivationPath
 }): Promise<{
   receiverId: string
@@ -40,7 +40,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
 
   return {
     receiverId: contractId,
-    actions: mpcPayloads.map((payload) => ({
+    actions: hashesToSign.map((payload) => ({
       type: 'FunctionCall',
       params: {
         methodName: 'sign',
@@ -51,7 +51,7 @@ export const mpcPayloadsToChainSigTransaction = async ({
             key_version: 0,
           },
         },
-        gas: NEAR_MAX_GAS.div(new BN(mpcPayloads.length)).toString(),
+        gas: NEAR_MAX_GAS.div(new BN(hashesToSign.length)).toString(),
         deposit: currentContractFee?.toString() || '1',
       },
     })),

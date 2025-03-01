@@ -24,11 +24,7 @@ import type {
   BalanceResponse,
 } from '@chains/Cosmos/types'
 import { fetchChainInfo } from '@chains/Cosmos/utils'
-import type {
-  MPCPayloads,
-  RSVSignature,
-  KeyDerivationPath,
-} from '@chains/types'
+import type { HashToSign, RSVSignature, KeyDerivationPath } from '@chains/types'
 import { cryptography } from '@utils'
 
 /**
@@ -156,7 +152,7 @@ export class Cosmos extends Chain<
     transactionRequest: CosmosTransactionRequest
   ): Promise<{
     transaction: CosmosUnsignedTransaction
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }> {
     const { denom, rpcUrl, gasPrice } = await this.getChainInfo()
     const publicKeyBytes = fromHex(transactionRequest.publicKey)
@@ -221,19 +217,19 @@ export class Cosmos extends Chain<
         authInfoBytes,
         signatures: [],
       }),
-      mpcPayloads: [payload],
+      hashesToSign: [payload],
     }
   }
 
   attachTransactionSignature({
     transaction,
-    mpcSignatures,
+    rsvSignatures,
   }: {
     transaction: CosmosUnsignedTransaction
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): string {
     // Allow support for multi-sig but the package only supports single-sig
-    transaction.signatures = mpcSignatures.map((sig) =>
+    transaction.signatures = rsvSignatures.map((sig) =>
       this.parseRSVSignature(sig)
     )
 

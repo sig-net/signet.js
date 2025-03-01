@@ -96,7 +96,7 @@ const transactionRequest: BTCTransactionRequest = {
   publicKey: '0235a3...',
 }
 
-const { transaction: unsignedTransaction, mpcPayloads } =
+const { transaction: unsignedTransaction, hashesToSign } =
   await chain.prepareTransactionForSigning(transactionRequest)
 ```
 
@@ -110,7 +110,7 @@ Adds signatures to a PSBT.
 import { RSVSignature } from 'signet.js'
 
 // Ideally it would be a request to the Sig Network Smart Contract
-const mpcSignatures: RSVSignature[] = [
+const rsvSignatures: RSVSignature[] = [
   {
     r: '0x...',
     s: '0x...',
@@ -120,14 +120,14 @@ const mpcSignatures: RSVSignature[] = [
 
 const signedTx = chain.attachTransactionSignature({
   transaction: unsignedTransaction,
-  mpcSignatures,
+  rsvSignatures,
 })
 ```
 
 **Parameters:**
 
 - `transaction`: The unsigned transaction with PSBT
-- `mpcSignatures`: Array of RSV signatures from MPC
+- `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
 
