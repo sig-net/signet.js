@@ -52,7 +52,7 @@ const rsvSignature = await chainSigContract?.sign({
   key_version: 0, // The version of the key to use (usually 0)
 })
 
-const tx = evm.attachTransactionSignature({
+const tx = evm.finalizeTransactionSigning({
   transaction,
   rsvSignatures: [rsvSignature],
 })

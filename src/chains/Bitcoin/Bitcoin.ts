@@ -256,7 +256,7 @@ export class Bitcoin extends Chain<
     }
   }
 
-  attachTransactionSignature({
+  finalizeTransactionSigning({
     transaction: { psbt, publicKey },
     rsvSignatures,
   }: {

@@ -59,7 +59,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    * @returns Promise resolving to an object containing:
    *          - transaction: The unsigned transaction
    *          - hashesToSign: Array of payloads to be signed by MPC. The order of these payloads must match
-   *                         the order of signatures provided to attachTransactionSignature()
+   *                         the order of signatures provided to finalizeTransactionSigning()
    */
   abstract prepareTransactionForSigning(
     transactionRequest: TransactionRequest
@@ -77,7 +77,7 @@ export abstract class Chain<TransactionRequest, UnsignedTransaction> {
    *                              as the payloads returned by prepareTransactionForSigning()
    * @returns The serialized signed transaction ready for broadcast
    */
-  abstract attachTransactionSignature(params: {
+  abstract finalizeTransactionSigning(params: {
     transaction: UnsignedTransaction
     rsvSignatures: RSVSignature[]
   }): string
