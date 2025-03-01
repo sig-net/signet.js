@@ -1,7 +1,3 @@
-import ChainGetBalance from '../../../snippets/docs/chain/get-balance.mdx'
-import ChainDeriveAddressAndPublicKey from '../../../snippets/docs/chain/derive-address-and-public-key.mdx'
-import ChainBroadcastTx from '../../../snippets/docs/chain/broadcast-tx.mdx'
-
 # Cosmos Chain Implementation
 
 The Cosmos chain implementation supports Cosmos SDK-based networks (Cosmos Hub, Osmosis, etc.) with a focus on standard transactions and IBC transfers.
@@ -13,7 +9,7 @@ The Cosmos chain implementation supports Cosmos SDK-based networks (Cosmos Hub, 
 // ---cut---
 import { Cosmos } from 'signet.js'
 
-const cosmosChain = new Cosmos({
+const chain = new Cosmos({
   chainId: 'cosmoshub-4', // Chain ID of the target network
   contract,
 })
@@ -21,8 +17,48 @@ const cosmosChain = new Cosmos({
 
 ## Methods
 
-<ChainGetBalance />
-<ChainDeriveAddressAndPublicKey chainName={'Cosmos (bech32)'} />
+### getBalance
+
+Gets the native token balance of an address in the chain's base units.
+
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { balance, decimals } = await chain.getBalance('cosmos1...')
+```
+
+**Parameters:**
+
+- `address`: The Cosmos bech32 address to check
+
+**Returns:**
+
+- The balance in the chain's base units as a bigint
+- The number of decimals used to format the balance
+
+### deriveAddressAndPublicKey
+
+Derives an Cosmos bech32 address and public key from a predecessor ID and derivation path.
+
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { address, publicKey } = await chain.deriveAddressAndPublicKey(
+  'cosmos1...',
+  'any_string'
+)
+```
+
+**Parameters:**
+
+- `predecessor`: The wallet/contract address requesting the signature
+- `path`: The derivation path to use
+
+**Returns:**
+
+- Object containing:
+  - `address`: The derived Cosmos bech32 address
+  - `publicKey`: The corresponding public key in SEC1 uncompressed format
 
 ### prepareTransactionForSigning
 
@@ -57,7 +93,7 @@ const transactionRequest: CosmosTransactionRequest = {
 }
 
 const { transaction: unsignedTransaction, mpcPayloads } =
-  await cosmosChain.prepareTransactionForSigning(transactionRequest)
+  await chain.prepareTransactionForSigning(transactionRequest)
 ```
 
 ### attachTransactionSignature
@@ -78,7 +114,7 @@ const mpcSignatures: RSVSignature[] = [
   },
 ]
 
-const signedTx = cosmosChain.attachTransactionSignature({
+const signedTx = chain.attachTransactionSignature({
   transaction: unsignedTransaction,
   mpcSignatures,
 })
@@ -93,7 +129,23 @@ const signedTx = cosmosChain.attachTransactionSignature({
 
 - The serialized signed transaction in hex format
 
-<ChainBroadcastTx />
+### broadcastTx
+
+Broadcasts a signed transaction to the network.
+
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const txHash = await chain.broadcastTx('0x...transactionSerialized')
+```
+
+**Parameters:**
+
+- `txSerialized`: The serialized signed transaction
+
+**Returns:**
+
+- The transaction hash
 
 ## Types
 

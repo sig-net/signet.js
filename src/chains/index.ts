@@ -7,7 +7,12 @@ export { EVM } from './EVM/EVM'
 
 export { fetchEVMFeeProperties } from './EVM/utils'
 
-export type { EVMTransactionRequest, EVMUnsignedTransaction } from './EVM/types'
+export type {
+  EVMTransactionRequest,
+  EVMUnsignedTransaction,
+  EVMMessage,
+  EVMTypedData,
+} from './EVM/types'
 
 // Bitcoin
 export { Bitcoin } from './Bitcoin/Bitcoin'

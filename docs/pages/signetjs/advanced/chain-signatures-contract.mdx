@@ -16,7 +16,7 @@ While the library includes a default implementation for the NEAR protocol, you h
 ## Using the NEAR Implementation
 
 ```ts twoslash
-// [!include ~/snippets/code/env.ts]
+// [!include ~/snippets/code/near/env.ts]
 // ---cut---
 import { utils, EVM } from 'signet.js'
 
@@ -32,13 +32,6 @@ const evmChain = new EVM({
   contract,
 })
 ```
-
-Currently the contracts are available on the following Near addresses:
-
-- Mainnet:
-  - `v1.signer`
-- Testnet:
-  - `v1.signer-prod.testnet`
 
 ## Implementing a Custom Chain Signature Contract
 

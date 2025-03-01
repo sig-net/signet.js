@@ -1,7 +1,3 @@
-import ChainGetBalance from '../../../snippets/docs/chain/get-balance.mdx'
-import ChainDeriveAddressAndPublicKey from '../../../snippets/docs/chain/derive-address-and-public-key.mdx'
-import ChainBroadcastTx from '../../../snippets/docs/chain/broadcast-tx.mdx'
-
 # EVM Chain Implementation
 
 This implementation supports all EVM-compatible networks (Ethereum, Binance Smart Chain, Polygon, etc.).
@@ -22,8 +18,48 @@ const chain = new EVM({
 
 ## Methods
 
-<ChainGetBalance />
-<ChainDeriveAddressAndPublicKey chainName={'Ethereum'} />
+### getBalance
+
+Gets the native token balance of an address in the chain's base units.
+
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { balance, decimals } = await chain.getBalance('0x...')
+```
+
+**Parameters:**
+
+- `address`: The EVM address to check
+
+**Returns:**
+
+- The balance in the chain's base units as a bigint
+- The number of decimals used to format the balance
+
+### deriveAddressAndPublicKey
+
+Derives an EVM address and public key from a predecessor ID and derivation path.
+
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const { address, publicKey } = await chain.deriveAddressAndPublicKey(
+  '0x...',
+  'any_string'
+)
+```
+
+**Parameters:**
+
+- `predecessor`: The wallet/contract address requesting the signature
+- `path`: The derivation path to use
+
+**Returns:**
+
+- Object containing:
+  - `address`: The derived EVM address
+  - `publicKey`: The corresponding public key in SEC1 uncompressed format
 
 ### prepareTransactionForSigning
 
@@ -85,7 +121,157 @@ const txSerialized = await chain.attachTransactionSignature({
 
 - The serialized signed transaction
 
-<ChainBroadcastTx />
+### broadcastTx
+
+Broadcasts a signed transaction to the network.
+
+```ts twoslash
+// [!include base.ts]
+// ---cut---
+const txHash = await chain.broadcastTx('0x...transactionSerialized')
+```
+
+**Parameters:**
+
+- `txSerialized`: The serialized signed transaction
+
+**Returns:**
+
+- The transaction hash
+
+### prepareMessageForSigning
+
+Prepares a message for MPC signing according to EIP-191.
+
+```ts twoslash filename="message-signing.ts"
+// [!include base.ts]
+// ---cut---
+import { EVMMessage } from 'signet.js'
+
+const message: EVMMessage = 'Sign this message'
+
+const { mpcPayloads } = await chain.prepareMessageForSigning(message)
+```
+
+**Parameters:**
+
+- `message`: The message to be signed
+
+**Returns:**
+
+- Object containing:
+
+  - `message`: The original message
+  - `mpcPayloads`: Array of payloads for MPC signing
+
+### attachMessageSignature
+
+Adds a signature to a message.
+
+```ts twoslash
+// [!include message-signing.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Ideally it would be a request to the Sig Network Smart Contract
+const mpcSignatures: RSVSignature[] = [
+  {
+    r: '0x...',
+    s: '0x...',
+    v: 27,
+  },
+]
+
+const signature = chain.attachMessageSignature({
+  message,
+  mpcSignatures,
+})
+```
+
+**Parameters:**
+
+- `message`: The message that was signed
+- `mpcSignatures`: Array of RSV signatures from MPC
+
+**Returns:**
+
+- The signature in hex format
+
+### prepareTypedDataForSigning
+
+Prepares EIP-712 typed data for MPC signing.
+
+```ts twoslash filename="typed-data-signing.ts"
+// [!include base.ts]
+// ---cut---
+import { EVMTypedData } from 'signet.js'
+
+const typedData: EVMTypedData = {
+  domain: {
+    name: 'Test',
+    version: '1',
+    chainId: 1,
+    verifyingContract: '0x1234567890123456789012345678901234567890',
+  },
+  types: {
+    Person: [
+      { name: 'name', type: 'string' },
+      { name: 'wallet', type: 'address' },
+    ],
+  },
+  primaryType: 'Person',
+  message: {
+    name: 'Bob',
+    wallet: '0x1234567890123456789012345678901234567890',
+  },
+}
+
+const { typedData: preparedTypedData, mpcPayloads } =
+  await chain.prepareTypedDataForSigning(typedData)
+```
+
+**Parameters:**
+
+- `typedData`: The EIP-712 typed data object to be signed
+
+**Returns:**
+
+- Object containing:
+  - `typedData`: The original typed data
+  - `mpcPayloads`: Array of payloads for MPC signing
+
+### attachTypedDataSignature
+
+Adds a signature to typed data.
+
+```ts twoslash
+// [!include typed-data-signing.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Ideally it would be a request to the Sig Network Smart Contract
+const mpcSignatures: RSVSignature[] = [
+  {
+    r: '0x...',
+    s: '0x...',
+    v: 27,
+  },
+]
+
+const signature = chain.attachTypedDataSignature({
+  typedData: preparedTypedData,
+  mpcSignatures,
+})
+```
+
+**Parameters:**
+
+- `typedData`: The typed data that was signed
+- `mpcSignatures`: Array of RSV signatures from MPC
+
+**Returns:**
+
+- The signature in hex format
 
 ## Adding New EVM Chains
 
@@ -127,7 +313,7 @@ The following types are used on the EVM chain:
 
 The implementation:
 
-- Uses `ethers.js` for transaction handling and RPC communication
+- Uses `viem` for transaction handling and RPC communication
 - Supports both legacy and EIP-1559 transactions
 - Handles automatic nonce management
 - Supports contract interactions through ABI encoding
@@ -136,3 +322,5 @@ The implementation:
 - Supports ENS name resolution on networks that implement it
 - Handles transaction signing according to EIP-155
 - Supports raw transaction data for custom contract interactions
+- Supports EIP-191 personal message signing
+- Supports EIP-712 typed data signing
