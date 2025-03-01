@@ -161,10 +161,9 @@ const { hashesToSign } = await chain.prepareMessageForSigning(message)
 
 - Object containing:
 
-  - `message`: The original message
   - `hashesToSign`: Array of payloads for MPC signing
 
-### attachMessageSignature
+### assembleMessageSignature
 
 Adds a signature to a message.
 
@@ -182,15 +181,13 @@ const rsvSignatures: RSVSignature[] = [
   },
 ]
 
-const signature = chain.attachMessageSignature({
-  message,
+const signature = chain.assembleMessageSignature({
   rsvSignatures,
 })
 ```
 
 **Parameters:**
 
-- `message`: The message that was signed
 - `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
@@ -226,8 +223,7 @@ const typedData: EVMTypedData = {
   },
 }
 
-const { typedData: preparedTypedData, hashesToSign } =
-  await chain.prepareTypedDataForSigning(typedData)
+const { hashesToSign } = await chain.prepareTypedDataForSigning(typedData)
 ```
 
 **Parameters:**
@@ -237,10 +233,9 @@ const { typedData: preparedTypedData, hashesToSign } =
 **Returns:**
 
 - Object containing:
-  - `typedData`: The original typed data
   - `hashesToSign`: Array of payloads for MPC signing
 
-### attachTypedDataSignature
+### assembleTypedDataSignature
 
 Adds a signature to typed data.
 
@@ -258,15 +253,13 @@ const rsvSignatures: RSVSignature[] = [
   },
 ]
 
-const signature = chain.attachTypedDataSignature({
-  typedData: preparedTypedData,
+const signature = chain.assembleTypedDataSignature({
   rsvSignatures,
 })
 ```
 
 **Parameters:**
 
-- `typedData`: The typed data that was signed
 - `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
