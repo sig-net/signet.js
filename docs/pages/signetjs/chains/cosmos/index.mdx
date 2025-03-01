@@ -1,0 +1,108 @@
+# Cosmos Chain
+
+The Cosmos chain implementation in Signet.js provides support for Cosmos SDK-based networks (Cosmos Hub, Osmosis, etc.) with a focus on standard transactions and IBC transfers.
+
+## Overview
+
+The Cosmos implementation allows you to:
+
+- Generate addresses and public keys
+- Check balances
+- Prepare, sign, and broadcast transactions
+- Support for various Cosmos SDK message types
+
+## Complete Transaction Example
+
+Below is a complete example of sending a transaction on a Cosmos chain using Signet.js:
+
+```ts twoslash
+import { Cosmos } from 'signet.js'
+// [!include ~/snippets/code/contract.ts]
+
+const cosmos = new Cosmos({
+  chainId: 'cosmoshub-4',
+  contract: chainSigContract,
+})
+
+const path = 'cosmos' // The path is an arbitrary string, it can be anything, each path will map to a different address/key
+const predecessorId = walletClient.account.address // The predecessor ID is your wallet/contract address that will call the ChainSignatureContract
+
+const { address: from, publicKey } = await cosmos.deriveAddressAndPublicKey(
+  predecessorId,
+  path
+)
+
+const { balance, decimals } = await cosmos.getBalance(from)
+
+const { transaction, hashesToSign } = await cosmos.prepareTransactionForSigning(
+  {
+    address: from,
+    publicKey,
+    messages: [
+      {
+        typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+        value: {
+          fromAddress: from,
+          toAddress: 'cosmos1jq304cthpx0lwhpqzrdjrcza559ukyy347xu57',
+          amount: [
+            {
+              denom: 'uatom',
+              amount: '1000000', // 1 ATOM (1,000,000 uatom)
+            },
+          ],
+        },
+      },
+    ],
+    memo: 'Sent via Signet.js',
+  }
+)
+
+const rsvSignature = await chainSigContract.sign({
+  payload: hashesToSign[0],
+  path,
+  key_version: 0, // The version of the key to use (usually 0)
+})
+
+const tx = cosmos.finalizeTransactionSigning({
+  transaction,
+  rsvSignatures: [rsvSignature],
+})
+
+const txHash = await cosmos.broadcastTx(tx)
+```
+
+### Supported Networks
+
+You can use any Cosmos SDK-based network by providing the appropriate chain ID:
+
+```ts twoslash
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+import { Cosmos } from 'signet.js'
+
+// Cosmos Hub
+const cosmosHub = new Cosmos({
+  chainId: 'cosmoshub-4',
+  contract: chainSigContract,
+})
+
+// Osmosis
+const osmosis = new Cosmos({
+  chainId: 'osmosis-1',
+  contract: chainSigContract,
+})
+
+// Juno
+const juno = new Cosmos({
+  chainId: 'juno-1',
+  contract: chainSigContract,
+})
+```
+
+## Types
+
+The following types are used on the Cosmos chain:
+
+```ts twoslash
+// [!include ~/../src/chains/Cosmos/types.ts]
+```

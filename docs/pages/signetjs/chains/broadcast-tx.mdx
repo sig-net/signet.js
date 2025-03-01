@@ -1,0 +1,23 @@
+# broadcastTx
+
+The `broadcastTx` method broadcasts a signed transaction to the EVM network.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+const txHash = await evmChain.broadcastTx('0x02f8...')
+```
+
+## Parameters
+
+| Parameter      | Type     | Description                                                   |
+| -------------- | -------- | ------------------------------------------------------------- |
+| `txSerialized` | `string` | The serialized signed transaction (hex string with 0x prefix) |
+
+## Returns
+
+| Type     | Description                                      |
+| -------- | ------------------------------------------------ |
+| `string` | The transaction hash (hex string with 0x prefix) |

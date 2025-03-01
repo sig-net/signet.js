@@ -1,0 +1,34 @@
+# finalizeTypedDataSigning
+
+The `finalizeTypedDataSigning` method adds a signature to EIP-712 typed data, producing a signature that can be verified by Ethereum-compatible systems.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+const rsvSignature: RSVSignature = {
+  r: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+  s: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+  v: 27,
+}
+
+// Assuming you have a signature from the MPC network
+const signature = evmChain.finalizeTypedDataSigning({
+  rsvSignature,
+})
+```
+
+## Parameters
+
+| Parameter      | Type           | Description                            |
+| -------------- | -------------- | -------------------------------------- |
+| `rsvSignature` | `RSVSignature` | The RSV signature from the MPC network |
+
+## Returns
+
+| Type     | Description                                  |
+| -------- | -------------------------------------------- |
+| `string` | The signature in hex format (with 0x prefix) |

@@ -1,0 +1,45 @@
+# finalizeTransactionSigning
+
+The `finalizeTransactionSigning` method adds a signature to an unsigned transaction, producing a signed transaction that can be broadcast to the network.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+const { transaction, hashesToSign } =
+  await evmChain.prepareTransactionForSigning({
+    to: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+    from: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
+    value: 100000000000000000n, // 0.1 ETH in wei
+    data: '0x', // Empty data for a simple ETH transfer
+  })
+// ---cut---
+import { RSVSignature } from 'signet.js'
+
+// Assuming you have an unsigned transaction and signatures from the MPC network
+const rsvSignatures: RSVSignature[] = [
+  {
+    r: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    s: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    v: 27,
+  },
+]
+
+const signedTx = evmChain.finalizeTransactionSigning({
+  transaction,
+  rsvSignatures,
+})
+```
+
+## Parameters
+
+| Parameter       | Type                     | Description                                                         |
+| --------------- | ------------------------ | ------------------------------------------------------------------- |
+| `transaction`   | `EVMUnsignedTransaction` | The unsigned transaction prepared by `prepareTransactionForSigning` |
+| `rsvSignatures` | `RSVSignature[]`         | Array of RSV signatures from the MPC network                        |
+
+## Returns
+
+| Type     | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| `string` | The serialized signed transaction (hex string with 0x prefix) |

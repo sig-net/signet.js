@@ -1,0 +1,35 @@
+# prepareMessageForSigning
+
+The `prepareMessageForSigning` method prepares a message for MPC signing according to EIP-191 (Ethereum signed message standard).
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+import { EVMMessage } from 'signet.js'
+
+const message: EVMMessage = 'Sign this message'
+
+const { hashToSign } = await evmChain.prepareMessageForSigning(message)
+```
+
+## Parameters
+
+| Parameter | Type         | Description              |
+| --------- | ------------ | ------------------------ |
+| `message` | `EVMMessage` | The message to be signed |
+
+The `EVMMessage` type can be:
+
+- A string
+- A byte array
+- An object with a `raw` property containing a hex string
+
+## Returns
+
+| Property     | Type         | Description                              |
+| ------------ | ------------ | ---------------------------------------- |
+| `hashToSign` | `HashToSign` | The hash to be signed by the MPC network |
+
+The `HashToSign` is an array of numbers representing the bytes of the hash.

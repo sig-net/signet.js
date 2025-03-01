@@ -1,0 +1,116 @@
+# Bitcoin Chain
+
+The Bitcoin chain implementation in Signet.js provides support for both Bitcoin mainnet and testnet networks, with a focus on P2WPKH (Native SegWit) transactions.
+
+## Overview
+
+The Bitcoin implementation allows you to:
+
+- Generate addresses and public keys
+- Check balances
+- Prepare, sign, and broadcast transactions
+- Work with UTXOs (Unspent Transaction Outputs)
+
+## Complete Transaction Example
+
+Below is a complete example of sending a transaction on the Bitcoin network using Signet.js:
+
+```ts twoslash
+import { Bitcoin, BTCRpcAdapters } from 'signet.js'
+// [!include ~/snippets/code/contract.ts]
+
+// Initialize the RPC adapter
+const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
+
+const bitcoin = new Bitcoin({
+  network: 'testnet',
+  contract: chainSigContract,
+  btcRpcAdapter,
+})
+
+const path = 'btc' // The path is an arbitrary string, it can be anything, each path will map to a different address/key
+const predecessorId = walletClient.account.address // The predecessor ID is your wallet/contract address that will call the ChainSignatureContract
+
+const { address: from, publicKey } = await bitcoin.deriveAddressAndPublicKey(
+  predecessorId,
+  path
+)
+
+const { balance, decimals } = await bitcoin.getBalance(from)
+
+const { transaction, hashesToSign } =
+  await bitcoin.prepareTransactionForSigning({
+    from,
+    to: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+    value: '0.001', // 0.001 BTC
+    publicKey,
+  })
+
+const rsvSignature = await chainSigContract.sign({
+  payload: hashesToSign[0],
+  path,
+  key_version: 0, // The version of the key to use (usually 0)
+})
+
+const tx = bitcoin.finalizeTransactionSigning({
+  transaction,
+  rsvSignatures: [rsvSignature],
+})
+
+const txHash = await bitcoin.broadcastTx(tx)
+```
+
+### Supported Networks
+
+You can use different Bitcoin networks by specifying the network parameter:
+
+```ts twoslash
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+import { Bitcoin, BTCRpcAdapters } from 'signet.js'
+
+const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
+
+// Bitcoin Mainnet
+const mainnetBitcoin = new Bitcoin({
+  network: 'mainnet',
+  contract: chainSigContract,
+  btcRpcAdapter,
+})
+
+// Bitcoin Testnet
+const testnetBitcoin = new Bitcoin({
+  network: 'testnet',
+  contract: chainSigContract,
+  btcRpcAdapter,
+})
+
+// Bitcoin Regtest (for local development)
+const regtestBitcoin = new Bitcoin({
+  network: 'regtest',
+  contract: chainSigContract,
+  btcRpcAdapter,
+})
+```
+
+## RPC Adapter
+
+The RPC adapter is a class that provides an interface for interacting with the Bitcoin network. It handles essential operations such as:
+
+- Fetching UTXOs (Unspent Transaction Outputs)
+- Retrieving transaction details
+- Getting current network fees
+- Broadcasting transactions
+- Querying address balances
+
+The adapter abstracts away the complexity of different Bitcoin API providers, allowing you to easily switch between services like Mempool.space, BlockCypher, or your own Bitcoin node.
+
+For detailed implementation and configuration options, see the [RPC Adapter](/signetjs/chains/bitcoin/btc-rpc-adapter) documentation.
+
+## Types
+
+The following types are used on the Bitcoin chain:
+
+```ts twoslash
+// [!include ~/../src/chains/Bitcoin/types.ts]
+```
