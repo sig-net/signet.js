@@ -72,7 +72,7 @@ export class Cosmos extends Chain<
     this.endpoints = endpoints
   }
 
-  private parseRSVSignature(rsvSignature: RSVSignature): Uint8Array {
+  private transformRSVSignature(rsvSignature: RSVSignature): Uint8Array {
     return new Uint8Array([
       ...fromHex(rsvSignature.r),
       ...fromHex(rsvSignature.s),
@@ -230,7 +230,7 @@ export class Cosmos extends Chain<
   }): string {
     // Allow support for multi-sig but the package only supports single-sig
     transaction.signatures = rsvSignatures.map((sig) =>
-      this.parseRSVSignature(sig)
+      this.transformRSVSignature(sig)
     )
 
     const txBytes = TxRaw.encode(transaction).finish()

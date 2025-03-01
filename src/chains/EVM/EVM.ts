@@ -83,7 +83,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  private parseSignature(signature: RSVSignature): Signature {
+  private transformRSVSignature(signature: RSVSignature): Signature {
     return {
       r: `0x${signature.r}`,
       s: `0x${signature.s}`,
@@ -92,7 +92,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }
 
   private assembleSignature(signature: RSVSignature): Hex {
-    const { r, s, yParity } = this.parseSignature(signature)
+    const { r, s, yParity } = this.transformRSVSignature(signature)
 
     if (yParity === undefined) {
       throw new Error('Missing yParity')
@@ -277,7 +277,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     transaction: EVMUnsignedTransaction
     rsvSignatures: RSVSignature[]
   }): `0x02${string}` {
-    const signature = this.parseSignature(rsvSignatures[0])
+    const signature = this.transformRSVSignature(rsvSignatures[0])
 
     return serializeTransaction(transaction, signature)
   }
@@ -305,7 +305,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     userOp: UserOperationV7 | UserOperationV6
     rsvSignatures: RSVSignature[]
   }): UserOperationV7 | UserOperationV6 {
-    const { r, s, yParity } = this.parseSignature(rsvSignatures[0])
+    const { r, s, yParity } = this.transformRSVSignature(rsvSignatures[0])
     if (yParity === undefined) {
       throw new Error('Missing yParity')
     }

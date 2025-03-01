@@ -83,7 +83,7 @@ export class Bitcoin extends Chain<
     return tx
   }
 
-  private static parseRSVSignature(signature: RSVSignature): Buffer {
+  private static transformRSVSignature(signature: RSVSignature): Buffer {
     const r = signature.r.padStart(64, '0')
     const s = signature.s.padStart(64, '0')
 
@@ -269,7 +269,7 @@ export class Bitcoin extends Chain<
       publicKey: publicKeyBuffer,
       sign: () => {
         const mpcSignature = rsvSignatures[index]
-        return Bitcoin.parseRSVSignature(mpcSignature)
+        return Bitcoin.transformRSVSignature(mpcSignature)
       },
     })
 
