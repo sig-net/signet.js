@@ -1,6 +1,6 @@
 {
   "name": "signet.js",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "",
   "type": "module",
   "exports": {
@@ -28,7 +28,7 @@
     "build:node": "tsup --env.TARGET=node",
     "build:post": "mkdir -p dist/types && cp dist/node/index.d.ts dist/node/index.d.cts dist/types/ && rm dist/node/index.d.ts dist/node/index.d.cts",
     "pre:deploy": "npm run build && npm run docs:build",
-    "publish-npm": "npm run pre:deploy && npm publish",
+    "publish-npm": "npm run pre:deploy && cd dist && npm publish",
     "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
     "hardhat": "pnpm exec hardhat node --config hardhat.config.mts",
     "test": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest run && pkill -f hardhat",
