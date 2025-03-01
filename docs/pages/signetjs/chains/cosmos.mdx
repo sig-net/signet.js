@@ -92,7 +92,7 @@ const transactionRequest: CosmosTransactionRequest = {
   memo: 'Token transfer',
 }
 
-const { transaction: unsignedTransaction, mpcPayloads } =
+const { transaction: unsignedTransaction, hashesToSign } =
   await chain.prepareTransactionForSigning(transactionRequest)
 ```
 
@@ -106,7 +106,7 @@ Adds signatures to a transaction.
 import { RSVSignature } from 'signet.js'
 
 // Ideally it would be a request to the Sig Network Smart Contract
-const mpcSignatures: RSVSignature[] = [
+const rsvSignatures: RSVSignature[] = [
   {
     r: '0x...',
     s: '0x...',
@@ -116,14 +116,14 @@ const mpcSignatures: RSVSignature[] = [
 
 const signedTx = chain.attachTransactionSignature({
   transaction: unsignedTransaction,
-  mpcSignatures,
+  rsvSignatures,
 })
 ```
 
 **Parameters:**
 
 - `transaction`: The unsigned transaction
-- `mpcSignatures`: Array of RSV signatures from MPC
+- `rsvSignatures`: Array of RSV signatures from MPC
 
 **Returns:**
 

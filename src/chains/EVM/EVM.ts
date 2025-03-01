@@ -33,11 +33,7 @@ import type {
   UserOperationV7,
 } from '@chains/EVM/types'
 import { fetchEVMFeeProperties } from '@chains/EVM/utils'
-import type {
-  MPCPayloads,
-  RSVSignature,
-  KeyDerivationPath,
-} from '@chains/types'
+import type { HashToSign, RSVSignature, KeyDerivationPath } from '@chains/types'
 
 /**
  * Implementation of the Chain interface for EVM-compatible networks.
@@ -87,12 +83,22 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     }
   }
 
-  private parseSignature(signature: RSVSignature): Signature {
+  private transformRSVSignature(signature: RSVSignature): Signature {
     return {
       r: `0x${signature.r}`,
       s: `0x${signature.s}`,
       yParity: signature.v - 27,
     }
+  }
+
+  private assembleSignature(signature: RSVSignature): Hex {
+    const { r, s, yParity } = this.transformRSVSignature(signature)
+
+    if (yParity === undefined) {
+      throw new Error('Missing yParity')
+    }
+
+    return concatHex([r, s, numberToHex(yParity + 27, { size: 1 })])
   }
 
   async deriveAddressAndPublicKey(
@@ -148,7 +154,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     transactionRequest: EVMTransactionRequest
   ): Promise<{
     transaction: EVMUnsignedTransaction
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }> {
     const transaction = await this.attachGasAndNonce(transactionRequest)
 
@@ -157,27 +163,23 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
     return {
       transaction,
-      mpcPayloads: [Array.from(txHash)],
+      hashesToSign: [Array.from(txHash)],
     }
   }
 
   async prepareMessageForSigning(message: EVMMessage): Promise<{
-    message: EVMMessage
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }> {
     return {
-      message,
-      mpcPayloads: [Array.from(toBytes(hashMessage(message)))],
+      hashesToSign: [Array.from(toBytes(hashMessage(message)))],
     }
   }
 
   async prepareTypedDataForSigning(typedDataRequest: EVMTypedData): Promise<{
-    typedData: EVMTypedData
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }> {
     return {
-      typedData: typedDataRequest,
-      mpcPayloads: [Array.from(toBytes(hashTypedData(typedDataRequest)))],
+      hashesToSign: [Array.from(toBytes(hashTypedData(typedDataRequest)))],
     }
   }
 
@@ -194,7 +196,7 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     chainIdArgs?: number
   ): Promise<{
     userOp: UserOperationV7 | UserOperationV6
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }> {
     const chainId = chainIdArgs ?? (await this.client.getChainId())
     const entryPoint =
@@ -264,58 +266,46 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
     return {
       userOp,
-      mpcPayloads: [Array.from(toBytes(hashMessage({ raw: userOpHash })))],
+      hashesToSign: [Array.from(toBytes(hashMessage({ raw: userOpHash })))],
     }
   }
 
   attachTransactionSignature({
     transaction,
-    mpcSignatures,
+    rsvSignatures,
   }: {
     transaction: EVMUnsignedTransaction
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): `0x02${string}` {
-    const signature = this.parseSignature(mpcSignatures[0])
+    const signature = this.transformRSVSignature(rsvSignatures[0])
 
     return serializeTransaction(transaction, signature)
   }
 
-  attachMessageSignature({
-    mpcSignatures,
+  assembleMessageSignature({
+    rsvSignatures,
   }: {
-    message: string
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): Hex {
-    const { r, s, yParity } = this.parseSignature(mpcSignatures[0])
-    if (yParity === undefined) {
-      throw new Error('Missing yParity')
-    }
-
-    return concatHex([r, s, numberToHex(Number(yParity + 27), { size: 1 })])
+    return this.assembleSignature(rsvSignatures[0])
   }
 
-  attachTypedDataSignature({
-    mpcSignatures,
+  assembleTypedDataSignature({
+    rsvSignatures,
   }: {
-    typedData: EVMTypedData
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): Hex {
-    const { r, s, yParity } = this.parseSignature(mpcSignatures[0])
-    if (yParity === undefined) {
-      throw new Error('Missing yParity')
-    }
-
-    return concatHex([r, s, numberToHex(Number(yParity + 27), { size: 1 })])
+    return this.assembleSignature(rsvSignatures[0])
   }
 
   attachUserOpSignature({
     userOp,
-    mpcSignatures,
+    rsvSignatures,
   }: {
     userOp: UserOperationV7 | UserOperationV6
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): UserOperationV7 | UserOperationV6 {
-    const { r, s, yParity } = this.parseSignature(mpcSignatures[0])
+    const { r, s, yParity } = this.transformRSVSignature(rsvSignatures[0])
     if (yParity === undefined) {
       throw new Error('Missing yParity')
     }

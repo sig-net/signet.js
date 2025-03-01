@@ -11,11 +11,7 @@ import type {
 import { parseBTCNetwork } from '@chains/Bitcoin/utils'
 import { Chain } from '@chains/Chain'
 import type { BaseChainSignatureContract } from '@chains/ChainSignatureContract'
-import type {
-  MPCPayloads,
-  RSVSignature,
-  KeyDerivationPath,
-} from '@chains/types'
+import type { HashToSign, RSVSignature, KeyDerivationPath } from '@chains/types'
 import { cryptography } from '@utils'
 
 /**
@@ -87,7 +83,7 @@ export class Bitcoin extends Chain<
     return tx
   }
 
-  private static parseRSVSignature(signature: RSVSignature): Buffer {
+  private static transformRSVSignature(signature: RSVSignature): Buffer {
     const r = signature.r.padStart(64, '0')
     const s = signature.s.padStart(64, '0')
 
@@ -226,7 +222,7 @@ export class Bitcoin extends Chain<
     transactionRequest: BTCTransactionRequest
   ): Promise<{
     transaction: BTCUnsignedTransaction
-    mpcPayloads: MPCPayloads
+    hashesToSign: HashToSign[]
   }> {
     const publicKeyBuffer = Buffer.from(transactionRequest.publicKey, 'hex')
     const psbt = await this.createPSBT({
@@ -236,12 +232,12 @@ export class Bitcoin extends Chain<
     // We can't double sign a PSBT, therefore we serialize the payload before to return it
     const psbtHex = psbt.toHex()
 
-    const mpcPayloads: MPCPayloads = []
+    const hashesToSign: HashToSign[] = []
 
     const mockKeyPair = (index: number): bitcoin.Signer => ({
       publicKey: publicKeyBuffer,
       sign: (hash: Buffer): Buffer => {
-        mpcPayloads[index] = Array.from(hash)
+        hashesToSign[index] = Array.from(hash)
         // Return dummy signature to satisfy the interface
         return Buffer.alloc(64)
       },
@@ -256,24 +252,24 @@ export class Bitcoin extends Chain<
         psbt: bitcoin.Psbt.fromHex(psbtHex),
         publicKey: transactionRequest.publicKey,
       },
-      mpcPayloads,
+      hashesToSign,
     }
   }
 
   attachTransactionSignature({
     transaction: { psbt, publicKey },
-    mpcSignatures,
+    rsvSignatures,
   }: {
     transaction: BTCUnsignedTransaction
-    mpcSignatures: RSVSignature[]
+    rsvSignatures: RSVSignature[]
   }): string {
     const publicKeyBuffer = Buffer.from(publicKey, 'hex')
 
     const keyPair = (index: number): bitcoin.Signer => ({
       publicKey: publicKeyBuffer,
       sign: () => {
-        const mpcSignature = mpcSignatures[index]
-        return Bitcoin.parseRSVSignature(mpcSignature)
+        const mpcSignature = rsvSignatures[index]
+        return Bitcoin.transformRSVSignature(mpcSignature)
       },
     })
 

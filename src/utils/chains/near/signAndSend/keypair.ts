@@ -34,19 +34,18 @@ export const EVMTransaction = async (
       contract,
     })
 
-    const { transaction, mpcPayloads } = await evm.prepareTransactionForSigning(
-      req.transaction
-    )
+    const { transaction, hashesToSign } =
+      await evm.prepareTransactionForSigning(req.transaction)
 
     const signature = await contract.sign({
-      payload: mpcPayloads[0],
+      payload: hashesToSign[0],
       path: req.derivationPath,
       key_version: 0,
     })
 
     const txSerialized = evm.attachTransactionSignature({
       transaction,
-      mpcSignatures: [signature],
+      rsvSignatures: [signature],
     })
 
     const txHash = await evm.broadcastTx(txSerialized)
@@ -88,12 +87,11 @@ export const BTCTransaction = async (
       network: req.chainConfig.network,
     })
 
-    const { transaction, mpcPayloads } = await btc.prepareTransactionForSigning(
-      req.transaction
-    )
+    const { transaction, hashesToSign } =
+      await btc.prepareTransactionForSigning(req.transaction)
 
     const signatures = await Promise.all(
-      mpcPayloads.map(
+      hashesToSign.map(
         async (payload) =>
           await contract.sign({
             payload,
@@ -105,7 +103,7 @@ export const BTCTransaction = async (
 
     const txSerialized = btc.attachTransactionSignature({
       transaction,
-      mpcSignatures: signatures,
+      rsvSignatures: signatures,
     })
 
     const txHash = await btc.broadcastTx(txSerialized)
@@ -145,11 +143,11 @@ export const CosmosTransaction = async (
       chainId: req.chainConfig.chainId,
     })
 
-    const { transaction, mpcPayloads } =
+    const { transaction, hashesToSign } =
       await cosmos.prepareTransactionForSigning(req.transaction)
 
     const signatures = await Promise.all(
-      mpcPayloads.map(
+      hashesToSign.map(
         async (payload) =>
           await contract.sign({
             payload,
@@ -161,7 +159,7 @@ export const CosmosTransaction = async (
 
     const txSerialized = cosmos.attachTransactionSignature({
       transaction,
-      mpcSignatures: signatures,
+      rsvSignatures: signatures,
     })
 
     const txHash = await cosmos.broadcastTx(txSerialized)
