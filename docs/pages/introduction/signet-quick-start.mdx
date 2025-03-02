@@ -62,15 +62,15 @@ const txHash = await evm.broadcastTx(tx)
 
 ## Supported Chains
 
-- [EVM Chains](/signetjs/chains/evm.mdx) - Ethereum and compatible networks
-- [Bitcoin](/signetjs/chains/bitcoin/bitcoin.mdx) - Bitcoin network
-- [Cosmos Chains](/signetjs/chains/cosmos.mdx) - Cosmos SDK-based networks
+- [EVM Chains](/signetjs/chains/evm) - Ethereum and compatible networks
+- [Bitcoin](/signetjs/chains/bitcoin) - Bitcoin network
+- [Cosmos Chains](/signetjs/chains/cosmos) - Cosmos SDK-based networks
 
 ## Architecture
 
 The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
 
-For more details check the [Chain](/signetjs/advanced/chain.mdx) page.
+For more details check the [Chain](/primitives/chain-interfaces.mdx) page.
 
 ## Utility Functions
 
