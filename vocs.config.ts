@@ -16,6 +16,8 @@ export default defineConfig({
       },
     },
   },
+  logoUrl: 'signet-logo.jpg',
+  iconUrl: 'signet-logo.jpg',
   sidebar: [
     {
       text: 'Introduction',
