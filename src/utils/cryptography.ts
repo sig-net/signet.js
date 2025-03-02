@@ -1,6 +1,7 @@
 import { base58 } from '@scure/base'
 import { ec as EC } from 'elliptic'
 import { keccak256 } from 'viem'
+import { sha3_256 } from 'js-sha3'
 
 import {
   type NajPublicKey,
@@ -8,6 +9,7 @@ import {
   type RSVSignature,
   type UncompressedPubKeySEC1,
 } from '@chains/types'
+import { KDF_CHAIN_IDS } from './constants'
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   // Handle NearNearMpcSignature
@@ -115,7 +117,15 @@ export function deriveChildPublicKey(
   const EPSILON_DERIVATION_PREFIX = 'sig.network v1.0.0 epsilon derivation'
   const derivationPath = `${EPSILON_DERIVATION_PREFIX},${chainId},${predecessorId},${path}`
 
-  const scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
+  let scalarHex = ''
+
+  if (chainId === KDF_CHAIN_IDS.ETHEREUM) {
+    scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
+  } else if (chainId === KDF_CHAIN_IDS.NEAR) {
+    scalarHex = sha3_256(derivationPath)
+  } else {
+    throw new Error('Invalid chain ID')
+  }
 
   const x = rootUncompressedPubKeySEC1.substring(2, 66)
   const y = rootUncompressedPubKeySEC1.substring(66)

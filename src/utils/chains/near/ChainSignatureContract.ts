@@ -21,14 +21,10 @@ import {
   type ChainSignatureContractIds,
 } from '@utils/chains/near/types'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
-
-const requireAccount = (accountId: string): void => {
-  if (accountId === DONT_CARE_ACCOUNT_ID) {
-    throw new Error(
-      'A valid account ID and keypair are required for change methods. Please instantiate a new contract with valid credentials.'
-    )
-  }
-}
+import { SendTransactionOptions, sendTransactionUntil } from './transaction'
+import { actionCreators } from '@near-js/transactions'
+import { CHAINS, KDF_CHAIN_IDS } from '@utils/constants'
+import { getRootPublicKey } from '@utils/publicKey'
 
 type NearContract = Contract & {
   public_key: () => Promise<NajPublicKey>
@@ -49,6 +45,8 @@ interface ChainSignatureContractArgs {
   contractId: ChainSignatureContractIds
   accountId?: string
   keypair?: KeyPair
+  rootPublicKey?: NajPublicKey
+  sendTransactionOptions?: SendTransactionOptions
 }
 
 /**
@@ -65,7 +63,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly contractId: ChainSignatureContractIds
   private readonly accountId: string
   private readonly keypair: KeyPair
-
+  private readonly rootPublicKey?: NajPublicKey
+  private readonly sendTransactionOptions?: SendTransactionOptions
   /**
    * Creates a new instance of the ChainSignatureContract for NEAR chains.
    *
@@ -80,14 +79,19 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     contractId,
     accountId = DONT_CARE_ACCOUNT_ID,
     keypair = KeyPair.fromRandom('ed25519'),
+    rootPublicKey,
+    sendTransactionOptions,
   }: ChainSignatureContractArgs) {
-    // TODO: Should use the hardcoded ROOT_PUBLIC_KEY as in the EVM ChainSignatureContract
     super()
 
     this.networkId = networkId
     this.contractId = contractId
     this.accountId = accountId
     this.keypair = keypair
+    this.sendTransactionOptions = sendTransactionOptions
+
+    this.rootPublicKey =
+      rootPublicKey || getRootPublicKey(this.contractId, CHAINS.NEAR)
   }
 
   private async getContract(): Promise<NearContract> {
@@ -124,32 +128,66 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     path: string
     predecessor: string
   }): Promise<UncompressedPubKeySEC1> {
-    const contract = await this.getContract()
-
-    const najPubKey = await contract.derived_public_key(args)
-    return najToUncompressedPubKeySEC1(najPubKey)
+    if (this.rootPublicKey) {
+      const pubKey = cryptography.deriveChildPublicKey(
+        await this.getPublicKey(),
+        args.predecessor.toLowerCase(),
+        args.path,
+        KDF_CHAIN_IDS.NEAR
+      )
+      return pubKey
+    } else {
+      // Support for legacy contract
+      const contract = await this.getContract()
+      const najPubKey = await contract.derived_public_key(args)
+      return najToUncompressedPubKeySEC1(najPubKey)
+    }
   }
 
   async getPublicKey(): Promise<UncompressedPubKeySEC1> {
-    const contract = await this.getContract()
-
-    const najPubKey = await contract.public_key()
-    return najToUncompressedPubKeySEC1(najPubKey)
+    if (this.rootPublicKey) {
+      return najToUncompressedPubKeySEC1(this.rootPublicKey)
+    } else {
+      // Support for legacy contract
+      const contract = await this.getContract()
+      const najPubKey = await contract.public_key()
+      return najToUncompressedPubKeySEC1(najPubKey)
+    }
   }
 
-  // TODO: Should call the contract without the Contract instance as it doesn't allow for proper timeout handling on the BE
   async sign(args: SignArgs): Promise<RSVSignature> {
-    requireAccount(this.accountId)
+    this.requireAccount()
 
-    const contract = await this.getContract()
     const deposit = await this.getCurrentSignatureDeposit()
 
-    const signature = await contract.sign({
-      args: { request: args },
-      gas: NEAR_MAX_GAS,
-      amount: deposit,
-    })
+    const signature = (await sendTransactionUntil({
+      accountId: this.accountId,
+      keypair: this.keypair,
+      networkId: this.networkId,
+      receiverId: this.contractId,
+      actions: [
+        actionCreators.functionCall(
+          'sign',
+          { request: args },
+          BigInt(NEAR_MAX_GAS.toString()),
+          BigInt(deposit.toString())
+        ),
+      ],
+      options: this.sendTransactionOptions,
+    })) as unknown as MPCSignature | undefined
+
+    if (!signature) {
+      throw new Error('Transaction failed')
+    }
 
     return cryptography.toRSV(signature)
+  }
+
+  private requireAccount(): void {
+    if (this.accountId === DONT_CARE_ACCOUNT_ID) {
+      throw new Error(
+        'A valid account ID and keypair are required for change methods. Please instantiate a new contract with valid credentials.'
+      )
+    }
   }
 }

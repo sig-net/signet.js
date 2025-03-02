@@ -64,9 +64,17 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     this.walletClient = args.walletClient
     this.contractAddress = args.contractAddress
 
-    this.rootPublicKey =
+    const rootPublicKey =
       args.rootPublicKey ||
       getRootPublicKey(this.contractAddress, CHAINS.ETHEREUM)
+
+    if (!rootPublicKey) {
+      throw new Error(
+        `Invalid public key, please provide a valid root public key or contract address`
+      )
+    }
+
+    this.rootPublicKey = rootPublicKey
   }
 
   async getCurrentSignatureDeposit(): Promise<BN> {

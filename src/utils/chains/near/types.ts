@@ -9,12 +9,6 @@ import type {
 import { type EVMTransactionRequest } from '@chains/EVM/types'
 import type { KeyDerivationPath } from '@chains/types'
 
-/** 
-Available ChainSignature contracts:
-  - Mainnet: v1.signer
-  - Testnet: v1.signer-prod.testnet
-  - Development (unstable): v1.signer-dev.testnet
-*/
 export type ChainSignatureContractIds = string
 
 export type NearNetworkIds = 'mainnet' | 'testnet'
