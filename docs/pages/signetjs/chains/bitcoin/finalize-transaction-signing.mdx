@@ -19,11 +19,10 @@ const { transaction, hashesToSign } =
 // ---cut---
 import { RSVSignature } from 'signet.js'
 
-// Ideally these would be obtained from the Sig Network Smart Contract
 const rsvSignatures: RSVSignature[] = [
   {
-    r: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    s: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    r: '0x123...',
+    s: '0x123...',
     v: 27,
   },
 ]
@@ -36,10 +35,10 @@ const signedTx = btcChain.finalizeTransactionSigning({
 
 ## Parameters
 
-| Parameter       | Type             | Description                                                |
-| --------------- | ---------------- | ---------------------------------------------------------- |
-| `transaction`   | `any`            | The unsigned PSBT returned by prepareTransactionForSigning |
-| `rsvSignatures` | `RSVSignature[]` | Array of RSV signatures from the MPC network               |
+| Parameter       | Type                     | Description                                                |
+| --------------- | ------------------------ | ---------------------------------------------------------- |
+| `transaction`   | `BTCUnsignedTransaction` | The unsigned PSBT returned by prepareTransactionForSigning |
+| `rsvSignatures` | `RSVSignature[]`         | Array of RSV signatures from the MPC network               |
 
 ## Returns
 

@@ -1,6 +1,6 @@
 # finalizeMessageSigning
 
-The `finalizeMessageSigning` method adds a signature to a message, producing a signature that can be verified by Ethereum-compatible systems.
+The `finalizeMessageSigning` assemble the Message signature
 
 ## Usage
 
@@ -10,12 +10,11 @@ The `finalizeMessageSigning` method adds a signature to a message, producing a s
 import { RSVSignature } from 'signet.js'
 
 const rsvSignature: RSVSignature = {
-  r: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-  s: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+  r: '0x123...',
+  s: '0x123...',
   v: 27,
 }
 
-// Assuming you have a signature from the MPC network
 const signature = evmChain.finalizeMessageSigning({
   rsvSignature,
 })
