@@ -24,6 +24,7 @@ const { transaction, hashesToSign } =
 
 ## Returns
 
-| Type                                           | Description                                                     |
-| ---------------------------------------------- | --------------------------------------------------------------- |
-| `{ transaction: any, hashesToSign: string[] }` | Object containing the unsigned PSBT and array of hashes to sign |
+| Property       | Type                     | Description                            |
+| -------------- | ------------------------ | -------------------------------------- |
+| `transaction`  | `BTCUnsignedTransaction` | Object containing the unsigned PSBT    |
+| `hashesToSign` | `string[]`               | Array of hashes that need to be signed |

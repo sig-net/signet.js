@@ -33,6 +33,7 @@ const { transaction, hashesToSign } =
 
 ## Returns
 
-| Type                                           | Description                                                            |
-| ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `{ transaction: any, hashesToSign: string[] }` | Object containing the unsigned transaction and array of hashes to sign |
+| Property       | Type                        | Description                                |
+| -------------- | --------------------------- | ------------------------------------------ |
+| `transaction`  | `CosmosUnsignedTransaction` | Object containing the unsigned transaction |
+| `hashesToSign` | `string[]`                  | Array of hashes that need to be signed     |

@@ -30,8 +30,8 @@ const evm = new EVM({
   contract: chainSigContract,
 })
 
-const path = 'eth' // The path is an arbitrary string, it can be anything, each path will map to a different address/key
-const predecessorId = walletClient.account.address // The predecessor ID is your wallet/contract address that will call the ChainSignatureContract
+const path = 'eth'
+const predecessorId = walletClient.account.address
 
 const { address: from, publicKey } = await evm.deriveAddressAndPublicKey(
   predecessorId,

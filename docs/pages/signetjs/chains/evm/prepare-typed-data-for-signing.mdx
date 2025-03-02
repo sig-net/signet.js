@@ -1,6 +1,6 @@
 # prepareTypedDataForSigning
 
-The `prepareTypedDataForSigning` method prepares EIP-712 typed data for MPC signing. EIP-712 provides a structured way to sign data in Ethereum, improving user experience and security.
+The `prepareTypedDataForSigning` method prepares EIP-712 typed data for MPC signing.
 
 ## Usage
 
@@ -43,5 +43,3 @@ const { hashToSign } = await evmChain.prepareTypedDataForSigning(typedData)
 | Property     | Type         | Description                              |
 | ------------ | ------------ | ---------------------------------------- |
 | `hashToSign` | `HashToSign` | The hash to be signed by the MPC network |
-
-The `HashToSign` is an array of numbers representing the bytes of the hash.
