@@ -73,6 +73,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @param args.contractId - The contract ID of the deployed ChainSignatures contract
    * @param args.accountId - Optional NEAR account ID for signing transactions. Required for change methods.
    * @param args.keypair - Optional NEAR KeyPair for signing transactions. Required for change methods.
+   * @param args.rootPublicKey - Optional root public key for the contract. If not provided, it will be derived from the contract ID.
+   * @param args.sendTransactionOptions - Optional configuration for transaction sending behavior.
    */
   constructor({
     networkId,

@@ -1,13 +1,5 @@
 import BN from 'bn.js'
-import {
-  encodeAbiParameters,
-  keccak256,
-  type TransactionReceipt,
-  withRetry,
-  type PublicClient,
-  type WalletClient,
-  type Hex,
-} from 'viem'
+import { withRetry, type PublicClient, type WalletClient, type Hex } from 'viem'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import type { SignArgs } from '@chains/ChainSignatureContract'
@@ -28,7 +20,13 @@ import {
   SignatureContractError,
   SigningError,
 } from './errors'
-import type { SignOptions, SignRequest, SignatureErrorData } from './types'
+import type {
+  RequestIdArgs,
+  SignOptions,
+  SignRequest,
+  SignatureErrorData,
+} from './types'
+import { getRequestId } from './utils'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -115,6 +113,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return Number(version)
   }
 
+  /**
+   * Sends a transaction to the contract to request a signature, then
+   * polls for the signature result. If the signature is not found within the retry
+   * parameters, it will throw an error.
+   */
   async sign(
     args: SignArgs,
     options: SignOptions = {
@@ -142,7 +145,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       params: options.sign.params ?? '',
     }
 
-    const requestId = this.getRequestId(request)
+    const requestId = this.getRequestId({
+      ...request,
+      address: this.walletClient.account.address,
+      chainId: this.publicClient.chain?.id
+        ? BigInt(this.publicClient.chain.id)
+        : 0n,
+    })
 
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
@@ -159,7 +168,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     try {
       const result = await withRetry(
         async () => {
-          const result = await this.getSignatureFromEvents(requestId, receipt)
+          const result = await this.getSignatureFromEvents(
+            requestId,
+            receipt.blockNumber
+          )
           if (result) {
             return result
           } else {
@@ -182,7 +194,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       if (result) {
         return result
       } else {
-        const errorData = await this.getErrorFromEvents(requestId, receipt)
+        const errorData = await this.getErrorFromEvents(
+          requestId,
+          receipt.blockNumber
+        )
         if (errorData) {
           throw new SignatureContractError(errorData.error, requestId, receipt)
         } else {
@@ -205,40 +220,42 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
-  private getRequestId(request: SignRequest): `0x${string}` {
-    if (!this.walletClient?.account) {
-      throw new Error('Wallet client required for signing operations')
-    }
-
-    const encoded = encodeAbiParameters(
-      [
-        { type: 'address' },
-        { type: 'bytes' },
-        { type: 'string' },
-        { type: 'uint32' },
-        { type: 'uint256' },
-        { type: 'string' },
-        { type: 'string' },
-        { type: 'string' },
-      ],
-      [
-        this.walletClient.account.address,
-        request.payload,
-        request.path,
-        Number(request.keyVersion),
-        this.publicClient.chain?.id ? BigInt(this.publicClient.chain.id) : 0n,
-        request.algo,
-        request.dest,
-        request.params,
-      ]
-    )
-
-    return keccak256(encoded)
+  /**
+   * Generates the request ID for a signature request allowing to track the response.
+   *
+   * @param request - The signature request object containing:
+   *   @param request.address - The contract/wallet address calling the signing contract
+   *   @param request.payload - The data payload to be signed as a hex string
+   *   @param request.path - The derivation path for the key
+   *   @param request.keyVersion - The version of the key to use
+   *   @param request.chainId - The chain ID as a bigint
+   *   @param request.algo - The signing algorithm to use
+   *   @param request.dest - The destination for the signature
+   *   @param request.params - Additional parameters for the signing process
+   * @returns A hex string representing the unique request ID
+   *
+   * @example
+   * ```typescript
+   * const requestId = ChainSignatureContract.getRequestId({
+   *   address: walletClient.account.address,
+   *   payload: payload: `0x${Buffer.from(args.payload).toString('hex')}`,,
+   *   path: '',
+   *   keyVersion: 0,
+   *   chainId: 1n,
+   *   algo: '',
+   *   dest: '',
+   *   params: ''
+   * });
+   * console.log(requestId); // 0x...
+   * ```
+   */
+  getRequestId(request: RequestIdArgs): Hex {
+    return getRequestId(request)
   }
 
   async getErrorFromEvents(
-    requestId: `0x${string}`,
-    receipt: TransactionReceipt
+    requestId: Hex,
+    fromBlock: bigint
   ): Promise<SignatureErrorData | undefined> {
     const errorLogs = await this.publicClient.getContractEvents({
       address: this.contractAddress,
@@ -247,7 +264,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       args: {
         requestId,
       },
-      fromBlock: receipt.blockNumber,
+      fromBlock,
       toBlock: 'latest',
     })
 
@@ -264,9 +281,18 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return undefined
   }
 
+  /**
+   * Searches for SignatureResponded events that match the given requestId.
+   * It works in conjunction with the getRequestId method which generates the unique
+   * identifier for a signature request.
+   *
+   * @param requestId - The identifier for the signature request
+   * @param fromBlock - The block number to start searching from
+   * @returns The RSV signature if found, undefined otherwise
+   */
   async getSignatureFromEvents(
-    requestId: `0x${string}`,
-    receipt: TransactionReceipt
+    requestId: Hex,
+    fromBlock: bigint
   ): Promise<RSVSignature | undefined> {
     const logs = await this.publicClient.getContractEvents({
       address: this.contractAddress,
@@ -275,7 +301,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       args: {
         requestId,
       },
-      fromBlock: receipt.blockNumber,
+      fromBlock,
       toBlock: 'latest',
     })
 

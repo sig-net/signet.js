@@ -1,4 +1,4 @@
-import type { Hex } from 'viem'
+import type { Address, Hex } from 'viem'
 
 export interface SignOptions {
   sign: {
@@ -22,6 +22,17 @@ export interface SignRequest {
   payload: Hex
   path: string
   keyVersion: number
+  algo: string
+  dest: string
+  params: string
+}
+
+export interface RequestIdArgs {
+  address: Address
+  payload: Hex
+  path: string
+  keyVersion: number
+  chainId: bigint
   algo: string
   dest: string
   params: string
