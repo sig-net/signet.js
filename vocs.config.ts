@@ -16,107 +16,119 @@ export default defineConfig({
       },
     },
   },
+  logoUrl: 'signet-logo.png',
+  iconUrl: 'signet-logo.png',
   sidebar: [
     {
-      text: 'Chain Signatures',
-      items: [{ text: 'Introduction to Chain Signatures', link: '/' }],
+      text: 'Introduction',
+      items: [
+        { text: 'Introduction to Chain Signatures', link: '/' },
+        {
+          text: 'Signet.js Quickstart',
+          link: '/introduction/signet-quick-start',
+        },
+      ],
     },
     {
-      text: 'Signet.js',
+      text: 'Primitives',
       items: [
-        { text: 'Quick Start', link: '/signetjs' },
-        { text: 'Contract Addresses', link: '/signetjs/contract-addresses' },
+        { text: 'Contract Addresses', link: '/primitives/contract-addresses' },
+        { text: 'Chain Interfaces', link: '/primitives/chain-interfaces' },
         {
-          text: 'API Reference',
+          text: 'Chain Contract Interfaces',
+          link: '/primitives/chain-contract-interfaces',
+        },
+      ],
+    },
+    {
+      text: 'Examples',
+      items: [
+        { text: 'Signing an arbitrary hash', link: '/examples/arbitrary-hash' },
+        {
+          text: 'Use Ethereum chain signatures to securely sponsor gas fees for calling your Base smart contract',
+          link: '/examples/sponsor-foreign-chain-gas',
+        },
+      ],
+    },
+    {
+      text: 'API Reference',
+      items: [
+        {
+          text: 'EVM Chains',
           items: [
+            { text: 'Overview', link: '/signetjs/chains/evm' },
             {
-              text: 'EVM Chains',
-              items: [
-                { text: 'Overview', link: '/signetjs/chains/evm' },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chains/evm/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chains/evm/finalize-transaction-signing',
-                },
-                {
-                  text: 'prepareMessageForSigning',
-                  link: '/signetjs/chains/evm/prepare-message-for-signing',
-                },
-                {
-                  text: 'finalizeMessageSigning',
-                  link: '/signetjs/chains/evm/finalize-message-signing',
-                },
-                {
-                  text: 'prepareTypedDataForSigning',
-                  link: '/signetjs/chains/evm/prepare-typed-data-for-signing',
-                },
-                {
-                  text: 'finalizeTypedDataSigning',
-                  link: '/signetjs/chains/evm/finalize-typed-data-signing',
-                },
-              ],
+              text: 'prepareTransactionForSigning',
+              link: '/signetjs/chains/evm/prepare-transaction-for-signing',
             },
             {
-              text: 'Bitcoin',
-              items: [
-                { text: 'Overview', link: '/signetjs/chains/bitcoin' },
-                {
-                  text: 'RPC Adapter',
-                  link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
-                },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chains/bitcoin/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chains/bitcoin/finalize-transaction-signing',
-                },
-              ],
+              text: 'finalizeTransactionSigning',
+              link: '/signetjs/chains/evm/finalize-transaction-signing',
             },
             {
-              text: 'Cosmos Chains',
-              items: [
-                { text: 'Overview', link: '/signetjs/chains/cosmos' },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chains/cosmos/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chains/cosmos/finalize-transaction-signing',
-                },
-              ],
+              text: 'prepareMessageForSigning',
+              link: '/signetjs/chains/evm/prepare-message-for-signing',
             },
             {
-              text: 'Common Methods',
-              items: [
-                {
-                  text: 'deriveAddressAndPublicKey',
-                  link: '/signetjs/chains/derive-address-and-public-key',
-                },
-                {
-                  text: 'getBalance',
-                  link: '/signetjs/chains/get-balance',
-                },
-                {
-                  text: 'broadcastTx',
-                  link: '/signetjs/chains/broadcast-tx',
-                },
-              ],
+              text: 'finalizeMessageSigning',
+              link: '/signetjs/chains/evm/finalize-message-signing',
+            },
+            {
+              text: 'prepareTypedDataForSigning',
+              link: '/signetjs/chains/evm/prepare-typed-data-for-signing',
+            },
+            {
+              text: 'finalizeTypedDataSigning',
+              link: '/signetjs/chains/evm/finalize-typed-data-signing',
             },
           ],
         },
         {
-          text: 'Advanced',
+          text: 'Bitcoin',
           items: [
-            { text: 'Chain Interface', link: '/signetjs/advanced/chain' },
+            { text: 'Overview', link: '/signetjs/chains/bitcoin' },
             {
-              text: 'Chain Signatures Contract',
-              link: '/signetjs/advanced/chain-signatures-contract',
+              text: 'RPC Adapter',
+              link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
+            },
+            {
+              text: 'prepareTransactionForSigning',
+              link: '/signetjs/chains/bitcoin/prepare-transaction-for-signing',
+            },
+            {
+              text: 'finalizeTransactionSigning',
+              link: '/signetjs/chains/bitcoin/finalize-transaction-signing',
+            },
+          ],
+        },
+        {
+          text: 'Cosmos Chains',
+          items: [
+            { text: 'Overview', link: '/signetjs/chains/cosmos' },
+            {
+              text: 'prepareTransactionForSigning',
+              link: '/signetjs/chains/cosmos/prepare-transaction-for-signing',
+            },
+            {
+              text: 'finalizeTransactionSigning',
+              link: '/signetjs/chains/cosmos/finalize-transaction-signing',
+            },
+          ],
+        },
+        {
+          text: 'Common Methods',
+          items: [
+            {
+              text: 'deriveAddressAndPublicKey',
+              link: '/signetjs/chains/derive-address-and-public-key',
+            },
+            {
+              text: 'getBalance',
+              link: '/signetjs/chains/get-balance',
+            },
+            {
+              text: 'broadcastTx',
+              link: '/signetjs/chains/broadcast-tx',
             },
           ],
         },
