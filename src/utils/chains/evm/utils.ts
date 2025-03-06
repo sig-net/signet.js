@@ -1,7 +1,8 @@
 import { encodeAbiParameters, keccak256 } from 'viem'
 import * as chains from 'viem/chains'
 import type { Chain } from 'viem/chains'
-import { RequestIdArgs } from './types'
+
+import { type RequestIdArgs } from './types'
 
 export const getChain = (chainId: number): Chain => {
   for (const chain of Object.values(chains)) {

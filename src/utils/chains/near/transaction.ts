@@ -1,7 +1,3 @@
-import BN from 'bn.js'
-import { withRetry } from 'viem'
-import { transactions, utils as nearUtils, connect, KeyPair } from 'near-api-js'
-import { getTransactionLastResult } from 'near-api-js/lib/providers'
 import { InMemoryKeyStore } from '@near-js/keystores'
 import type { Action as TransactionAction } from '@near-js/transactions'
 import type { TxExecutionStatus } from '@near-js/types'
@@ -10,6 +6,15 @@ import type {
   FinalExecutionOutcome,
   NetworkId,
 } from '@near-wallet-selector/core'
+import BN from 'bn.js'
+import {
+  transactions,
+  utils as nearUtils,
+  connect,
+  type KeyPair,
+} from 'near-api-js'
+import { getTransactionLastResult } from 'near-api-js/lib/providers'
+import { withRetry } from 'viem'
 
 import {
   type RSVSignature,
@@ -77,7 +82,7 @@ export const responseToMpcSignature = ({
   }
 }
 
-export type SendTransactionOptions = {
+export interface SendTransactionOptions {
   until: TxExecutionStatus
   retryCount: number
   delay: number
@@ -90,6 +95,7 @@ export const sendTransactionUntil = async ({
   networkId,
   receiverId,
   actions,
+  nonce,
   options = {
     until: 'EXECUTED_OPTIMISTIC',
     retryCount: 3,
@@ -105,8 +111,9 @@ export const sendTransactionUntil = async ({
   networkId: NetworkId
   receiverId: string
   actions: TransactionAction[]
+  nonce?: number
   options?: SendTransactionOptions
-}) => {
+}): Promise<FinalExecutionOutcome> => {
   const keyStore = new InMemoryKeyStore()
   await keyStore.setKey(networkId, accountId, keypair)
 
@@ -125,7 +132,7 @@ export const sendTransactionUntil = async ({
   const accessKey = (await near.connection.provider.query(
     `access_key/${accountId}/${publicKey.toString()}`,
     ''
-  )) as {
+  )) as unknown as {
     block_hash: string
     block_height: number
     nonce: number
@@ -138,7 +145,7 @@ export const sendTransactionUntil = async ({
     accountId,
     publicKey,
     receiverId,
-    ++accessKey.nonce,
+    nonce ?? ++accessKey.nonce,
     actions,
     recentBlockHash
   )
@@ -162,25 +169,27 @@ export const sendTransactionUntil = async ({
     }),
   })
 
-  const result = await near.connection.provider.sendTransactionUntil(
+  const { transaction } = await near.connection.provider.sendTransactionUntil(
     signedTransaction,
     'INCLUDED_FINAL'
   )
 
-  if (!result.transaction.hash) {
+  const txHash = transaction.hash as string | undefined
+
+  if (!txHash) {
     throw new Error('No transaction hash found')
   }
 
   return await withRetry(
     async () => {
       const txOutcome = await near.connection.provider.txStatus(
-        result.transaction.hash,
+        txHash,
         accountId,
         options.until
       )
 
       if (txOutcome) {
-        return getTransactionLastResult(txOutcome)
+        return txOutcome
       }
 
       throw new Error('Transaction not found')

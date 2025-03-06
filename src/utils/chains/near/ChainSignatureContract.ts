@@ -1,12 +1,12 @@
 import { Contract } from '@near-js/accounts'
 import { KeyPair } from '@near-js/crypto'
+import { actionCreators } from '@near-js/transactions'
 import BN from 'bn.js'
 
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@chains/ChainSignatureContract'
 import type { SignArgs } from '@chains/ChainSignatureContract'
 import type {
   RSVSignature,
-  MPCSignature,
   UncompressedPubKeySEC1,
   NajPublicKey,
 } from '@chains/types'
@@ -20,19 +20,18 @@ import {
   type NearNetworkIds,
   type ChainSignatureContractIds,
 } from '@utils/chains/near/types'
-import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
-import { SendTransactionOptions, sendTransactionUntil } from './transaction'
-import { actionCreators } from '@near-js/transactions'
 import { CHAINS, KDF_CHAIN_IDS } from '@utils/constants'
+import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
+
+import {
+  responseToMpcSignature,
+  type SendTransactionOptions,
+  sendTransactionUntil,
+} from './transaction'
 
 type NearContract = Contract & {
   public_key: () => Promise<NajPublicKey>
-  sign: (args: {
-    args: { request: SignArgs }
-    gas: BN
-    amount: BN
-  }) => Promise<MPCSignature>
   experimental_signature_deposit: () => Promise<number>
   derived_public_key: (args: {
     path: string
@@ -109,7 +108,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         'experimental_signature_deposit',
         'derived_public_key',
       ],
-      changeMethods: ['sign'],
+      // Change methods use the sendTransactionUntil because the internal retry of the Contract class
+      // throws on NodeJs.
+      changeMethods: [],
       useLocalViewExecution: false,
     }) as unknown as NearContract
   }
@@ -157,12 +158,17 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
-  async sign(args: SignArgs): Promise<RSVSignature> {
+  async sign(
+    args: SignArgs,
+    options?: {
+      nonce?: number
+    }
+  ): Promise<RSVSignature> {
     this.requireAccount()
 
     const deposit = await this.getCurrentSignatureDeposit()
 
-    const signature = (await sendTransactionUntil({
+    const result = await sendTransactionUntil({
       accountId: this.accountId,
       keypair: this.keypair,
       networkId: this.networkId,
@@ -175,14 +181,17 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
           BigInt(deposit.toString())
         ),
       ],
+      nonce: options?.nonce,
       options: this.sendTransactionOptions,
-    })) as unknown as MPCSignature | undefined
+    })
+
+    const signature = responseToMpcSignature({ response: result })
 
     if (!signature) {
       throw new Error('Transaction failed')
     }
 
-    return cryptography.toRSV(signature)
+    return signature
   }
 
   private requireAccount(): void {
