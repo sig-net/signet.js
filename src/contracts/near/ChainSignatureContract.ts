@@ -1,7 +1,6 @@
 import { Contract } from '@near-js/accounts'
 import { KeyPair } from '@near-js/crypto'
 import { actionCreators } from '@near-js/transactions'
-import type { RSVSignature, UncompressedPubKeySEC1, NajPublicKey } from '@types'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
@@ -20,6 +19,7 @@ import {
   type NearNetworkIds,
   type ChainSignatureContractIds,
 } from '@contracts/near/types'
+import type { RSVSignature, UncompressedPubKeySEC1, NajPublicKey } from '@types'
 import { cryptography } from '@utils'
 
 type NearContract = Contract & {

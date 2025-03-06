@@ -1,9 +1,3 @@
-import type {
-  NajPublicKey,
-  RSVSignature,
-  SigNetEvmMpcSignature,
-  UncompressedPubKeySEC1,
-} from '@types'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
@@ -12,6 +6,12 @@ import { withRetry, type PublicClient, type WalletClient, type Hex } from 'viem'
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
 import type { SignArgs } from '@contracts/ChainSignatureContract'
+import type {
+  NajPublicKey,
+  RSVSignature,
+  SigNetEvmMpcSignature,
+  UncompressedPubKeySEC1,
+} from '@types'
 import { cryptography } from '@utils'
 
 import { abi } from './ChainSignaturesContractABI'
@@ -172,6 +172,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             requestId,
             receipt.blockNumber
           )
+
+          // TODO: Validate if this is the signature corresponding to the transaction as anybody can call respond on the contract
+
           if (result) {
             return result
           } else {

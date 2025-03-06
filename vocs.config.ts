@@ -126,21 +126,16 @@ export default defineConfig({
               ],
             },
             {
-              text: 'Common Methods',
-              items: [
-                {
-                  text: 'deriveAddressAndPublicKey',
-                  link: '/signetjs/chain-adapters/derive-address-and-public-key',
-                },
-                {
-                  text: 'getBalance',
-                  link: '/signetjs/chain-adapters/get-balance',
-                },
-                {
-                  text: 'broadcastTx',
-                  link: '/signetjs/chain-adapters/broadcast-tx',
-                },
-              ],
+              text: 'deriveAddressAndPublicKey',
+              link: '/signetjs/chain-adapters/derive-address-and-public-key',
+            },
+            {
+              text: 'getBalance',
+              link: '/signetjs/chain-adapters/get-balance',
+            },
+            {
+              text: 'broadcastTx',
+              link: '/signetjs/chain-adapters/broadcast-tx',
             },
           ],
         },

@@ -1,6 +1,6 @@
 import { type KeyPair } from '@near-js/crypto'
 
-import { Bitcoin, Cosmos, EVM } from '@chain-adapters'
+import * as chainAdapters from '@chain-adapters'
 import { BTCRpcAdapters } from '@chain-adapters/Bitcoin/BTCRpcAdapter'
 import { getNearAccount } from '@contracts/near/account'
 import { ChainSignatureContract } from '@contracts/near/ChainSignatureContract'
@@ -29,7 +29,7 @@ export const EVMTransaction = async (
       keypair: keyPair,
     })
 
-    const evm = new EVM({
+    const evm = new chainAdapters.evm.EVM({
       rpcUrl: req.chainConfig.providerUrl,
       contract,
     })
@@ -81,7 +81,7 @@ export const BTCTransaction = async (
       keypair: keyPair,
     })
 
-    const btc = new Bitcoin({
+    const btc = new chainAdapters.btc.Bitcoin({
       btcRpcAdapter: new BTCRpcAdapters.Mempool(req.chainConfig.providerUrl),
       contract,
       network: req.chainConfig.network,
@@ -138,7 +138,7 @@ export const CosmosTransaction = async (
       keypair: keyPair,
     })
 
-    const cosmos = new Cosmos({
+    const cosmos = new chainAdapters.cosmos.Cosmos({
       contract,
       chainId: req.chainConfig.chainId,
     })

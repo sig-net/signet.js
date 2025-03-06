@@ -10,8 +10,8 @@ import type {
 } from '@chain-adapters/Bitcoin/types'
 import { parseBTCNetwork } from '@chain-adapters/Bitcoin/utils'
 import { ChainAdapter } from '@chain-adapters/ChainAdapter'
-import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
+import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
 import { cryptography } from '@utils'
 
 /**

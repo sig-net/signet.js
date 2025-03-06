@@ -6,12 +6,6 @@ import type {
   FinalExecutionOutcome,
   NetworkId,
 } from '@near-wallet-selector/core'
-import {
-  type RSVSignature,
-  type KeyDerivationPath,
-  type MPCSignature,
-  type HashToSign,
-} from '@types'
 import BN from 'bn.js'
 import {
   transactions,
@@ -25,6 +19,12 @@ import { withRetry } from 'viem'
 import { ChainSignatureContract } from '@contracts/near/ChainSignatureContract'
 import { NEAR_MAX_GAS } from '@contracts/near/constants'
 import { type ChainSignatureContractIds } from '@contracts/near/types'
+import {
+  type RSVSignature,
+  type KeyDerivationPath,
+  type MPCSignature,
+  type HashToSign,
+} from '@types'
 import { cryptography } from '@utils'
 
 export const mpcPayloadsToChainSigTransaction = async ({

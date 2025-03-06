@@ -32,8 +32,8 @@ import type {
   UserOperationV7,
 } from '@chain-adapters/EVM/types'
 import { fetchEVMFeeProperties } from '@chain-adapters/EVM/utils'
-import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
+import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
 
 /**
  * Implementation of the ChainAdapter interface for EVM-compatible networks.

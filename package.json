@@ -1,7 +1,7 @@
 {
   "name": "signet.js",
   "version": "0.0.5",
-  "description": "",
+  "description": "A TypeScript library for handling multi-chain transactions and signatures using Signet MPC",
   "type": "module",
   "exports": {
     ".": {
@@ -37,8 +37,23 @@
     "docs:build": "vocs build",
     "docs:preview": "vocs preview"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Sig Network",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sig-net/signet.js"
+  },
+  "homepage": "https://github.com/sig-net/signet.js",
+  "keywords": [
+    "blockchain",
+    "cryptocurrency",
+    "mpc",
+    "multi-chain",
+    "ethereum",
+    "bitcoin",
+    "cosmos",
+    "near"
+  ],
   "devDependencies": {
     "@aa-sdk/core": "^4.13.0",
     "@account-kit/infra": "^4.13.0",

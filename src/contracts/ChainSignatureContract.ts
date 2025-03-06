@@ -1,5 +1,6 @@
-import type { RSVSignature, UncompressedPubKeySEC1 } from '@types'
 import type BN from 'bn.js'
+
+import type { RSVSignature, UncompressedPubKeySEC1 } from '@types'
 
 export interface SignArgs {
   /** The payload to sign as an array of 32 bytes */
