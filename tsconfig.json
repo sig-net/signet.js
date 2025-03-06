@@ -30,9 +30,13 @@
     "moduleResolution": "bundler" /* Specify how TypeScript looks up a file from a given module specifier. */,
     // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
-      "@chains": ["./src/chains/index.ts"],
+      "@chain-adapters": ["./src/chain-adapters/index.ts"],
+      "@contracts": ["./src/contracts/index.ts"],
       "@utils": ["./src/utils/index.ts"],
-      "@chains/*": ["./src/chains/*"],
+      "@constants": ["./src/constants.ts"],
+      "@types": ["./src/types.ts"],
+      "@chain-adapters/*": ["./src/chain-adapters/*"],
+      "@contracts/*": ["./src/contracts/*"],
       "@utils/*": ["./src/utils/*"]
     } /* Specify a set of entries that re-map imports to additional lookup locations. */,
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */

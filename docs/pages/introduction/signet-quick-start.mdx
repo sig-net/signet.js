@@ -15,17 +15,17 @@ pnpm add signet.js
 Here's a basic example using the EVM implementation:
 
 ```ts twoslash
-import { utils, EVM } from 'signet.js'
+import { contracts, constants, chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/evm/env.ts]
 
-const evmChainSigContract = new utils.chains.evm.ChainSignatureContract({
+const evmChainSigContract = new contracts.evm.ChainSignatureContract({
   publicClient,
   walletClient,
-  contractAddress: utils.constants.CONTRACT_ADDRESSES.ETHEREUM
+  contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
     .TESTNET_DEV as `0x${string}`,
 })
 
-const evm = new EVM({
+const evm = new chainAdapters.EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
   contract: evmChainSigContract,
 })
@@ -68,13 +68,13 @@ const txHash = await evm.broadcastTx(tx)
 
 ## Architecture
 
-The library is built around a core `Chain` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
+The library is built around a core `ChainAdapter` interface that defines common functionality across all supported blockchain networks. Each specific chain implementation extends this interface with network-specific features while maintaining a consistent API.
 
-For more details check the [Chain](/primitives/chain-interfaces.mdx) page.
+For more details check the [ChainAdapter](/primitives/chain-adapter-interface.mdx) page.
 
 ## Utility Functions
 
-Besides the Chain classes the library also provide utility functions to assist you on building transactions, requesting signature in wrapped methods.
+Besides the ChainAdapter classes the library also provide utility functions to assist you on building transactions, requesting signature in wrapped methods.
 
 Currently we support:
 

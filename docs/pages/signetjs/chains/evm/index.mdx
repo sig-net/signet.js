@@ -17,10 +17,10 @@ The EVM implementation allows you to:
 Below is a complete example of sending a transaction on an EVM chain using Signet.js:
 
 ```ts twoslash
-import { EVM } from 'signet.js'
+import { chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/contract.ts]
 
-const evm = new EVM({
+const evm = new chainAdapters.EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
   contract: evmChainSigContract,
 })
@@ -62,22 +62,22 @@ You can use any EVM-compatible network by providing the appropriate RPC URL:
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-import { EVM } from 'signet.js'
+import { chainAdapters } from 'signet.js'
 
 // Ethereum Mainnet
-const ethereumChain = new EVM({
+const ethereumChain = new chainAdapters.EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract: evmChainSigContract,
 })
 
 // Polygon (Matic)
-const polygonChain = new EVM({
+const polygonChain = new chainAdapters.EVM({
   rpcUrl: 'https://polygon-rpc.com',
   contract: evmChainSigContract,
 })
 
 // Binance Smart Chain
-const bscChain = new EVM({
+const bscChain = new chainAdapters.EVM({
   rpcUrl: 'https://bsc-dataseed.binance.org',
   contract: evmChainSigContract,
 })

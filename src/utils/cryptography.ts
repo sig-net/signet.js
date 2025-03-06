@@ -1,16 +1,15 @@
 import { base58 } from '@scure/base'
-import { ec as EC } from 'elliptic'
-import { sha3_256 } from 'js-sha3'
-import { keccak256 } from 'viem'
-
 import {
   type NajPublicKey,
   type MPCSignature,
   type RSVSignature,
   type UncompressedPubKeySEC1,
-} from '@chains/types'
+} from '@types'
+import { ec as EC } from 'elliptic'
+import { sha3_256 } from 'js-sha3'
+import { keccak256 } from 'viem'
 
-import { KDF_CHAIN_IDS } from './constants'
+import { KDF_CHAIN_IDS } from '@constants'
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   // Handle NearNearMpcSignature

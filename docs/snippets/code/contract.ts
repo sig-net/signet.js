@@ -1,4 +1,4 @@
-import { utils } from 'signet.js'
+import { contracts, constants } from 'signet.js'
 import { createPublicClient, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
@@ -29,16 +29,16 @@ const walletClient = createWalletClient({
   transport: http(),
 })
 
-const evmChainSigContract = new utils.chains.evm.ChainSignatureContract({
+const evmChainSigContract = new contracts.evm.ChainSignatureContract({
   publicClient,
   walletClient,
-  contractAddress: utils.constants.CONTRACT_ADDRESSES.ETHEREUM
+  contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
     .TESTNET_DEV as `0x${string}`,
 })
 
-const nearChainSigContract = new utils.chains.near.ChainSignatureContract({
+const nearChainSigContract = new contracts.near.ChainSignatureContract({
   networkId: 'testnet',
-  contractId: utils.constants.CONTRACT_ADDRESSES.NEAR.TESTNET,
+  contractId: constants.CONTRACT_ADDRESSES.NEAR.TESTNET,
   accountId,
   keypair,
 })

@@ -5,10 +5,10 @@ Creates a new instance of the NEAR Chain Signature Contract.
 ## Usage
 
 ```ts twoslash
-import { utils } from 'signet.js'
+import { contracts } from 'signet.js'
 import { KeyPair } from '@near-js/crypto'
 
-const contract = new utils.chains.near.ChainSignatureContract({
+const contract = new contracts.near.ChainSignatureContract({
   networkId: 'testnet',
   contractId: 'chainsig.testnet',
   accountId: 'your-account.testnet',

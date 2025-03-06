@@ -7,9 +7,8 @@ The `prepareTypedDataForSigning` method prepares EIP-712 typed data for MPC sign
 ```ts twoslash
 // [!include ~/snippets/code/chains.ts]
 // ---cut---
-import { EVMTypedData } from 'signet.js'
 
-const typedData: EVMTypedData = {
+const typedData: chainAdapters.EVMTypedData = {
   domain: {
     name: 'My dApp',
     version: '1',

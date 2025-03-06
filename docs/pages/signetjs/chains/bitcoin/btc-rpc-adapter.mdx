@@ -14,7 +14,7 @@ The `BTCRpcAdapter` provides an abstraction layer for Bitcoin-specific operation
 In order to implement a custom adapter, you need to implement the `BTCRpcAdapter` abstract class:
 
 ```ts twoslash
-// [!include ~/../src/chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter.ts]
+// [!include ~/../src/chain-adapters/Bitcoin/BTCRpcAdapter/BTCRpcAdapter.ts]
 ```
 
 ### 2. Example
@@ -22,5 +22,5 @@ In order to implement a custom adapter, you need to implement the `BTCRpcAdapter
 There is an example implementation of the `BTCRpcAdapter` abstract class in the `Mempool` class:
 
 ```ts twoslash
-// [!include ~/../src/chains/Bitcoin/BTCRpcAdapter/Mempool/Mempool.ts]
+// [!include ~/../src/chain-adapters/Bitcoin/BTCRpcAdapter/Mempool/Mempool.ts]
 ```

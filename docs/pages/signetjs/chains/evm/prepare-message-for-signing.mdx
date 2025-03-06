@@ -7,9 +7,8 @@ The `prepareMessageForSigning` method prepares a message for MPC signing accordi
 ```ts twoslash
 // [!include ~/snippets/code/chains.ts]
 // ---cut---
-import { EVMMessage } from 'signet.js'
 
-const message: EVMMessage = 'Sign this message'
+const message: chainAdapters.EVMMessage = 'Sign this message'
 
 const { hashToSign } = await evmChain.prepareMessageForSigning(message)
 ```

@@ -16,10 +16,10 @@ The Cosmos implementation allows you to:
 Below is a complete example of sending a transaction on a Cosmos chain using Signet.js:
 
 ```ts twoslash
-import { Cosmos } from 'signet.js'
+import { chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/contract.ts]
 
-const cosmos = new Cosmos({
+const cosmos = new chainAdapters.Cosmos({
   chainId: 'cosmoshub-4',
   contract: evmChainSigContract,
 })
@@ -78,22 +78,22 @@ You can use any Cosmos SDK-based network by providing the appropriate chain ID:
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-import { Cosmos } from 'signet.js'
+import { chainAdapters } from 'signet.js'
 
 // Cosmos Hub
-const cosmosHub = new Cosmos({
+const cosmosHub = new chainAdapters.Cosmos({
   chainId: 'cosmoshub-4',
   contract: evmChainSigContract,
 })
 
 // Osmosis
-const osmosis = new Cosmos({
+const osmosis = new chainAdapters.Cosmos({
   chainId: 'osmosis-1',
   contract: evmChainSigContract,
 })
 
 // Juno
-const juno = new Cosmos({
+const juno = new chainAdapters.Cosmos({
   chainId: 'juno-1',
   contract: evmChainSigContract,
 })
@@ -104,5 +104,5 @@ const juno = new Cosmos({
 The following types are used on the Cosmos chain:
 
 ```ts twoslash
-// [!include ~/../src/chains/Cosmos/types.ts]
+// [!include ~/../src/chain-adapters/Cosmos/types.ts]
 ```

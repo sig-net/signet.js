@@ -9,9 +9,13 @@ export default defineConfig({
       strict: true,
       paths: {
         'signet.js': ['./src'],
-        '@chains': ['./src/chains'],
-        '@utils': ['./src/utils'],
-        '@chains/*': ['./src/chains/*'],
+        '@chain-adapters': ['./src/chain-adapters/index.ts'],
+        '@contracts': ['./src/contracts/index.ts'],
+        '@utils': ['./src/utils/index.ts'],
+        '@constants': ['./src/constants.ts'],
+        '@types': ['./src/types.ts'],
+        '@chain-adapters/*': ['./src/chain-adapters/*'],
+        '@contracts/*': ['./src/contracts/*'],
         '@utils/*': ['./src/utils/*'],
       },
     },
@@ -33,7 +37,10 @@ export default defineConfig({
       text: 'Primitives',
       items: [
         { text: 'Contract Addresses', link: '/primitives/contract-addresses' },
-        { text: 'Chain Interfaces', link: '/primitives/chain-interfaces' },
+        {
+          text: 'Chain Adapter Interface',
+          link: '/primitives/chain-adapter-interface',
+        },
         {
           text: 'Chain Contract Interfaces',
           link: '/primitives/chain-contract-interfaces',

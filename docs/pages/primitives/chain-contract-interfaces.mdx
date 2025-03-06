@@ -18,16 +18,16 @@ While the library includes a default implementation for the NEAR protocol, you h
 ```ts twoslash
 // [!include ~/snippets/code/near/env.ts]
 // ---cut---
-import { utils, EVM } from 'signet.js'
+import { contracts, chainAdapters } from 'signet.js'
 
-const contract = new utils.chains.near.ChainSignatureContract({
+const contract = new contracts.near.ChainSignatureContract({
   networkId: 'testnet',
   contractId: 'v1.signer-prod.testnet',
   accountId,
   keypair,
 })
 
-const evmChain = new EVM({
+const evmChain = new chainAdapters.EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract,
 })
@@ -35,12 +35,12 @@ const evmChain = new EVM({
 
 ## Implementing a Custom Chain Signature Contract
 
-To create your own implementation to use on the [Chain](./chain-interfaces.mdx) Instance, your contract must implement the `BaseChainSignatureContract` interface.
+To create your own implementation to use on the [Chain](./chain-adapter-interface.mdx) Instance, your contract must implement the `BaseChainSignatureContract` interface.
 
 In case you need you want all Sig Network Smart Contract capabilities, you can implement the `ChainSignatureContract` interface.
 
 ```ts twoslash
-// [!include ~/../src/chains/ChainSignatureContract.ts]
+// [!include ~/../src/contracts/ChainSignatureContract.ts]
 ```
 
 ### Example: NEAR Implementation
@@ -48,5 +48,5 @@ In case you need you want all Sig Network Smart Contract capabilities, you can i
 Below is the reference implementation for the NEAR, which you can use as a guide for implementing your own chain signature contract:
 
 ```ts twoslash
-// [!include ~/../src/utils/chains/near/ChainSignatureContract.ts]
+// [!include ~/../src/contracts/near/ChainSignatureContract.ts]
 ```
