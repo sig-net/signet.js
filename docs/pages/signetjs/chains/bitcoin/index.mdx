@@ -23,7 +23,7 @@ const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
 
 const bitcoin = new Bitcoin({
   network: 'testnet',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
   btcRpcAdapter,
 })
 
@@ -45,7 +45,7 @@ const { transaction, hashesToSign } =
     publicKey,
   })
 
-const rsvSignature = await chainSigContract.sign({
+const rsvSignature = await evmChainSigContract.sign({
   payload: hashesToSign[0],
   path,
   key_version: 0,
@@ -73,21 +73,21 @@ const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/api')
 // Bitcoin Mainnet
 const mainnetBitcoin = new Bitcoin({
   network: 'mainnet',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
   btcRpcAdapter,
 })
 
 // Bitcoin Testnet
 const testnetBitcoin = new Bitcoin({
   network: 'testnet',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
   btcRpcAdapter,
 })
 
 // Bitcoin Regtest (for local development)
 const regtestBitcoin = new Bitcoin({
   network: 'regtest',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
   btcRpcAdapter,
 })
 ```

@@ -17,18 +17,17 @@ import {
   NEAR_MAX_GAS,
 } from '@utils/chains/near/constants'
 import {
+  responseToMpcSignature,
+  type SendTransactionOptions,
+  sendTransactionUntil,
+} from '@utils/chains/near/transaction'
+import {
   type NearNetworkIds,
   type ChainSignatureContractIds,
 } from '@utils/chains/near/types'
 import { CHAINS, KDF_CHAIN_IDS } from '@utils/constants'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
-
-import {
-  responseToMpcSignature,
-  type SendTransactionOptions,
-  sendTransactionUntil,
-} from './transaction'
 
 type NearContract = Contract & {
   public_key: () => Promise<NajPublicKey>

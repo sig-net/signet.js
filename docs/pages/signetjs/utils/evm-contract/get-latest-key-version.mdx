@@ -1,0 +1,18 @@
+# getLatestKeyVersion
+
+Retrieves the latest key version from the contract.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+
+const keyVersion = await evmChainSigContract.getLatestKeyVersion()
+```
+
+## Returns
+
+| Type              | Description            |
+| ----------------- | ---------------------- |
+| `Promise<number>` | The latest key version |

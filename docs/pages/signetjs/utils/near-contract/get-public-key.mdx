@@ -1,0 +1,18 @@
+# getPublicKey
+
+Retrieves the root public key from the contract.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+
+const publicKey = await nearChainSigContract.getPublicKey()
+```
+
+## Returns
+
+| Type                              | Description                                     |
+| --------------------------------- | ----------------------------------------------- |
+| `Promise<UncompressedPubKeySEC1>` | The root public key in SEC1 uncompressed format |

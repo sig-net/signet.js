@@ -18,7 +18,7 @@ Here's a basic example using the EVM implementation:
 import { utils, EVM } from 'signet.js'
 // [!include ~/snippets/code/evm/env.ts]
 
-const chainSigContract = new utils.chains.evm.ChainSignatureContract({
+const evmChainSigContract = new utils.chains.evm.ChainSignatureContract({
   publicClient,
   walletClient,
   contractAddress: utils.constants.CONTRACT_ADDRESSES.ETHEREUM
@@ -27,7 +27,7 @@ const chainSigContract = new utils.chains.evm.ChainSignatureContract({
 
 const evm = new EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 const path = 'eth'
@@ -46,7 +46,7 @@ const { transaction, hashesToSign } = await evm.prepareTransactionForSigning({
   value: 1n, // Amount in wei (1 wei in this example)
 })
 
-const rsvSignature = await chainSigContract?.sign({
+const rsvSignature = await evmChainSigContract?.sign({
   payload: hashesToSign[0],
   path,
   key_version: 0, // The version of the key to use (usually 0)

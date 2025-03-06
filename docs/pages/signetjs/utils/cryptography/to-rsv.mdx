@@ -1,0 +1,29 @@
+# toRSV
+
+The `toRSV` method converts an MPC signature to RSV format, which is commonly used in Ethereum and other blockchain ecosystems.
+
+## Usage
+
+```ts twoslash
+import { utils } from 'signet.js'
+
+const mpcSignature = {
+  big_r: '1234...',
+  s: '5678...',
+  recovery_id: 0,
+}
+
+const rsvSignature = utils.cryptography.toRSV(mpcSignature)
+```
+
+## Parameters
+
+| Parameter   | Type           | Description                                              |
+| ----------- | -------------- | -------------------------------------------------------- |
+| `signature` | `MPCSignature` | The MPC signature to convert (can be in various formats) |
+
+## Returns
+
+| Type           | Description                                             |
+| -------------- | ------------------------------------------------------- |
+| `RSVSignature` | The signature in RSV format with r, s, and v components |

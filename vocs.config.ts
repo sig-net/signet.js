@@ -132,6 +132,77 @@ export default defineConfig({
             },
           ],
         },
+        {
+          text: 'Utils',
+          items: [
+            {
+              text: 'EVM Contract',
+              items: [
+                {
+                  text: 'Constructor',
+                  link: '/signetjs/utils/evm-contract/constructor',
+                },
+                {
+                  text: 'getCurrentSignatureDeposit',
+                  link: '/signetjs/utils/evm-contract/get-current-signature-deposit',
+                },
+                {
+                  text: 'getDerivedPublicKey',
+                  link: '/signetjs/utils/evm-contract/get-derived-public-key',
+                },
+                {
+                  text: 'getPublicKey',
+                  link: '/signetjs/utils/evm-contract/get-public-key',
+                },
+                {
+                  text: 'getLatestKeyVersion',
+                  link: '/signetjs/utils/evm-contract/get-latest-key-version',
+                },
+                { text: 'sign', link: '/signetjs/utils/evm-contract/sign' },
+              ],
+            },
+            {
+              text: 'NEAR Contract',
+              items: [
+                {
+                  text: 'Constructor',
+                  link: '/signetjs/utils/near-contract/constructor',
+                },
+                {
+                  text: 'getCurrentSignatureDeposit',
+                  link: '/signetjs/utils/near-contract/get-current-signature-deposit',
+                },
+                {
+                  text: 'getDerivedPublicKey',
+                  link: '/signetjs/utils/near-contract/get-derived-public-key',
+                },
+                {
+                  text: 'getPublicKey',
+                  link: '/signetjs/utils/near-contract/get-public-key',
+                },
+                { text: 'sign', link: '/signetjs/utils/near-contract/sign' },
+              ],
+            },
+            {
+              text: 'Cryptography',
+              items: [
+                { text: 'toRSV', link: '/signetjs/utils/cryptography/to-rsv' },
+                {
+                  text: 'compressPubKey',
+                  link: '/signetjs/utils/cryptography/compress-pub-key',
+                },
+                {
+                  text: 'najToUncompressedPubKeySEC1',
+                  link: '/signetjs/utils/cryptography/naj-to-uncompressed-pub-key-sec1',
+                },
+                {
+                  text: 'deriveChildPublicKey',
+                  link: '/signetjs/utils/cryptography/derive-child-public-key',
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
   ],

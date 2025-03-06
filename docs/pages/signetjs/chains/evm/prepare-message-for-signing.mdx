@@ -20,16 +20,8 @@ const { hashToSign } = await evmChain.prepareMessageForSigning(message)
 | --------- | ------------ | ------------------------ |
 | `message` | `EVMMessage` | The message to be signed |
 
-The `EVMMessage` type can be:
-
-- A string
-- A byte array
-- An object with a `raw` property containing a hex string
-
 ## Returns
 
 | Property     | Type         | Description                              |
 | ------------ | ------------ | ---------------------------------------- |
 | `hashToSign` | `HashToSign` | The hash to be signed by the MPC network |
-
-The `HashToSign` is an array of numbers representing the bytes of the hash.

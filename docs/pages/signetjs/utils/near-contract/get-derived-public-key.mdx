@@ -1,0 +1,29 @@
+# getDerivedPublicKey
+
+Derives a public key from a predecessor ID and derivation path.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+
+const publicKey = await nearChainSigContract.getDerivedPublicKey({
+  path: 'my_derivation_path',
+  predecessor: 'your-account.testnet',
+})
+```
+
+## Parameters
+
+| Parameter          | Type     | Description                             |
+| ------------------ | -------- | --------------------------------------- |
+| `args`             | `object` | Arguments for deriving the public key   |
+| `args.path`        | `string` | The derivation path to use              |
+| `args.predecessor` | `string` | The account ID requesting the signature |
+
+## Returns
+
+| Type                              | Description                                        |
+| --------------------------------- | -------------------------------------------------- |
+| `Promise<UncompressedPubKeySEC1>` | The derived public key in SEC1 uncompressed format |
