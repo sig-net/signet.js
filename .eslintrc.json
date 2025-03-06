@@ -49,6 +49,10 @@
           {
             "pattern": "@constants",
             "group": "internal"
+          },
+          {
+            "pattern": "@types",
+            "group": "internal"
           }
         ],
         "pathGroupsExcludedImportTypes": ["builtin"],

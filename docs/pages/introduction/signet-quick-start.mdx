@@ -25,7 +25,7 @@ const evmChainSigContract = new contracts.evm.ChainSignatureContract({
     .TESTNET_DEV as `0x${string}`,
 })
 
-const evm = new chainAdapters.EVM({
+const evm = new chainAdapters.evm.EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
   contract: evmChainSigContract,
 })

@@ -20,7 +20,7 @@ Below is a complete example of sending a transaction on an EVM chain using Signe
 import { chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/contract.ts]
 
-const evm = new chainAdapters.EVM({
+const evm = new chainAdapters.evm.EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
   contract: evmChainSigContract,
 })
@@ -65,19 +65,19 @@ You can use any EVM-compatible network by providing the appropriate RPC URL:
 import { chainAdapters } from 'signet.js'
 
 // Ethereum Mainnet
-const ethereumChain = new chainAdapters.EVM({
+const ethereumChain = new chainAdapters.evm.EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract: evmChainSigContract,
 })
 
 // Polygon (Matic)
-const polygonChain = new chainAdapters.EVM({
+const polygonChain = new chainAdapters.evm.EVM({
   rpcUrl: 'https://polygon-rpc.com',
   contract: evmChainSigContract,
 })
 
 // Binance Smart Chain
-const bscChain = new chainAdapters.EVM({
+const bscChain = new chainAdapters.evm.EVM({
   rpcUrl: 'https://bsc-dataseed.binance.org',
   contract: evmChainSigContract,
 })

@@ -50,7 +50,7 @@ const contract = new contracts.near.ChainSignatureContract({
   keypair,
 })
 
-const evmChain = new chainAdapters.EVM({
+const evmChain = new chainAdapters.evm.EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract,
 })

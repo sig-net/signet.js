@@ -19,7 +19,7 @@ Below is a complete example of sending a transaction on a Cosmos chain using Sig
 import { chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/contract.ts]
 
-const cosmos = new chainAdapters.Cosmos({
+const cosmos = new chainAdapters.cosmos.Cosmos({
   chainId: 'cosmoshub-4',
   contract: evmChainSigContract,
 })
@@ -81,19 +81,19 @@ You can use any Cosmos SDK-based network by providing the appropriate chain ID:
 import { chainAdapters } from 'signet.js'
 
 // Cosmos Hub
-const cosmosHub = new chainAdapters.Cosmos({
+const cosmosHub = new chainAdapters.cosmos.Cosmos({
   chainId: 'cosmoshub-4',
   contract: evmChainSigContract,
 })
 
 // Osmosis
-const osmosis = new chainAdapters.Cosmos({
+const osmosis = new chainAdapters.cosmos.Cosmos({
   chainId: 'osmosis-1',
   contract: evmChainSigContract,
 })
 
 // Juno
-const juno = new chainAdapters.Cosmos({
+const juno = new chainAdapters.cosmos.Cosmos({
   chainId: 'juno-1',
   contract: evmChainSigContract,
 })

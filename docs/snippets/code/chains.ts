@@ -23,19 +23,19 @@ const chainSigContract = new contracts.evm.ChainSignatureContract({
     .TESTNET_DEV as `0x${string}`,
 })
 
-const evmChain = new chainAdapters.EVM({
+const evmChain = new chainAdapters.evm.EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
   contract: chainSigContract,
 })
 
-const cosmosChain = new chainAdapters.Cosmos({
+const cosmosChain = new chainAdapters.cosmos.Cosmos({
   chainId: 'cosmoshub-4',
   contract: chainSigContract,
 })
 
-const btcChain = new chainAdapters.Bitcoin({
+const btcChain = new chainAdapters.btc.Bitcoin({
   network: 'testnet',
-  btcRpcAdapter: new chainAdapters.BTCRpcAdapters.Mempool(
+  btcRpcAdapter: new chainAdapters.btc.BTCRpcAdapters.Mempool(
     'https://mempool.space/api'
   ),
   contract: chainSigContract,

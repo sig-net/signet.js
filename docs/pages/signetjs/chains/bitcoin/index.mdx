@@ -19,11 +19,11 @@ Below is a complete example of sending a transaction on the Bitcoin network usin
 import { chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/contract.ts]
 
-const btcRpcAdapter = new chainAdapters.BTCRpcAdapters.Mempool(
+const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
   'https://mempool.space/api'
 )
 
-const bitcoin = new chainAdapters.Bitcoin({
+const bitcoin = new chainAdapters.btc.Bitcoin({
   network: 'testnet',
   contract: evmChainSigContract,
   btcRpcAdapter,
@@ -70,26 +70,26 @@ You can use different Bitcoin networks by specifying the network parameter:
 // ---cut---
 import { chainAdapters } from 'signet.js'
 
-const btcRpcAdapter = new chainAdapters.BTCRpcAdapters.Mempool(
+const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
   'https://mempool.space/api'
 )
 
 // Bitcoin Mainnet
-const mainnetBitcoin = new chainAdapters.Bitcoin({
+const mainnetBitcoin = new chainAdapters.btc.Bitcoin({
   network: 'mainnet',
   contract: evmChainSigContract,
   btcRpcAdapter,
 })
 
 // Bitcoin Testnet
-const testnetBitcoin = new chainAdapters.Bitcoin({
+const testnetBitcoin = new chainAdapters.btc.Bitcoin({
   network: 'testnet',
   contract: evmChainSigContract,
   btcRpcAdapter,
 })
 
 // Bitcoin Regtest (for local development)
-const regtestBitcoin = new chainAdapters.Bitcoin({
+const regtestBitcoin = new chainAdapters.btc.Bitcoin({
   network: 'regtest',
   contract: evmChainSigContract,
   btcRpcAdapter,
