@@ -1,84 +1,46 @@
 ## Signing an Arbitrary Hash
 
-Below is a **working example** of how to **request** and **retrieve** a signature for an arbitrary 32-byte hash from the **ChainSignatures** contract **deployed on Base Sepolia**.
+Below is a **working example** of how to **request** and **retrieve** a signature for an arbitrary 32-byte hash from the **ChainSignatures** contract **deployed on Sepolia**.
 
-> **Assumption**:  
-> - The ChainSignatures contract is deployed at `0x857ED3A242B59cC24144814a0DF41C397a3811E6` (example).  
-> - You have a web3 provider (e.g., ethers.js) pointing to Base Sepolia.
+> **Assumption**:
+>
+> - The ChainSignatures contract is deployed at `0x69C6b28Fdc74618817fa380De29a653060e14009` (example).
+> - You have a web3 provider (e.g., viem) pointing to Sepolia.
 
 ### Prepare Your Ethers Contract Instance
 
-```ts
-import { ethers } from 'ethers';
-import ChainSignaturesAbi from './ChainSignaturesAbi.json'; // The ABI for ChainSignatures
+```ts twoslash filename="init-contract.ts"
+import { utils } from 'signet.js'
+// [!include ~/snippets/code/evm/env.ts]
 
-// 1. Create a provider for Base Sepolia
-const baseSepoliaRpc = 'https://sepolia.base.org';
-const provider = new ethers.JsonRpcProvider(baseSepoliaRpc);
-
-// 2. If you need to sign transactions to the contract (for sign requests), create a signer
-const privateKey = '0xYourPrivateKey'; 
-const signer = new ethers.Wallet(privateKey, provider);
-
-// 3. Attach to the deployed contract
-const chainSignaturesAddress = '0x857ED3A242B59cC24144814a0DF41C397a3811E6'; 
-const chainSignatures = new ethers.Contract(
-  chainSignaturesAddress,
-  ChainSignaturesAbi, 
-  signer
-);
+const evmChainSigContract = new utils.chains.evm.ChainSignatureContract({
+  publicClient,
+  walletClient,
+  contractAddress: utils.constants.CONTRACT_ADDRESSES.ETHEREUM
+    .TESTNET_DEV as `0x${string}`,
+})
 ```
 
 ### Request a Signature on an Arbitrary Hash
 
-```ts
+```ts twoslash filename="request-signature.ts"
+// [!include init-contract.ts]
+// ---cut---
+
 // Suppose you have a 32-byte hash you'd like to have signed:
-const hashToSign = '0x...'; // Must be exactly 32 bytes
+const hashToSign = Array.from(new Uint8Array(32).fill(1)) // Must be exactly 32 bytes
 
 // Derive the path you want (could be any string)
-const path = 'myArbitraryPath';
+const path = 'myArbitraryPath'
 
 // Key version (check chainSignatures.latestKeyVersion() if needed)
-const keyVersion = 0;
+const keyVersion = 0
 
-async function requestSignature() {
-  // Query the contract for the required deposit:
-  const requiredDeposit = await chainSignatures.getSignatureDeposit();
-
-  // Prepare the struct for sign:
-  const signRequest = {
-    payload: hashToSign,
-    path,
-    keyVersion
-  };
-
-  // The sign(...) method requires you to include the deposit
-  const tx = await chainSignatures.sign(signRequest, {
-    value: requiredDeposit
-  });
-
-  // Wait for the transaction to be confirmed
-  const receipt = await tx.wait();
-
-  // The contract emits "SignatureRequested(bytes32 requestId, ...)"
-  // Parse the logs to get the requestId:
-  const signatureRequestedEvent = receipt.logs
-    .map(log => chainSignatures.interface.parseLog(log))
-    .find(event => event && event.name === 'SignatureRequested');
-
-  if (!signatureRequestedEvent) {
-    throw new Error('SignatureRequested event not found in transaction logs');
-  }
-
-  const requestId = signatureRequestedEvent.args.requestId;
-  console.log('Request ID:', requestId);
-
-  return requestId;
-}
-
-requestSignature().then(rid => {
-  console.log('Signature request sent. Request ID:', rid);
-}).catch(console.error);
+const signature = await evmChainSigContract.sign({
+  path,
+  key_version: keyVersion,
+  payload: hashToSign,
+})
 ```
 
 - At this point, the mpc network sees the `SignatureRequested` event, does the off-chain ECDSA signing, and calls `respond(...)`.
@@ -98,17 +60,14 @@ chainSignatures.respond(
 );
 ```
 
-After that transaction is confirmed, a `SignatureResponded` event is emitted. You can then:
+After that transaction is confirmed, a `SignatureResponded` event is emitted. The `sign` methods will handle the event polling internally and return the signature components to you:
 
-```ts
-// Using ethers event filters:
-chainSignatures.on('SignatureResponded', (requestId, response) => {
-  console.log('Signature response received:', requestId);
-  console.log('R.x:', response.bigR.x.toString());
-  console.log('R.y:', response.bigR.y.toString());
-  console.log('S:', response.s.toString());
-  console.log('v (recoveryId):', response.recoveryId);
-});
+```ts twoslash filename="retrieve-signature.ts"
+// [!include request-signature.ts]
+// ---cut---
+console.log('r:', signature.r)
+console.log('s:', signature.s)
+console.log('v:', signature.v)
 ```
 
 You now have the ECDSA components (`r`, `s`, `v`) to do whatever you need with them. The deposit is refunded automatically to `msg.sender` of the original `sign` call if there's any excess.
