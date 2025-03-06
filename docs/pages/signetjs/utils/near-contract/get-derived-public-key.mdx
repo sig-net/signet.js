@@ -7,7 +7,6 @@ Derives a public key from a predecessor ID and derivation path.
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-
 const publicKey = await nearChainSigContract.getDerivedPublicKey({
   path: 'my_derivation_path',
   predecessor: 'your-account.testnet',

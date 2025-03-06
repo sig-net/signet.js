@@ -139,7 +139,7 @@ export default defineConfig({
               text: 'EVM Contract',
               items: [
                 {
-                  text: 'Constructor',
+                  text: 'constructor',
                   link: '/signetjs/utils/evm-contract/constructor',
                 },
                 {
@@ -165,7 +165,7 @@ export default defineConfig({
               text: 'NEAR Contract',
               items: [
                 {
-                  text: 'Constructor',
+                  text: 'constructor',
                   link: '/signetjs/utils/near-contract/constructor',
                 },
                 {
@@ -181,24 +181,6 @@ export default defineConfig({
                   link: '/signetjs/utils/near-contract/get-public-key',
                 },
                 { text: 'sign', link: '/signetjs/utils/near-contract/sign' },
-              ],
-            },
-            {
-              text: 'Cryptography',
-              items: [
-                { text: 'toRSV', link: '/signetjs/utils/cryptography/to-rsv' },
-                {
-                  text: 'compressPubKey',
-                  link: '/signetjs/utils/cryptography/compress-pub-key',
-                },
-                {
-                  text: 'najToUncompressedPubKeySEC1',
-                  link: '/signetjs/utils/cryptography/naj-to-uncompressed-pub-key-sec1',
-                },
-                {
-                  text: 'deriveChildPublicKey',
-                  link: '/signetjs/utils/cryptography/derive-child-public-key',
-                },
               ],
             },
           ],

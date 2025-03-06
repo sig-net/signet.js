@@ -7,7 +7,6 @@ Signs data using the Chain Signatures contract.
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-
 const signature = await evmChainSigContract.sign({
   path: 'my_derivation_path',
   payload: Array.from(new Uint8Array(32).fill(1)), // 32-byte array
@@ -17,14 +16,18 @@ const signature = await evmChainSigContract.sign({
 
 ## Parameters
 
-| Parameter           | Type       | Description                                          |
-| ------------------- | ---------- | ---------------------------------------------------- |
-| `args`              | `SignArgs` | Arguments for signing data                           |
-| `args.path`         | `string`   | The derivation path to use                           |
-| `args.predecessor`  | `string`   | The wallet/contract address requesting the signature |
-| `args.payload`      | `string`   | The data to sign (32-byte hex string)                |
-| `options?`          | `object`   | Optional configuration for signing                   |
-| `options.gasLimit?` | `bigint`   | Optional gas limit for the transaction               |
+| Parameter                   | Type          | Description                                           |
+| --------------------------- | ------------- | ----------------------------------------------------- |
+| `args`                      | `SignArgs`    | Arguments for signing data                            |
+| `args.path`                 | `string`      | The derivation path to use                            |
+| `args.payload`              | `number[]`    | The data to sign as an array of 32 bytes              |
+| `args.key_version`          | `number`      | Version of the key to use                             |
+| `options?`                  | `SignOptions` | Optional configuration for signing                    |
+| `options.sign.algo?`        | `string`      | Optional algorithm to use for signing                 |
+| `options.sign.dest?`        | `string`      | Optional destination for the signature                |
+| `options.sign.params?`      | `string`      | Optional parameters for the signing process           |
+| `options.retry.delay?`      | `number`      | Delay between retries in milliseconds (default: 5000) |
+| `options.retry.retryCount?` | `number`      | Number of retries to attempt (default: 12)            |
 
 ## Returns
 
