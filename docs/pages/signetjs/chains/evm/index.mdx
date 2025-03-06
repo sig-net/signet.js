@@ -22,7 +22,7 @@ import { EVM } from 'signet.js'
 
 const evm = new EVM({
   rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 const path = 'eth'
@@ -41,7 +41,7 @@ const { transaction, hashesToSign } = await evm.prepareTransactionForSigning({
   value: 1n, // Amount in wei (1 wei in this example)
 })
 
-const rsvSignature = await chainSigContract.sign({
+const rsvSignature = await evmChainSigContract.sign({
   payload: hashesToSign[0],
   path,
   key_version: 0,
@@ -67,18 +67,18 @@ import { EVM } from 'signet.js'
 // Ethereum Mainnet
 const ethereumChain = new EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 // Polygon (Matic)
 const polygonChain = new EVM({
   rpcUrl: 'https://polygon-rpc.com',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 // Binance Smart Chain
 const bscChain = new EVM({
   rpcUrl: 'https://bsc-dataseed.binance.org',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 ```

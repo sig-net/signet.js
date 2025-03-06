@@ -8,7 +8,7 @@ import {
 export const getRootPublicKey = (
   contractAddress: string,
   chain: keyof typeof CHAINS
-): NajPublicKey => {
+): NajPublicKey | undefined => {
   const environment = Object.entries(CONTRACT_ADDRESSES[chain]).find(
     ([_, address]) => address.toLowerCase() === contractAddress.toLowerCase()
   )?.[0] as keyof typeof ROOT_PUBLIC_KEYS | undefined
@@ -17,7 +17,5 @@ export const getRootPublicKey = (
     return ROOT_PUBLIC_KEYS[environment]
   }
 
-  throw new Error(
-    `Contract address ${contractAddress} not supported for chain ${chain}`
-  )
+  return undefined
 }

@@ -1,0 +1,29 @@
+# Constructor
+
+Creates a new instance of the NEAR Chain Signature Contract.
+
+## Usage
+
+```ts twoslash
+import { utils } from 'signet.js'
+import { KeyPair } from '@near-js/crypto'
+
+const contract = new utils.chains.near.ChainSignatureContract({
+  networkId: 'testnet',
+  contractId: 'chainsig.testnet',
+  accountId: 'your-account.testnet',
+  keypair: KeyPair.fromString('ed25519:your-private-key'),
+})
+```
+
+## Parameters
+
+| Parameter                      | Type                         | Description                                                                     |
+| ------------------------------ | ---------------------------- | ------------------------------------------------------------------------------- |
+| `args`                         | `ChainSignatureContractArgs` | Configuration options for the contract                                          |
+| `args.networkId`               | `NearNetworkIds`             | The NEAR network ID ('mainnet', 'testnet', etc.)                                |
+| `args.contractId`              | `ChainSignatureContractIds`  | The contract ID of the Chain Signatures contract                                |
+| `args.accountId?`              | `string`                     | Optional account ID to use for transactions. Defaults to a placeholder account  |
+| `args.keypair?`                | `KeyPair`                    | Optional keypair to use for transactions. Defaults to a random keypair          |
+| `args.rootPublicKey?`          | `NajPublicKey`               | Optional root public key. If not provided, it will be fetched from the contract |
+| `args.sendTransactionOptions?` | `SendTransactionOptions`     | Optional configuration for sending transactions                                 |

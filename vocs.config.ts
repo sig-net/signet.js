@@ -132,6 +132,59 @@ export default defineConfig({
             },
           ],
         },
+        {
+          text: 'Utils',
+          items: [
+            {
+              text: 'EVM Contract',
+              items: [
+                {
+                  text: 'constructor',
+                  link: '/signetjs/utils/evm-contract/constructor',
+                },
+                {
+                  text: 'getCurrentSignatureDeposit',
+                  link: '/signetjs/utils/evm-contract/get-current-signature-deposit',
+                },
+                {
+                  text: 'getDerivedPublicKey',
+                  link: '/signetjs/utils/evm-contract/get-derived-public-key',
+                },
+                {
+                  text: 'getPublicKey',
+                  link: '/signetjs/utils/evm-contract/get-public-key',
+                },
+                {
+                  text: 'getLatestKeyVersion',
+                  link: '/signetjs/utils/evm-contract/get-latest-key-version',
+                },
+                { text: 'sign', link: '/signetjs/utils/evm-contract/sign' },
+              ],
+            },
+            {
+              text: 'NEAR Contract',
+              items: [
+                {
+                  text: 'constructor',
+                  link: '/signetjs/utils/near-contract/constructor',
+                },
+                {
+                  text: 'getCurrentSignatureDeposit',
+                  link: '/signetjs/utils/near-contract/get-current-signature-deposit',
+                },
+                {
+                  text: 'getDerivedPublicKey',
+                  link: '/signetjs/utils/near-contract/get-derived-public-key',
+                },
+                {
+                  text: 'getPublicKey',
+                  link: '/signetjs/utils/near-contract/get-public-key',
+                },
+                { text: 'sign', link: '/signetjs/utils/near-contract/sign' },
+              ],
+            },
+          ],
+        },
       ],
     },
   ],

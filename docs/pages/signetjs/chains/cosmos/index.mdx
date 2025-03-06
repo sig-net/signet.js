@@ -21,7 +21,7 @@ import { Cosmos } from 'signet.js'
 
 const cosmos = new Cosmos({
   chainId: 'cosmoshub-4',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 const path = 'cosmos'
@@ -57,7 +57,7 @@ const { transaction, hashesToSign } = await cosmos.prepareTransactionForSigning(
   }
 )
 
-const rsvSignature = await chainSigContract.sign({
+const rsvSignature = await evmChainSigContract.sign({
   payload: hashesToSign[0],
   path,
   key_version: 0,
@@ -83,19 +83,19 @@ import { Cosmos } from 'signet.js'
 // Cosmos Hub
 const cosmosHub = new Cosmos({
   chainId: 'cosmoshub-4',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 // Osmosis
 const osmosis = new Cosmos({
   chainId: 'osmosis-1',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 
 // Juno
 const juno = new Cosmos({
   chainId: 'juno-1',
-  contract: chainSigContract,
+  contract: evmChainSigContract,
 })
 ```
 
