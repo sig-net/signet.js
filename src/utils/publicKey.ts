@@ -1,9 +1,5 @@
-import type { NajPublicKey } from '@chains/types'
-import {
-  CONTRACT_ADDRESSES,
-  ROOT_PUBLIC_KEYS,
-  type CHAINS,
-} from '@utils/constants'
+import { CONTRACT_ADDRESSES, ROOT_PUBLIC_KEYS, type CHAINS } from '@constants'
+import type { NajPublicKey } from '@types'
 
 export const getRootPublicKey = (
   contractAddress: string,

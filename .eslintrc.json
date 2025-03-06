@@ -27,11 +27,19 @@
         ],
         "pathGroups": [
           {
-            "pattern": "@chains",
+            "pattern": "@chain-adapters",
             "group": "internal"
           },
           {
-            "pattern": "@chains/**",
+            "pattern": "@chain-adapters/**",
+            "group": "internal"
+          },
+          {
+            "pattern": "@contracts",
+            "group": "internal"
+          },
+          {
+            "pattern": "@contracts/**",
             "group": "internal"
           },
           {
@@ -39,7 +47,11 @@
             "group": "internal"
           },
           {
-            "pattern": "@utils/**",
+            "pattern": "@constants",
+            "group": "internal"
+          },
+          {
+            "pattern": "@types",
             "group": "internal"
           }
         ],

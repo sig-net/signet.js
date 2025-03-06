@@ -1,0 +1,26 @@
+# prepareMessageForSigning
+
+The `prepareMessageForSigning` method prepares a message for MPC signing according to EIP-191 (Ethereum signed message standard).
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+
+const message: chainAdapters.evm.EVMMessage = 'Sign this message'
+
+const { hashToSign } = await evmChain.prepareMessageForSigning(message)
+```
+
+## Parameters
+
+| Parameter | Type         | Description              |
+| --------- | ------------ | ------------------------ |
+| `message` | `EVMMessage` | The message to be signed |
+
+## Returns
+
+| Property     | Type         | Description                              |
+| ------------ | ------------ | ---------------------------------------- |
+| `hashToSign` | `HashToSign` | The hash to be signed by the MPC network |

@@ -1,0 +1,84 @@
+# EVM Chain
+
+The EVM (Ethereum Virtual Machine) chain implementation in Signet.js provides support for all EVM-compatible networks, including Ethereum, Binance Smart Chain, Polygon, Arbitrum, and more.
+
+## Overview
+
+The EVM implementation allows you to:
+
+- Derive addresses and public keys
+- Check balances
+- Prepare, sign, and broadcast transactions
+- Sign messages (EIP-191)
+- Sign typed data (EIP-712)
+
+## Complete Transaction Example
+
+Below is a complete example of sending a transaction on an EVM chain using Signet.js:
+
+```ts twoslash
+import { chainAdapters } from 'signet.js'
+// [!include ~/snippets/code/evm/contract.ts]
+
+const evm = new chainAdapters.evm.EVM({
+  rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
+  contract: evmChainSigContract,
+})
+
+const path = 'eth'
+const predecessorId = walletClient.account.address
+
+const { address: from, publicKey } = await evm.deriveAddressAndPublicKey(
+  predecessorId,
+  path
+)
+
+const { balance, decimals } = await evm.getBalance(from)
+
+const { transaction, hashesToSign } = await evm.prepareTransactionForSigning({
+  from: from as `0x${string}`,
+  to: '0x4174678c78fEaFd778c1ff319D5D326701449b25',
+  value: 1n, // Amount in wei (1 wei in this example)
+})
+
+const rsvSignature = await evmChainSigContract.sign({
+  payload: hashesToSign[0],
+  path,
+  key_version: 0,
+})
+
+const tx = evm.finalizeTransactionSigning({
+  transaction,
+  rsvSignatures: [rsvSignature],
+})
+
+const txHash = await evm.broadcastTx(tx)
+```
+
+### Supported Networks
+
+You can use any EVM-compatible network by providing the appropriate RPC URL:
+
+```ts twoslash
+// [!include ~/snippets/code/contract.ts]
+// ---cut---
+import { chainAdapters } from 'signet.js'
+
+// Ethereum Mainnet
+const ethereumChain = new chainAdapters.evm.EVM({
+  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
+  contract: evmChainSigContract,
+})
+
+// Polygon (Matic)
+const polygonChain = new chainAdapters.evm.EVM({
+  rpcUrl: 'https://polygon-rpc.com',
+  contract: evmChainSigContract,
+})
+
+// Binance Smart Chain
+const bscChain = new chainAdapters.evm.EVM({
+  rpcUrl: 'https://bsc-dataseed.binance.org',
+  contract: evmChainSigContract,
+})
+```

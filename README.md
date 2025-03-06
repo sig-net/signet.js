@@ -28,7 +28,7 @@ pnpm add signet.js
 ## Quick Example
 
 ```ts twoslash
-import { EVM, utils } from 'signet.js'
+import { chainAdapters, contracts } from 'signet.js'
 import { KeyPair, type KeyPairString } from '@near-js/crypto'
 
 // Initialize NEAR connection with credentials from environment
@@ -43,14 +43,14 @@ if (!accountId || !privateKey) {
 
 const keypair = KeyPair.fromString(privateKey)
 
-const contract = new utils.chains.near.ChainSignatureContract({
+const contract = new contracts.near.ChainSignatureContract({
   networkId: 'testnet',
   contractId: 'v1.signer-prod.testnet',
   accountId,
   keypair,
 })
 
-const evmChain = new EVM({
+const evmChain = new chainAdapters.evm.EVM({
   rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
   contract,
 })

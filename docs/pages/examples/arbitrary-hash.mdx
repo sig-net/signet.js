@@ -10,13 +10,13 @@ Below is a **working example** of how to **request** and **retrieve** a signatur
 ### Prepare Your Ethers Contract Instance
 
 ```ts twoslash filename="init-contract.ts"
-import { utils } from 'signet.js'
+import { contracts, constants } from 'signet.js'
 // [!include ~/snippets/code/evm/env.ts]
 
-const evmChainSigContract = new utils.chains.evm.ChainSignatureContract({
+const evmChainSigContract = new contracts.evm.ChainSignatureContract({
   publicClient,
   walletClient,
-  contractAddress: utils.constants.CONTRACT_ADDRESSES.ETHEREUM
+  contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
     .TESTNET_DEV as `0x${string}`,
 })
 ```

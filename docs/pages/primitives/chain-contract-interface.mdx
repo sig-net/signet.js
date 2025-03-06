@@ -1,0 +1,52 @@
+# Implementing a Custom Chain Signature Contract
+
+This guide explains how to implement a custom Chain Signature Contract to provide as argument when instantiating a Chain instance.
+
+## Overview
+
+The `ChainSignatureContract` is an abstract class that defines the interface for interacting with the Sig Network infrastructure.
+
+- Key Derivation: Derive the child key from the root key using Sig Network key derivation function
+- Sign: Sigs the given payload using Sig Network MPC
+- Current Fee: Gets the current signature deposit that handles network congestion
+- Root Public Key: Gets the root public key of the Smart Contract on Sig Network MPC
+
+While the library includes a default implementation for the NEAR protocol, you have the flexibility to implement your own contract for other blockchain networks.
+
+## Using the NEAR Implementation
+
+```ts twoslash
+// [!include ~/snippets/code/near/env.ts]
+// ---cut---
+import { contracts, chainAdapters } from 'signet.js'
+
+const contract = new contracts.near.ChainSignatureContract({
+  networkId: 'testnet',
+  contractId: 'v1.signer-prod.testnet',
+  accountId,
+  keypair,
+})
+
+const evmChain = new chainAdapters.evm.EVM({
+  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
+  contract,
+})
+```
+
+## Implementing a Custom Chain Signature Contract
+
+To create your own implementation to use on the [Chain Adapter](/primitives/chain-adapter-interface.mdx) Instance, your contract must implement the `BaseChainSignatureContract` interface.
+
+In case you need you want all Sig Network Smart Contract capabilities, you can implement the `ChainSignatureContract` interface.
+
+```ts twoslash
+// [!include ~/../src/contracts/ChainSignatureContract.ts]
+```
+
+### Example: NEAR Implementation
+
+Below is the reference implementation for the NEAR, which you can use as a guide for implementing your own chain signature contract:
+
+```ts twoslash
+// [!include ~/../src/contracts/near/ChainSignatureContract.ts]
+```

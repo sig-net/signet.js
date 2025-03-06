@@ -1,0 +1,44 @@
+# prepareTypedDataForSigning
+
+The `prepareTypedDataForSigning` method prepares EIP-712 typed data for MPC signing.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+
+const typedData: chainAdapters.evm.EVMTypedData = {
+  domain: {
+    name: 'My dApp',
+    version: '1',
+    chainId: 1,
+    verifyingContract: '0x1234567890123456789012345678901234567890',
+  },
+  types: {
+    Person: [
+      { name: 'name', type: 'string' },
+      { name: 'wallet', type: 'address' },
+    ],
+  },
+  primaryType: 'Person',
+  message: {
+    name: 'Alice',
+    wallet: '0x1234567890123456789012345678901234567890',
+  },
+}
+
+const { hashToSign } = await evmChain.prepareTypedDataForSigning(typedData)
+```
+
+## Parameters
+
+| Parameter   | Type           | Description                                |
+| ----------- | -------------- | ------------------------------------------ |
+| `typedData` | `EVMTypedData` | The EIP-712 typed data object to be signed |
+
+## Returns
+
+| Property     | Type         | Description                              |
+| ------------ | ------------ | ---------------------------------------- |
+| `hashToSign` | `HashToSign` | The hash to be signed by the MPC network |

@@ -3,14 +3,13 @@ import { ec as EC } from 'elliptic'
 import { sha3_256 } from 'js-sha3'
 import { keccak256 } from 'viem'
 
+import { KDF_CHAIN_IDS } from '@constants'
 import {
   type NajPublicKey,
   type MPCSignature,
   type RSVSignature,
   type UncompressedPubKeySEC1,
-} from '@chains/types'
-
-import { KDF_CHAIN_IDS } from './constants'
+} from '@types'
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   // Handle NearNearMpcSignature

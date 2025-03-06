@@ -1,0 +1,28 @@
+# deriveAddressAndPublicKey
+
+The `deriveAddressAndPublicKey` method derives an address and public key from a predecessor ID and derivation path.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
+  '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
+  'my_derivation_path'
+)
+```
+
+## Parameters
+
+| Parameter     | Type     | Description                                          |
+| ------------- | -------- | ---------------------------------------------------- |
+| `predecessor` | `string` | The wallet/contract address requesting the signature |
+| `path`        | `string` | The derivation path to use                           |
+
+## Returns
+
+| Property    | Type     | Description                                              |
+| ----------- | -------- | -------------------------------------------------------- |
+| `address`   | `string` | The derived address                                      |
+| `publicKey` | `string` | The corresponding public key in SEC1 uncompressed format |

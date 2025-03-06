@@ -45,8 +45,11 @@ export default defineConfig((options) => {
         ? ['module', 'main']
         : ['browser', 'module', 'main']
       options.alias = {
-        '@chains': resolve(__dirname, './src/chains'),
+        '@chain-adapters': resolve(__dirname, './src/chain-adapters'),
+        '@contracts': resolve(__dirname, './src/contracts'),
         '@utils': resolve(__dirname, './src/utils'),
+        '@constants': resolve(__dirname, './src/constants.ts'),
+        '@types': resolve(__dirname, './src/types.ts'),
       }
     },
   }
