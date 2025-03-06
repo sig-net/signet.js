@@ -43,14 +43,14 @@ export default defineConfig({
         },
         {
           text: 'Chain Contract Interfaces',
-          link: '/primitives/chain-contract-interfaces',
+          link: '/primitives/chain-contract-interface',
         },
       ],
     },
     {
       text: 'Examples',
       items: [
-        { text: 'Signing an arbitrary hash', link: '/examples/arbitrary-hash' },
+        { text: 'Sign arbitrary hash', link: '/examples/arbitrary-hash' },
         {
           text: 'Use Ethereum chain signatures to securely sponsor gas fees for calling your Base smart contract',
           link: '/examples/sponsor-foreign-chain-gas',
@@ -61,133 +61,141 @@ export default defineConfig({
       text: 'API Reference',
       items: [
         {
-          text: 'EVM Chains',
-          items: [
-            { text: 'Overview', link: '/signetjs/chains/evm' },
-            {
-              text: 'prepareTransactionForSigning',
-              link: '/signetjs/chains/evm/prepare-transaction-for-signing',
-            },
-            {
-              text: 'finalizeTransactionSigning',
-              link: '/signetjs/chains/evm/finalize-transaction-signing',
-            },
-            {
-              text: 'prepareMessageForSigning',
-              link: '/signetjs/chains/evm/prepare-message-for-signing',
-            },
-            {
-              text: 'finalizeMessageSigning',
-              link: '/signetjs/chains/evm/finalize-message-signing',
-            },
-            {
-              text: 'prepareTypedDataForSigning',
-              link: '/signetjs/chains/evm/prepare-typed-data-for-signing',
-            },
-            {
-              text: 'finalizeTypedDataSigning',
-              link: '/signetjs/chains/evm/finalize-typed-data-signing',
-            },
-          ],
-        },
-        {
-          text: 'Bitcoin',
-          items: [
-            { text: 'Overview', link: '/signetjs/chains/bitcoin' },
-            {
-              text: 'RPC Adapter',
-              link: '/signetjs/chains/bitcoin/btc-rpc-adapter',
-            },
-            {
-              text: 'prepareTransactionForSigning',
-              link: '/signetjs/chains/bitcoin/prepare-transaction-for-signing',
-            },
-            {
-              text: 'finalizeTransactionSigning',
-              link: '/signetjs/chains/bitcoin/finalize-transaction-signing',
-            },
-          ],
-        },
-        {
-          text: 'Cosmos Chains',
-          items: [
-            { text: 'Overview', link: '/signetjs/chains/cosmos' },
-            {
-              text: 'prepareTransactionForSigning',
-              link: '/signetjs/chains/cosmos/prepare-transaction-for-signing',
-            },
-            {
-              text: 'finalizeTransactionSigning',
-              link: '/signetjs/chains/cosmos/finalize-transaction-signing',
-            },
-          ],
-        },
-        {
-          text: 'Common Methods',
+          text: 'Chain Adapters',
           items: [
             {
-              text: 'deriveAddressAndPublicKey',
-              link: '/signetjs/chains/derive-address-and-public-key',
-            },
-            {
-              text: 'getBalance',
-              link: '/signetjs/chains/get-balance',
-            },
-            {
-              text: 'broadcastTx',
-              link: '/signetjs/chains/broadcast-tx',
-            },
-          ],
-        },
-        {
-          text: 'Utils',
-          items: [
-            {
-              text: 'EVM Contract',
+              text: 'EVM Chains',
               items: [
+                { text: 'Overview', link: '/signetjs/chain-adapters/evm' },
                 {
-                  text: 'constructor',
-                  link: '/signetjs/utils/evm-contract/constructor',
+                  text: 'prepareTransactionForSigning',
+                  link: '/signetjs/chain-adapters/evm/prepare-transaction-for-signing',
                 },
                 {
-                  text: 'getCurrentSignatureDeposit',
-                  link: '/signetjs/utils/evm-contract/get-current-signature-deposit',
+                  text: 'finalizeTransactionSigning',
+                  link: '/signetjs/chain-adapters/evm/finalize-transaction-signing',
                 },
                 {
-                  text: 'getDerivedPublicKey',
-                  link: '/signetjs/utils/evm-contract/get-derived-public-key',
+                  text: 'prepareMessageForSigning',
+                  link: '/signetjs/chain-adapters/evm/prepare-message-for-signing',
                 },
                 {
-                  text: 'getPublicKey',
-                  link: '/signetjs/utils/evm-contract/get-public-key',
+                  text: 'finalizeMessageSigning',
+                  link: '/signetjs/chain-adapters/evm/finalize-message-signing',
                 },
                 {
-                  text: 'getLatestKeyVersion',
-                  link: '/signetjs/utils/evm-contract/get-latest-key-version',
+                  text: 'prepareTypedDataForSigning',
+                  link: '/signetjs/chain-adapters/evm/prepare-typed-data-for-signing',
                 },
-                { text: 'sign', link: '/signetjs/utils/evm-contract/sign' },
+                {
+                  text: 'finalizeTypedDataSigning',
+                  link: '/signetjs/chain-adapters/evm/finalize-typed-data-signing',
+                },
               ],
             },
             {
-              text: 'NEAR Contract',
+              text: 'Bitcoin',
+              items: [
+                { text: 'Overview', link: '/signetjs/chain-adapters/bitcoin' },
+                {
+                  text: 'RPC Adapter',
+                  link: '/signetjs/chain-adapters/bitcoin/btc-rpc-adapter',
+                },
+                {
+                  text: 'prepareTransactionForSigning',
+                  link: '/signetjs/chain-adapters/bitcoin/prepare-transaction-for-signing',
+                },
+                {
+                  text: 'finalizeTransactionSigning',
+                  link: '/signetjs/chain-adapters/bitcoin/finalize-transaction-signing',
+                },
+              ],
+            },
+            {
+              text: 'Cosmos Chains',
+              items: [
+                { text: 'Overview', link: '/signetjs/chain-adapters/cosmos' },
+                {
+                  text: 'prepareTransactionForSigning',
+                  link: '/signetjs/chain-adapters/cosmos/prepare-transaction-for-signing',
+                },
+                {
+                  text: 'finalizeTransactionSigning',
+                  link: '/signetjs/chain-adapters/cosmos/finalize-transaction-signing',
+                },
+              ],
+            },
+            {
+              text: 'Common Methods',
+              items: [
+                {
+                  text: 'deriveAddressAndPublicKey',
+                  link: '/signetjs/chain-adapters/derive-address-and-public-key',
+                },
+                {
+                  text: 'getBalance',
+                  link: '/signetjs/chain-adapters/get-balance',
+                },
+                {
+                  text: 'broadcastTx',
+                  link: '/signetjs/chain-adapters/broadcast-tx',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          text: 'Contracts',
+          items: [
+            {
+              text: 'EVM',
               items: [
                 {
                   text: 'constructor',
-                  link: '/signetjs/utils/near-contract/constructor',
+                  link: '/signetjs/contracts/evm/constructor',
                 },
                 {
                   text: 'getCurrentSignatureDeposit',
-                  link: '/signetjs/utils/near-contract/get-current-signature-deposit',
+                  link: '/signetjs/contracts/evm/get-current-signature-deposit',
                 },
                 {
                   text: 'getDerivedPublicKey',
-                  link: '/signetjs/utils/near-contract/get-derived-public-key',
+                  link: '/signetjs/contracts/evm/get-derived-public-key',
                 },
                 {
                   text: 'getPublicKey',
-                  link: '/signetjs/utils/near-contract/get-public-key',
+                  link: '/signetjs/contracts/evm/get-public-key',
                 },
-                { text: 'sign', link: '/signetjs/utils/near-contract/sign' },
+                {
+                  text: 'getLatestKeyVersion',
+                  link: '/signetjs/contracts/evm/get-latest-key-version',
+                },
+                { text: 'sign', link: '/signetjs/contracts/evm/sign' },
+              ],
+            },
+            {
+              text: 'NEAR',
+              items: [
+                {
+                  text: 'constructor',
+                  link: '/signetjs/contracts/near/constructor',
+                },
+                {
+                  text: 'getCurrentSignatureDeposit',
+                  link: '/signetjs/contracts/near/get-current-signature-deposit',
+                },
+                {
+                  text: 'getDerivedPublicKey',
+                  link: '/signetjs/contracts/near/get-derived-public-key',
+                },
+                {
+                  text: 'getPublicKey',
+                  link: '/signetjs/contracts/near/get-public-key',
+                },
+                {
+                  text: 'sign',
+                  link: '/signetjs/contracts/near/sign',
+                },
               ],
             },
           ],
@@ -195,14 +203,12 @@ export default defineConfig({
       ],
     },
   ],
-
   socials: [
     {
       icon: 'github',
       link: 'https://github.com/sig-net',
     },
   ],
-
   theme: {
     accentColor: {
       light: '#00C08B',
