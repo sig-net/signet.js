@@ -65,7 +65,9 @@ describe('EVM', async () => {
 
   const evm = new EVM({
     contract,
-    rpcUrl,
+    publicClient: createPublicClient({
+      transport: http(rpcUrl),
+    }),
   })
 
   it('should sign a message', async () => {

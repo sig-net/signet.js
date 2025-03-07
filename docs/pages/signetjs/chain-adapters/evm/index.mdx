@@ -21,7 +21,7 @@ import { chainAdapters } from 'signet.js'
 // [!include ~/snippets/code/evm/contract.ts]
 
 const evm = new chainAdapters.evm.EVM({
-  rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
+  publicClient,
   contract: evmChainSigContract,
 })
 
@@ -57,28 +57,44 @@ const txHash = await evm.broadcastTx(tx)
 
 ### Supported Networks
 
-You can use any EVM-compatible network by providing the appropriate RPC URL:
+You can use any EVM-compatible network by providing the appropriate client:
 
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
 import { chainAdapters } from 'signet.js'
+import { polygon, bsc, mainnet } from "viem/chains";
 
 // Ethereum Mainnet
+const clientEthereum = createPublicClient({
+  chain: mainnet,
+  transport: http(),
+});
+
 const ethereumChain = new chainAdapters.evm.EVM({
-  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
+  publicClient: clientEthereum,
   contract: evmChainSigContract,
 })
 
 // Polygon (Matic)
+const clientPolygon = createPublicClient({
+  chain: bsc,
+  transport: http(),
+});
+
 const polygonChain = new chainAdapters.evm.EVM({
-  rpcUrl: 'https://polygon-rpc.com',
+  publicClient: clientEthereum,
   contract: evmChainSigContract,
 })
 
 // Binance Smart Chain
+const clientBSC = createPublicClient({
+  chain: polygon,
+  transport: http(),
+});
+
 const bscChain = new chainAdapters.evm.EVM({
-  rpcUrl: 'https://bsc-dataseed.binance.org',
+  publicClient: clientBSC,
   contract: evmChainSigContract,
 })
 ```

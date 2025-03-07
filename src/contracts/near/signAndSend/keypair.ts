@@ -10,6 +10,7 @@ import {
   type CosmosRequest,
   type EVMRequest,
 } from '@contracts/near/types'
+import { createPublicClient, http } from 'viem';
 
 export const EVMTransaction = async (
   req: EVMRequest,
@@ -30,7 +31,9 @@ export const EVMTransaction = async (
     })
 
     const evm = new chainAdapters.evm.EVM({
-      rpcUrl: req.chainConfig.providerUrl,
+      publicClient: createPublicClient({
+        transport: http(req.chainConfig.providerUrl),
+      }),
       contract,
     })
 

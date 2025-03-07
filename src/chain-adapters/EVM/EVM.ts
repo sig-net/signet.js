@@ -49,22 +49,20 @@ export class EVM extends ChainAdapter<
   /**
    * Creates a new EVM chain instance
    * @param params - Configuration parameters
-   * @param params.rpcUrl - URL of the EVM JSON-RPC provider (e.g., Infura endpoint)
+   * @param params.publicClient - A Viem PublicClient instance for reading from the blockchain
    * @param params.contract - Instance of the chain signature contract for MPC operations
    */
   constructor({
-    rpcUrl,
+    publicClient,
     contract,
   }: {
-    rpcUrl: string
+    publicClient: PublicClient
     contract: BaseChainSignatureContract
   }) {
     super()
 
     this.contract = contract
-    this.client = createPublicClient({
-      transport: http(rpcUrl),
-    })
+    this.client = publicClient;
   }
 
   private async attachGasAndNonce(
