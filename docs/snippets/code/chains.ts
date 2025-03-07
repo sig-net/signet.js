@@ -24,7 +24,7 @@ const chainSigContract = new contracts.evm.ChainSignatureContract({
 })
 
 const evmChain = new chainAdapters.evm.EVM({
-  rpcUrl: 'https://sepolia.infura.io/v3/YOUR-PROJECT-ID',
+  publicClient,
   contract: chainSigContract,
 })
 
