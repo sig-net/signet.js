@@ -30,6 +30,8 @@ pnpm add signet.js
 ```ts twoslash
 import { chainAdapters, contracts } from 'signet.js'
 import { KeyPair, type KeyPairString } from '@near-js/crypto'
+import { createPublicClient, http } from 'viem';
+import { mainnet } from "viem/chains";
 
 // Initialize NEAR connection with credentials from environment
 const accountId = process.env.NEAR_ACCOUNT_ID
@@ -50,8 +52,13 @@ const contract = new contracts.near.ChainSignatureContract({
   keypair,
 })
 
+const publicClient = createPublicClient({
+   chain: mainnet,
+   transport: http(),
+});
+
 const evmChain = new chainAdapters.evm.EVM({
-  rpcUrl: 'https://mainnet.infura.io/v3/YOUR-PROJECT-ID',
+  publicClient,
   contract,
 })
 
