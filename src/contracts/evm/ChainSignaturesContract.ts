@@ -22,6 +22,7 @@ import {
 } from './errors'
 import type {
   RequestIdArgs,
+  RetryOptions,
   SignOptions,
   SignRequest,
   SignatureErrorData,
@@ -38,7 +39,7 @@ import { getRequestId } from './utils'
  */
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
-  private readonly walletClient: WalletClient
+  private readonly walletClient?: WalletClient
   private readonly contractAddress: Hex
   private readonly rootPublicKey: NajPublicKey
 
@@ -53,8 +54,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   constructor(args: {
     publicClient: PublicClient
-    walletClient: WalletClient
     contractAddress: Hex
+    walletClient?: WalletClient
     rootPublicKey?: NajPublicKey
   }) {
     super()
@@ -199,47 +200,21 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     })
 
     try {
-      const result = await withRetry(
-        async () => {
-          const result = await this.getSignatureFromEvents(
-            requestId,
-            receipt.blockNumber
-          )
-
-          // TODO: Validate if this is the signature corresponding to the transaction as anybody can call respond on the contract
-
-          if (result) {
-            return result
-          } else {
-            throw new Error('Signature not found yet')
-          }
-        },
-        {
-          delay: options.retry.delay,
-          retryCount: options.retry.retryCount,
-          shouldRetry: ({ count, error }) => {
-            // TODO: Should be enabled only on debug mode
-            console.log(
-              `Retrying get signature: ${count}/${options.retry.retryCount}`
-            )
-            return error.message === 'Signature not found yet'
-          },
-        }
-      )
-
-      if (result) {
-        return result
-      } else {
-        const errorData = await this.getErrorFromEvents(
-          requestId,
-          receipt.blockNumber
-        )
-        if (errorData) {
-          throw new SignatureContractError(errorData.error, requestId, receipt)
-        } else {
-          throw new SignatureNotFoundError(requestId, receipt)
-        }
+      const pollResult = await this.pollForRequestId({
+        requestId,
+        fromBlock: receipt.blockNumber,
+        options: options.retry,
+      });
+      
+      if (!pollResult) {
+        throw new SignatureNotFoundError(requestId, receipt)
       }
+
+      if(pollResult.hasOwnProperty('error')) {
+        throw new SignatureContractError((pollResult as SignatureErrorData).error, requestId, receipt)
+      }
+
+      return pollResult as RSVSignature;
     } catch (error) {
       if (
         error instanceof SignatureNotFoundError ||
@@ -254,6 +229,45 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         )
       }
     }
+  }
+
+  async pollForRequestId({
+    requestId,
+    fromBlock,
+    options,
+  }: {
+    requestId: Hex
+    fromBlock: bigint
+    options?: RetryOptions
+  }): Promise<RSVSignature | SignatureErrorData | undefined> {
+    const delay = options?.delay ?? 5000
+    const retryCount = options?.retryCount ?? 12
+
+    const result = await withRetry(
+      async () => {
+        const result = await this.getSignatureFromEvents(requestId, fromBlock)
+
+        // TODO: Validate if this is the signature corresponding to the transaction as anybody can call respond on the contract
+
+        if (result) {
+          return result
+        } else {
+          throw new Error('Signature not found yet')
+        }
+      },
+      {
+        delay,
+        retryCount,
+        shouldRetry: ({ count, error }) => {
+          // TODO: Should be enabled only on debug mode
+          console.log(`Retrying get signature: ${count}/${retryCount}`)
+          return error.message === 'Signature not found yet'
+        },
+      }
+    )
+
+    const errorData = await this.getErrorFromEvents(requestId, fromBlock);
+    return result ?? errorData
   }
 
   /**

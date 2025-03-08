@@ -1,15 +1,16 @@
 import type { Address, Hex } from 'viem'
 
+export interface RetryOptions {
+  delay?: number
+  retryCount?: number
+}
 export interface SignOptions {
   sign: {
     algo?: string
     dest?: string
     params?: string
   }
-  retry: {
-    delay?: number
-    retryCount?: number
-  }
+  retry: RetryOptions
 }
 
 export interface SignatureErrorData {
