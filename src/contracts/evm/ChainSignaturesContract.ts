@@ -1,7 +1,7 @@
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
-import { withRetry, type PublicClient, type WalletClient, type Hex } from 'viem'
+import { withRetry, type PublicClient, type WalletClient, type Hex, padHex, concat, recoverAddress } from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -28,6 +28,7 @@ import type {
   SignatureErrorData,
 } from './types'
 import { getRequestId } from './utils'
+import { chainAdapters } from '../..'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -39,7 +40,7 @@ import { getRequestId } from './utils'
  */
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
-  private readonly walletClient?: WalletClient
+  private readonly walletClient: WalletClient
   private readonly contractAddress: Hex
   private readonly rootPublicKey: NajPublicKey
 
@@ -54,8 +55,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   constructor(args: {
     publicClient: PublicClient
+    walletClient: WalletClient
     contractAddress: Hex
-    walletClient?: WalletClient
     rootPublicKey?: NajPublicKey
   }) {
     super()
@@ -202,6 +203,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     try {
       const pollResult = await this.pollForRequestId({
         requestId,
+        payload: args.payload,
+        path: args.path,
         fromBlock: receipt.blockNumber,
         options: options.retry,
       });
@@ -233,11 +236,15 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   async pollForRequestId({
     requestId,
+    payload,
+    path,
     fromBlock,
     options,
   }: {
-    requestId: Hex
-    fromBlock: bigint
+    requestId: Hex;
+    payload: number[];
+    path: string;
+    fromBlock: bigint;
     options?: RetryOptions
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
@@ -247,9 +254,29 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       async () => {
         const result = await this.getSignatureFromEvents(requestId, fromBlock)
 
-        // TODO: Validate if this is the signature corresponding to the transaction as anybody can call respond on the contract
-
         if (result) {
+          const signature = concat([
+            padHex(`0x${result.r}`, { size: 32 }),
+            padHex(`0x${result.s}`, { size: 32 }),
+            `0x${result.v.toString(16)}`,
+          ]);
+          const recoveredAddress = await recoverAddress({
+            hash: new Uint8Array(payload),
+            signature,
+          });
+          const evm = new chainAdapters.evm.EVM({
+            publicClient: this.publicClient,
+            contract: this,
+          });
+        
+          const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(
+            this.walletClient.account?.address as string,
+            path
+          );
+
+          if (recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+            throw new Error('Signature not found yet')
+          }
           return result
         } else {
           throw new Error('Signature not found yet')
