@@ -40,7 +40,7 @@ import { chainAdapters } from '../..'
  */
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
-  private readonly walletClient: WalletClient
+  private readonly walletClient?: WalletClient
   private readonly contractAddress: Hex
   private readonly rootPublicKey: NajPublicKey
 
@@ -55,8 +55,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   constructor(args: {
     publicClient: PublicClient
-    walletClient: WalletClient
     contractAddress: Hex
+    walletClient?: WalletClient
     rootPublicKey?: NajPublicKey
   }) {
     super()
