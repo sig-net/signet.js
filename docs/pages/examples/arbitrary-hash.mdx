@@ -23,7 +23,6 @@ const message = "dontcare";
 const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
 const path = "randomPath";
 
-// Key version typically fetched via `chainSignatures.latestKeyVersion()`
 const keyVersion = 0;
 
 const rsvSignature = await evmChainSigContract.sign({
@@ -47,7 +46,6 @@ const message = "dontcare";
 const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
 const path = "randomPath";
 
-// Key version typically fetched via `chainSignatures.latestKeyVersion()`
 const keyVersion = 0;
 
 const rsvSignature = await evmChainSigContract.sign({
@@ -72,7 +70,6 @@ const message = "dontcare";
 const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
 const path = "randomPath";
 
-// Key version typically fetched via `chainSignatures.latestKeyVersion()`
 const keyVersion = 0;
 
 const rsvSignature = await evmChainSigContract.sign({
