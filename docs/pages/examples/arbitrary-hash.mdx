@@ -23,12 +23,10 @@ const message = "dontcare";
 const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
 const path = "randomPath";
 
-const keyVersion = 0;
-
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
-  key_version: keyVersion,
+  key_version: 0,
 });
 ```
 
@@ -46,12 +44,10 @@ const message = "dontcare";
 const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
 const path = "randomPath";
 
-const keyVersion = 0;
-
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
-  key_version: keyVersion,
+  key_version: 0,
 });
 // ---cut---
 console.log('r:', rsvSignature.r);
@@ -70,12 +66,10 @@ const message = "dontcare";
 const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
 const path = "randomPath";
 
-const keyVersion = 0;
-
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
-  key_version: keyVersion,
+  key_version: 0,
 });
 // ---cut---
 import { concat, padHex, recoverAddress } from "viem";
