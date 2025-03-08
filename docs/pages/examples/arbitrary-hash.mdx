@@ -1,73 +1,117 @@
 ## Signing an Arbitrary Hash
 
-Below is a **working example** of how to **request** and **retrieve** a signature for an arbitrary 32-byte hash from the **ChainSignatures** contract **deployed on Sepolia**.
+This page demonstrates how to request and retrieve a signature for an arbitrary 32-byte hash using the `ChainSignatures` contract deployed on Sepolia.
 
-> **Assumption**:
->
-> - The ChainSignatures contract is deployed at `0x69C6b28Fdc74618817fa380De29a653060e14009` (example).
-> - You have a web3 provider (e.g., viem) pointing to Sepolia.
+### Assumptions
+- The `ChainSignatures` contract is deployed on Sepolia at `0x69C6b28Fdc74618817fa380De29a653060e14009`.
+- You have a configured `viem` walletClient and publicClient pointing to the Sepolia testnet.
 
-### Prepare Your Ethers Contract Instance
+### Set Up Your Clients and Contract
 
-```ts twoslash filename="init-contract.ts"
-import { contracts, constants } from 'signet.js'
-// [!include ~/snippets/code/evm/env.ts]
+Ensure your environment is configured (e.g., `.env` containing your `PRIVATE_KEY`).
 
-const evmChainSigContract = new contracts.evm.ChainSignatureContract({
-  publicClient,
-  walletClient,
-  contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
-    .TESTNET_DEV as `0x${string}`,
-})
+```ts twoslash
+// [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
 ```
 
-### Request a Signature on an Arbitrary Hash
+### Request Signature for an Arbitrary Hash
 
-```ts twoslash filename="request-signature.ts"
-// [!include init-contract.ts]
+Prepare your 32-byte payload (hash of your message) and choose an arbitrary `path`:
+
+```ts twoslash
+// [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
 // ---cut---
+import { keccak256, stringToBytes, toBytes } from "viem";
 
-// Suppose you have a 32-byte hash you'd like to have signed:
-const hashToSign = Array.from(new Uint8Array(32).fill(1)) // Must be exactly 32 bytes
+const message = "dontcare";
+const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
+const path = "randomPath";
 
-// Derive the path you want (could be any string)
-const path = 'myArbitraryPath'
+// Key version typically fetched via `chainSignatures.latestKeyVersion()`
+const keyVersion = 0;
 
-// Key version (check chainSignatures.latestKeyVersion() if needed)
-const keyVersion = 0
-
-const signature = await evmChainSigContract.sign({
+const rsvSignature = await evmChainSigContract.sign({
+  payload,
   path,
   key_version: keyVersion,
-  payload: hashToSign,
-})
+});
 ```
 
-- At this point, the mpc network sees the `SignatureRequested` event, does the off-chain ECDSA signing, and calls `respond(...)`.
+At this stage, the MPC network processes your signature request off-chain, subsequently calling the `respond()` method on-chain.
 
-### Retrieve the Signature Once Responded
+### Retrieve and Validate the Signature
 
-The MPC network will call:
+After the MPC responds, retrieve your signature components:
 
-```solidity
-chainSignatures.respond(
-  requestId,
-  SignatureResponse({
-    bigR: AffinePoint({ x: rPointX, y: rPointY }),
-    s: sValue,
-    recoveryId: vValue
-  })
-);
-```
+```ts twoslash
+// [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
+import { keccak256, stringToBytes, toBytes } from "viem";
 
-After that transaction is confirmed, a `SignatureResponded` event is emitted. The `sign` methods will handle the event polling internally and return the signature components to you:
+const message = "dontcare";
+const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
+const path = "randomPath";
 
-```ts twoslash filename="retrieve-signature.ts"
-// [!include request-signature.ts]
+// Key version typically fetched via `chainSignatures.latestKeyVersion()`
+const keyVersion = 0;
+
+const rsvSignature = await evmChainSigContract.sign({
+  payload,
+  path,
+  key_version: keyVersion,
+});
 // ---cut---
-console.log('r:', signature.r)
-console.log('s:', signature.s)
-console.log('v:', signature.v)
+console.log('r:', rsvSignature.r);
+console.log('s:', rsvSignature.s);
+console.log('v:', rsvSignature.v);
 ```
 
-You now have the ECDSA components (`r`, `s`, `v`) to do whatever you need with them. The deposit is refunded automatically to `msg.sender` of the original `sign` call if there's any excess.
+### Verify the Signature
+
+You can verify the signature to ensure it was correctly signed:
+
+```ts twoslash
+// [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
+import { keccak256, stringToBytes, toBytes } from "viem";
+const message = "dontcare";
+const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
+const path = "randomPath";
+
+// Key version typically fetched via `chainSignatures.latestKeyVersion()`
+const keyVersion = 0;
+
+const rsvSignature = await evmChainSigContract.sign({
+  payload,
+  path,
+  key_version: keyVersion,
+});
+// ---cut---
+import { concat, padHex, recoverAddress } from "viem";
+
+const messageHash = keccak256(stringToBytes(message));
+
+const signature = concat([
+  padHex(`0x${rsvSignature.r}`, { size: 32 }),
+  padHex(`0x${rsvSignature.s}`, { size: 32 }),
+  `0x${rsvSignature.v.toString(16)}`,
+]);
+
+const recoveredAddress = await recoverAddress({
+  hash: messageHash,
+  signature,
+});
+
+const evm = new chainAdapters.evm.EVM({ publicClient, contract: evmChainSigContract });
+
+const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(account.address, path);
+
+console.log("Recovered address:", recoveredAddress);
+console.log("Original address:", expectedAddress);
+console.log("Signature is valid:", recoveredAddress.toLowerCase() === expectedAddress.toLowerCase());
+```
+
+### Complete Code Example
+
+For a complete working example, [see the full implementation here](https://github.com/signet-examples/sign-arbitrary-hash).
+
+This approach ensures secure, verifiable signatures for arbitrary payloads through the ChainSignatures smart contract.
+

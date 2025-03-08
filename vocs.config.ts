@@ -50,7 +50,7 @@ export default defineConfig({
     {
       text: 'Examples',
       items: [
-        { text: 'Sign arbitrary hash', link: '/examples/arbitrary-hash' },
+        { text: 'Signing an arbitrary hash', link: '/examples/arbitrary-hash' },
         {
           text: 'Use Ethereum chain signatures to securely sponsor gas fees for calling your Base smart contract',
           link: '/examples/sponsor-foreign-chain-gas',
