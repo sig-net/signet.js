@@ -1,7 +1,7 @@
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
-import { withRetry, type PublicClient, type WalletClient, type Hex, padHex, concat, recoverAddress } from 'viem'
+import { withRetry, type PublicClient, type WalletClient, type Hex, padHex, concat, recoverAddress, encodeFunctionData } from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -295,6 +295,38 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
     const errorData = await this.getErrorFromEvents(requestId, fromBlock);
     return result ?? errorData
+  }
+
+  async getCallData(
+    args: SignArgs,
+    options: SignOptions['sign'] = {
+      algo: '',
+      dest: '',
+      params: '',
+    }
+  ): Promise<{
+    target: Hex
+    data: Hex
+    value: bigint
+  }> {
+    return {
+      target: this.contractAddress,
+      data: encodeFunctionData({
+        abi,
+        functionName: 'sign',
+        args: [
+          {
+            payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+            path: args.path,
+            keyVersion: args.key_version,
+            algo: options.algo ?? '',
+            dest: options.dest ?? '',
+            params: options.params ?? '',
+          },
+        ],
+      }),
+      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+    }
   }
 
   /**
