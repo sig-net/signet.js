@@ -148,13 +148,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       params: options.sign.params ?? '',
     }
 
-    const requestId = this.getRequestId({
-      ...request,
-      address: this.walletClient.account.address,
-      chainId: this.publicClient.chain?.id
-        ? BigInt(this.publicClient.chain.id)
-        : 0n,
-    })
+    const requestId = this.getRequestId(args, options.sign)
 
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
@@ -208,7 +202,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         fromBlock: receipt.blockNumber,
         options: options.retry,
       });
-      
+
       if (!pollResult) {
         throw new SignatureNotFoundError(requestId, receipt)
       }
@@ -241,10 +235,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     fromBlock,
     options,
   }: {
-    requestId: Hex;
-    payload: number[];
-    path: string;
-    fromBlock: bigint;
+    requestId: Hex
+    payload: number[]
+    path: string
+    fromBlock: bigint
     options?: RetryOptions
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
@@ -259,22 +253,25 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             padHex(`0x${result.r}`, { size: 32 }),
             padHex(`0x${result.s}`, { size: 32 }),
             `0x${result.v.toString(16)}`,
-          ]);
+          ])
           const recoveredAddress = await recoverAddress({
             hash: new Uint8Array(payload),
             signature,
-          });
+          })
           const evm = new chainAdapters.evm.EVM({
             publicClient: this.publicClient,
             contract: this,
-          });
-        
-          const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(
-            this.walletClient.account?.address as string,
-            path
-          );
+          })
 
-          if (recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+          const { address: expectedAddress } =
+            await evm.deriveAddressAndPublicKey(
+              this.walletClient.account?.address as string,
+              path
+            )
+
+          if (
+            recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()
+          ) {
             throw new Error('Signature not found yet')
           }
           return result
@@ -293,7 +290,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       }
     )
 
-    const errorData = await this.getErrorFromEvents(requestId, fromBlock);
+    const errorData = await this.getErrorFromEvents(requestId, fromBlock)
     return result ?? errorData
   }
 
@@ -332,34 +329,49 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   /**
    * Generates the request ID for a signature request allowing to track the response.
    *
-   * @param request - The signature request object containing:
-   *   @param request.address - The contract/wallet address calling the signing contract
-   *   @param request.payload - The data payload to be signed as a hex string
-   *   @param request.path - The derivation path for the key
-   *   @param request.keyVersion - The version of the key to use
-   *   @param request.chainId - The chain ID as a bigint
-   *   @param request.algo - The signing algorithm to use
-   *   @param request.dest - The destination for the signature
-   *   @param request.params - Additional parameters for the signing process
+   * @param args - The signature request object containing:
+   *   @param args.payload - The data payload to be signed as a hex string
+   *   @param args.path - The derivation path for the key
+   *   @param args.keyVersion - The version of the key to use
+   * @param options - The signature request object containing:
+   *   @param options.algo - The signing algorithm to use
+   *   @param options.dest - The destination for the signature
+   *   @param options.params - Additional parameters for the signing process
    * @returns A hex string representing the unique request ID
    *
    * @example
    * ```typescript
    * const requestId = ChainSignatureContract.getRequestId({
-   *   address: walletClient.account.address,
    *   payload: payload: `0x${Buffer.from(args.payload).toString('hex')}`,,
    *   path: '',
-   *   keyVersion: 0,
-   *   chainId: 1n,
-   *   algo: '',
-   *   dest: '',
-   *   params: ''
+   *   keyVersion: 0
    * });
    * console.log(requestId); // 0x...
    * ```
    */
-  getRequestId(request: RequestIdArgs): Hex {
-    return getRequestId(request)
+  getRequestId(
+    args: SignArgs,
+    options: SignOptions['sign'] = {
+      algo: '',
+      dest: '',
+      params: '',
+    }
+  ): Hex {
+    if (!this.walletClient.account) {
+      throw new Error('Wallet client account required to compute requestId')
+    }
+    return getRequestId({
+      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      path: args.path,
+      keyVersion: args.key_version,
+      algo: options.algo ?? '',
+      dest: options.dest ?? '',
+      params: options.params ?? '',
+      address: this.walletClient.account.address,
+      chainId: this.publicClient.chain?.id
+        ? BigInt(this.publicClient.chain.id)
+        : 0n,
+    })
   }
 
   async getErrorFromEvents(
