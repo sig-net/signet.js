@@ -323,6 +323,38 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
+  async getCallData(
+    args: SignArgs,
+    options: SignOptions['sign'] = {
+      algo: '',
+      dest: '',
+      params: '',
+    }
+  ): Promise<{
+    target: Hex
+    data: Hex
+    value: bigint
+  }> {
+    return {
+      target: this.contractAddress,
+      data: encodeFunctionData({
+        abi,
+        functionName: 'sign',
+        args: [
+          {
+            payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+            path: args.path,
+            keyVersion: args.key_version,
+            algo: options.algo ?? '',
+            dest: options.dest ?? '',
+            params: options.params ?? '',
+          },
+        ],
+      }),
+      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+    }
+  }
+
   /**
    * Generates the request ID for a signature request allowing to track the response.
    *
