@@ -139,25 +139,16 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       throw new Error('Wallet client required for signing operations')
     }
 
-    const request: SignRequest = {
-      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
-      path: args.path,
-      keyVersion: args.key_version,
-      algo: options.sign.algo ?? '',
-      dest: options.sign.dest ?? '',
-      params: options.sign.params ?? '',
-    }
+    const requestParams = await this.getSignRequestParams(args, options.sign)
 
     const requestId = this.getRequestId(args, options.sign)
 
-    const hash = await this.walletClient.writeContract({
-      address: this.contractAddress,
-      abi,
-      chain: this.publicClient.chain,
+    const hash = await this.walletClient.sendTransaction({
       account: this.walletClient.account,
-      functionName: 'sign',
-      args: [request],
-      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+      to: requestParams.target,
+      data: requestParams.data,
+      value: requestParams.value,
+      chain: this.walletClient.chain,
     })
 
     return {
@@ -294,7 +285,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return result ?? errorData
   }
 
-  async getCallData(
+  async getSignRequestParams(
     args: SignArgs,
     options: SignOptions['sign'] = {
       algo: '',
@@ -306,20 +297,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     data: Hex
     value: bigint
   }> {
+    const request: SignRequest = {
+      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      path: args.path,
+      keyVersion: args.key_version,
+      algo: options.algo ?? '',
+      dest: options.dest ?? '',
+      params: options.params ?? '',
+    }
+
     return {
       target: this.contractAddress,
       data: encodeFunctionData({
         abi,
         functionName: 'sign',
         args: [
-          {
-            payload: `0x${Buffer.from(args.payload).toString('hex')}`,
-            path: args.path,
-            keyVersion: args.key_version,
-            algo: options.algo ?? '',
-            dest: options.dest ?? '',
-            params: options.params ?? '',
-          },
+          request,
         ],
       }),
       value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
