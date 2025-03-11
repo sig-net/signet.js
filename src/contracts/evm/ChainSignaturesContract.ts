@@ -323,7 +323,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
-  async getCallData(
+  async getSignRequestParams(
     args: SignArgs,
     options: SignOptions['sign'] = {
       algo: '',
@@ -335,20 +335,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     data: Hex
     value: bigint
   }> {
+    const request: SignRequest = {
+      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      path: args.path,
+      keyVersion: args.key_version,
+      algo: options.algo ?? '',
+      dest: options.dest ?? '',
+      params: options.params ?? '',
+    }
+
     return {
       target: this.contractAddress,
       data: encodeFunctionData({
         abi,
         functionName: 'sign',
         args: [
-          {
-            payload: `0x${Buffer.from(args.payload).toString('hex')}`,
-            path: args.path,
-            keyVersion: args.key_version,
-            algo: options.algo ?? '',
-            dest: options.dest ?? '',
-            params: options.params ?? '',
-          },
+          request,
         ],
       }),
       value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
