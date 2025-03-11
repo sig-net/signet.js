@@ -207,6 +207,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         const result = await this.getSignatureFromEvents(requestId, fromBlock)
 
         if (result) {
+          // Verify the signature using ecrecover
           const signature = concat([
             padHex(`0x${result.r}`, { size: 32 }),
             padHex(`0x${result.s}`, { size: 32 }),
@@ -248,8 +249,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       }
     )
 
-    const errorData = await this.getErrorFromEvents(requestId, fromBlock)
-    return result ?? errorData
+    if(result) {
+      return result
+    }
+
+    return this.getErrorFromEvents(requestId, fromBlock)
   }
 
   async getSignRequestParams(
