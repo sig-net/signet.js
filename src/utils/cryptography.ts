@@ -123,6 +123,8 @@ export function deriveChildPublicKey(
     scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
   } else if (chainId === KDF_CHAIN_IDS.NEAR) {
     scalarHex = sha3_256(derivationPath)
+  } else if (chainId === KDF_CHAIN_IDS.SOLANA) {
+    scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
   } else {
     throw new Error('Invalid chain ID')
   }

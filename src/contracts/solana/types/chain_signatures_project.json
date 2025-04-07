@@ -1,0 +1,682 @@
+{
+  "address": "4uvZW8K4g4jBg7dzPNbb9XDxJLFBK7V6iC76uofmYvEU",
+  "metadata": {
+    "name": "chain_signatures_project",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "program_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  45,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "signature_deposit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "respond",
+      "discriminator": [
+        72,
+        65,
+        227,
+        97,
+        42,
+        255,
+        147,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "responder",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "request_ids",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "signatures",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Signature"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "respond_error",
+      "discriminator": [
+        3,
+        170,
+        41,
+        132,
+        72,
+        184,
+        252,
+        69
+      ],
+      "accounts": [
+        {
+          "name": "responder",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "request_ids",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "errors",
+          "type": {
+            "vec": "string"
+          }
+        }
+      ]
+    },
+    {
+      "name": "sign",
+      "discriminator": [
+        5,
+        221,
+        155,
+        46,
+        237,
+        91,
+        28,
+        236
+      ],
+      "accounts": [
+        {
+          "name": "program_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  45,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "payload",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "key_version",
+          "type": "u32"
+        },
+        {
+          "name": "path",
+          "type": "string"
+        },
+        {
+          "name": "algo",
+          "type": "string"
+        },
+        {
+          "name": "dest",
+          "type": "string"
+        },
+        {
+          "name": "params",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "update_deposit",
+      "discriminator": [
+        126,
+        116,
+        15,
+        164,
+        238,
+        179,
+        155,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "program_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  45,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "program_state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "new_deposit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_funds",
+      "discriminator": [
+        241,
+        36,
+        29,
+        111,
+        208,
+        31,
+        104,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "program_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  103,
+                  114,
+                  97,
+                  109,
+                  45,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "program_state"
+          ]
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "function by checking it is not the zero address."
+          ],
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ProgramState",
+      "discriminator": [
+        77,
+        209,
+        137,
+        229,
+        149,
+        67,
+        167,
+        230
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DepositUpdatedEvent",
+      "discriminator": [
+        215,
+        193,
+        53,
+        27,
+        221,
+        101,
+        249,
+        108
+      ]
+    },
+    {
+      "name": "FundsWithdrawnEvent",
+      "discriminator": [
+        86,
+        232,
+        194,
+        4,
+        211,
+        69,
+        172,
+        202
+      ]
+    },
+    {
+      "name": "SignatureErrorEvent",
+      "discriminator": [
+        42,
+        28,
+        210,
+        105,
+        9,
+        196,
+        189,
+        51
+      ]
+    },
+    {
+      "name": "SignatureRequestedEvent",
+      "discriminator": [
+        171,
+        129,
+        105,
+        91,
+        154,
+        49,
+        160,
+        34
+      ]
+    },
+    {
+      "name": "SignatureRespondedEvent",
+      "discriminator": [
+        118,
+        146,
+        248,
+        151,
+        194,
+        93,
+        18,
+        86
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientDeposit",
+      "msg": "Insufficient deposit amount"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidInputLength",
+      "msg": "Arrays must have the same length"
+    },
+    {
+      "code": 6002,
+      "name": "Unauthorized",
+      "msg": "Unauthorized access"
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds for withdrawal"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidRecipient",
+      "msg": "Invalid recipient address"
+    }
+  ],
+  "types": [
+    {
+      "name": "AffinePoint",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "x",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "y",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_deposit",
+            "type": "u64"
+          },
+          {
+            "name": "new_deposit",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FundsWithdrawnEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "signature_deposit",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Signature",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "big_r",
+            "type": {
+              "defined": {
+                "name": "AffinePoint"
+              }
+            }
+          },
+          {
+            "name": "s",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "recovery_id",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SignatureErrorEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "request_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "responder",
+            "type": "pubkey"
+          },
+          {
+            "name": "error",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SignatureRequestedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "payload",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "key_version",
+            "type": "u32"
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          },
+          {
+            "name": "chain_id",
+            "type": "u64"
+          },
+          {
+            "name": "path",
+            "type": "string"
+          },
+          {
+            "name": "algo",
+            "type": "string"
+          },
+          {
+            "name": "dest",
+            "type": "string"
+          },
+          {
+            "name": "params",
+            "type": "string"
+          },
+          {
+            "name": "fee_payer",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SignatureRespondedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "request_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "responder",
+            "type": "pubkey"
+          },
+          {
+            "name": "signature",
+            "type": {
+              "defined": {
+                "name": "Signature"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
