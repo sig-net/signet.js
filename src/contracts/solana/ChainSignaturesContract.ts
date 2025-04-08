@@ -168,28 +168,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       })
       .rpc()
 
-    // const { blockhash, lastValidBlockHeight } =
-    //   await this.connection.getLatestBlockhash()
-    // tx.recentBlockhash = blockhash
-    // tx.feePayer = feePayer.publicKey
-
-    // let hash
-
-    // if (wallet.publicKey.equals(feePayer.publicKey)) {
-    //   const signedTx = await wallet.signTransaction(tx)
-    //   hash = await this.connection.sendRawTransaction(signedTx.serialize())
-    // } else {
-    //   await wallet.signTransaction(tx)
-    //   await feePayer.signTransaction(tx)
-    //   hash = await this.connection.sendRawTransaction(tx.serialize())
-    // }
-
-    // await this.connection.confirmTransaction({
-    //   signature: hash,
-    //   blockhash,
-    //   lastValidBlockHeight,
-    // })
-
     try {
       const pollResult = await this.pollForRequestId({
         requestId,
@@ -236,73 +214,110 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
     const retryCount = options?.retryCount ?? 12
+    const timeout = delay * retryCount
 
-    let foundSignature: RSVSignature | undefined
-    let foundError: SignatureErrorData | undefined
+    return new Promise((resolve, reject) => {
+      let resolved = false
+      let signatureListener: number
+      let errorListener: number
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          this.program.removeEventListener(signatureListener)
+          this.program.removeEventListener(errorListener)
+          reject(new SignatureNotFoundError(requestId))
+        }
+      }, timeout)
 
-    await withRetry(
-      async () => {
-        const signature = await this.getSignatureFromEvents(requestId)
+      signatureListener = this.program.addEventListener(
+        'signatureRespondedEvent',
+        (event: any) => {
+          const eventRequestIdHex =
+            '0x' + Buffer.from(event.requestId).toString('hex')
+            console.log(eventRequestIdHex, requestId, "event request id")
+          if (eventRequestIdHex === requestId) {
+            const signature = event.signature
+            const bigRx = Buffer.from(signature.bigR.x).toString('hex')
+            const s = Buffer.from(signature.s).toString('hex')
+            const recoveryId = signature.recoveryId
 
-        if (signature) {
-          const sig = concat([
-            padHex(`0x${signature.r}`, { size: 32 }),
-            padHex(`0x${signature.s}`, { size: 32 }),
-            `0x${signature.v.toString(16)}`,
-          ])
+            const rsvSignature: RSVSignature = {
+              r: bigRx,
+              s: s,
+              v: recoveryId + 27, // Convert to Ethereum v value
+            }
 
-          const requesterAddress = this.provider.publicKey.toString()
-          const evm = new chainAdapters.evm.EVM({
-            publicClient: createPublicClient({
-              transport: http(),
-            }),
-            contract: this,
-          })
-          const { address: expectedAddress } =
-            await evm.deriveAddressAndPublicKey(requesterAddress, path)
+            const sig = concat([
+              padHex(`0x${rsvSignature.r}`, { size: 32 }),
+              padHex(`0x${rsvSignature.s}`, { size: 32 }),
+              `0x${rsvSignature.v.toString(16)}`,
+            ])
 
-          const recoveredAddress = await recoverAddress({
-            hash: new Uint8Array(payload),
-            signature: sig,
-          })
+            const requesterAddress = this.provider.publicKey.toString()
 
-          if (
-            recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()
-          ) {
-            throw new Error('Signature not found yet')
+            const verifySignature = async () => {
+              try {
+                const evm = new chainAdapters.evm.EVM({
+                  publicClient: createPublicClient({ transport: http() }),
+                  contract: this,
+                })
+
+                const { address: expectedAddress } =
+                  await evm.deriveAddressAndPublicKey(requesterAddress, path)
+
+                const recoveredAddress = await recoverAddress({
+                  hash: new Uint8Array(payload),
+                  signature: sig,
+                })
+
+                console.log(
+                  'Recovered address:',
+                  recoveredAddress,
+                  'Expected address:',
+                  expectedAddress
+                )
+
+                if (
+                  recoveredAddress.toLowerCase() ===
+                  expectedAddress.toLowerCase()
+                ) {
+                  resolved = true
+                  clearTimeout(timeoutId)
+                  this.program.removeEventListener(signatureListener)
+                  this.program.removeEventListener(errorListener)
+                  resolve(rsvSignature)
+                } else {
+                  console.warn('Signature verification failed, ignoring event')
+                }
+              } catch (e) {
+                console.error('Error verifying signature:', e)
+              }
+            }
+
+            verifySignature()
           }
-
-          foundSignature = signature
-          return signature
         }
+      )
 
-        const error = await this.getErrorFromEvents(requestId)
-        if (error) {
-          foundError = error
-          return error
+      errorListener = this.program.addEventListener(
+        'signatureErrorEvent',
+        (event: any) => {
+          const eventRequestIdHex =
+            '0x' + Buffer.from(event.requestId).toString('hex')
+          if (eventRequestIdHex === requestId) {
+            resolved = true
+            clearTimeout(timeoutId)
+            this.program.removeEventListener(signatureListener)
+            this.program.removeEventListener(errorListener)
+
+            resolve({
+              requestId: event.requestId,
+              responder: event.responder,
+              error: event.error,
+            })
+          }
         }
-
-        throw new Error('Signature not found yet')
-      },
-      {
-        delay,
-        retryCount,
-        shouldRetry: ({ count, error }) => {
-          console.log(`Retrying get signature: ${count}/${retryCount}`)
-          return error.message === 'Signature not found yet'
-        },
-      }
-    )
-
-    if (foundSignature) {
-      return foundSignature
-    }
-
-    if (foundError) {
-      return foundError
-    }
-
-    return undefined
+      )
+    })
   }
 
   /**
@@ -316,7 +331,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       params: '',
     }
   ): string {
-    const requesterAddress = this.provider.publicKey.toString()
+    const requesterAddress = this.provider.wallet.publicKey.toString()
 
     return generateRequestIdSolana({
       payload: args.payload,
@@ -326,87 +341,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       dest: options.dest || '',
       params: options.params || '',
       address: requesterAddress,
-    })
-  }
-
-  async getErrorFromEvents(
-    requestId: string
-  ): Promise<SignatureErrorData | undefined> {
-    // Create a Promise that will resolve when a matching SignatureError event is found
-    return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => resolve(undefined), 1000) // Short timeout to avoid blocking
-
-      const listener = this.program.addEventListener(
-        'signatureErrorEvent',
-        (event: any) => {
-          const eventRequestIdHex =
-            '0x' + Buffer.from(event.requestId).toString('hex')
-
-          if (eventRequestIdHex === requestId) {
-            clearTimeout(timeoutId)
-            this.program.removeEventListener(listener)
-
-            resolve({
-              requestId: event.requestId,
-              responder: event.responder,
-              error: event.error,
-            })
-          }
-        }
-      )
-
-      // Clean up listener after timeout
-      setTimeout(() => {
-        this.program.removeEventListener(listener)
-      }, 1000)
-    })
-  }
-
-  /**
-   * Searches for SignatureResponded events that match the given requestId.
-   *
-   * @param requestId - The identifier for the signature request
-   * @returns The RSV signature if found, undefined otherwise
-   */
-  async getSignatureFromEvents(
-    requestId: string
-  ): Promise<RSVSignature | undefined> {
-    // Create a Promise that will resolve when a matching SignatureResponded event is found
-    return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => resolve(undefined), 1000) // Short timeout to avoid blocking
-
-      const listener = this.program.addEventListener(
-        'signatureRespondedEvent',
-        (event: any) => {
-          const eventRequestIdHex =
-            '0x' + Buffer.from(event.requestId).toString('hex')
-
-          if (eventRequestIdHex === requestId) {
-            clearTimeout(timeoutId)
-            this.program.removeEventListener(listener)
-
-            // Process signature data
-            const signature = event.signature
-            const bigRx = Buffer.from(signature.bigR.x).toString('hex')
-            const s = Buffer.from(signature.s).toString('hex')
-            const recoveryId = signature.recoveryId
-
-            // Create RSV signature
-            const rsvSignature: RSVSignature = {
-              r: bigRx,
-              s: s,
-              v: recoveryId + 27, // Convert to Ethereum v value
-            }
-
-            resolve(rsvSignature)
-          }
-        }
-      )
-
-      // Clean up listener after timeout
-      setTimeout(() => {
-        this.program.removeEventListener(listener)
-      }, 1000)
     })
   }
 }
