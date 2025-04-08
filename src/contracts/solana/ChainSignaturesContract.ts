@@ -153,6 +153,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
     const requestId = this.getRequestId(args, options.sign)
 
+    const eventPromise = this.listenForSignatureEvents({
+      requestId,
+      payload: args.payload,
+      path: args.path,
+      options: options.retry,
+    })
+
     const hash = await this.program.methods
       .sign(
         Array.from(args.payload),
@@ -169,12 +176,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       .rpc()
 
     try {
-      const pollResult = await this.pollForRequestId({
-        requestId,
-        payload: args.payload,
-        path: args.path,
-        options: options.retry,
-      })
+      const pollResult = await eventPromise
 
       if (!pollResult) {
         throw new SignatureNotFoundError(requestId, { hash })
@@ -201,7 +203,12 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
-  async pollForRequestId({
+  /**
+   * Listens for signature or error events matching the given requestId.
+   * Sets up listeners for both event types and returns a promise that resolves when
+   * either a valid signature or an error is received.
+   */
+  async listenForSignatureEvents({
     requestId,
     payload,
     path,
@@ -233,7 +240,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         (event: any) => {
           const eventRequestIdHex =
             '0x' + Buffer.from(event.requestId).toString('hex')
-            console.log(eventRequestIdHex, requestId, "event request id")
+          console.log(eventRequestIdHex, requestId, 'event request id')
           if (eventRequestIdHex === requestId) {
             const signature = event.signature
             const bigRx = Buffer.from(signature.bigR.x).toString('hex')
