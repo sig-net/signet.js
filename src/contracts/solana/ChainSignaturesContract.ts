@@ -240,7 +240,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         (event: any) => {
           const eventRequestIdHex =
             '0x' + Buffer.from(event.requestId).toString('hex')
-          console.log(eventRequestIdHex, requestId, 'event request id')
           if (eventRequestIdHex === requestId) {
             const signature = event.signature
             const bigRx = Buffer.from(signature.bigR.x).toString('hex')
@@ -275,13 +274,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
                   hash: new Uint8Array(payload),
                   signature: sig,
                 })
-
-                console.log(
-                  'Recovered address:',
-                  recoveredAddress,
-                  'Expected address:',
-                  expectedAddress
-                )
 
                 if (
                   recoveredAddress.toLowerCase() ===
