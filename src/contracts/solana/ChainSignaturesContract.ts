@@ -264,7 +264,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             const verifySignature = async () => {
               try {
                 const evm = new chainAdapters.evm.EVM({
-                  publicClient: createPublicClient({ transport: http() }),
+                  publicClient: createPublicClient({ transport: http('https://dontcare.com') }),
                   contract: this,
                 })
 
