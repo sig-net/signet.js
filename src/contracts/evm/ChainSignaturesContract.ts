@@ -357,6 +357,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     if (!this.walletClient.account) {
       throw new Error('Wallet client account required to compute requestId')
     }
+    if (!this.publicClient.chain?.id) {
+      throw new Error('Public client chain required to compute requestId')
+    }
     return getRequestId({
       payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
@@ -365,9 +368,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       dest: options.dest ?? '',
       params: options.params ?? '',
       address: this.walletClient.account.address,
-      chainId: this.publicClient.chain?.id
-        ? BigInt(this.publicClient.chain.id)
-        : 0n,
+      chainId: BigInt(this.publicClient.chain.id),
     })
   }
 
