@@ -210,7 +210,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     requestId: string
     payload: number[]
     path: string
-    options?: RetryOptions
+    options?: RetryOptions & { requesterAddress?: string }
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
     const retryCount = options?.retryCount ?? 12
@@ -251,7 +251,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
               `0x${rsvSignature.v.toString(16)}`,
             ])
 
-            const requesterAddress = this.provider.publicKey.toString()
+            const requesterAddress =
+              options?.requesterAddress || this.provider.publicKey.toString()
 
             const verifySignature = async () => {
               try {
