@@ -163,7 +163,12 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
     })
 
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+    await new Promise((resolve) => setTimeout(resolve, 12000))
+
+    const receipt = await this.publicClient.waitForTransactionReceipt({
+      hash,
+      retryCount: 0,
+    })
 
     try {
       const result = await withRetry(
