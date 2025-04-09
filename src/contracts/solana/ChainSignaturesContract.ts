@@ -1,14 +1,7 @@
 import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor'
 import { PublicKey } from '@solana/web3.js'
 import BN from 'bn.js'
-import {
-  concat,
-  createPublicClient,
-  http,
-  padHex,
-  recoverAddress,
-  withRetry,
-} from 'viem'
+import { concat, createPublicClient, http, padHex, recoverAddress } from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -263,7 +256,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             const verifySignature = async () => {
               try {
                 const evm = new chainAdapters.evm.EVM({
-                  publicClient: createPublicClient({ transport: http('https://dontcare.com') }),
+                  publicClient: createPublicClient({
+                    transport: http('https://dontcare.com'),
+                  }),
                   contract: this,
                 })
 
@@ -324,13 +319,15 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   getRequestId(
     args: SignArgs,
-    options: SignOptions['sign'] = {
+    options: SignOptions['sign'] & { requesterAddress?: string } = {
       algo: '',
       dest: '',
       params: '',
+      requesterAddress: '',
     }
   ): string {
-    const requesterAddress = this.provider.wallet.publicKey.toString()
+    const requesterAddress =
+      options.requesterAddress || this.provider.wallet.publicKey.toString()
 
     return generateRequestIdSolana({
       payload: args.payload,
