@@ -114,24 +114,25 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }
 
   /**
-   * Sends a transaction to the contract to request a signature, then
-   * polls for the signature result. If the signature is not found within the retry
-   * parameters, it will throw an error.
+   * Sends a sign request transaction and return the transaction hash.
+   *
+   * @param args - The signature arguments
+   * @param options - The signing options
+   * @returns The transaction hash
    */
-  async sign(
+  async createSignatureRequest(
     args: SignArgs,
-    options: SignOptions = {
+    options: Pick<SignOptions, 'sign'> = {
       sign: {
         algo: '',
         dest: '',
         params: '',
       },
-      retry: {
-        delay: 5000,
-        retryCount: 12,
-      },
     }
-  ): Promise<RSVSignature> {
+  ): Promise<{
+    txHash: Hex
+    requestId: Hex
+  }> {
     if (!this.walletClient?.account) {
       throw new Error('Wallet client required for signing operations')
     }
@@ -163,7 +164,39 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
     })
 
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+    return {
+      txHash: hash,
+      requestId,
+    }
+  }
+
+  /**
+   * Sends a transaction to the contract to request a signature, then
+   * polls for the signature result. If the signature is not found within the retry
+   * parameters, it will throw an error.
+   */
+  async sign(
+    args: SignArgs,
+    options: SignOptions = {
+      sign: {
+        algo: '',
+        dest: '',
+        params: '',
+      },
+      retry: {
+        delay: 5000,
+        retryCount: 12,
+      },
+    }
+  ): Promise<RSVSignature> {
+    const { txHash, requestId } = await this.createSignatureRequest(
+      args,
+      options
+    )
+
+    const receipt = await this.publicClient.waitForTransactionReceipt({
+      hash: txHash,
+    })
 
     try {
       const result = await withRetry(
