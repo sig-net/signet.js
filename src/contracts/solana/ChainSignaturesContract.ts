@@ -132,7 +132,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   async getSignRequestInstruction(
     args: SignArgs,
-    options?: SignOptions & {
+    options?: Partial<SignOptions> & {
       remainingAccounts?: Array<AccountMeta>
     }
   ): Promise<TransactionInstruction> {
@@ -160,7 +160,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   async sign(
     args: SignArgs,
-    options?: SignOptions & {
+    options?: Partial<SignOptions> & {
       remainingAccounts?: Array<AccountMeta>
     }
   ): Promise<RSVSignature> {
