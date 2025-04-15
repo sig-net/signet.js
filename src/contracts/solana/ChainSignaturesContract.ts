@@ -1,5 +1,10 @@
 import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor'
-import { PublicKey } from '@solana/web3.js'
+import {
+  AccountMeta,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+} from '@solana/web3.js'
 import BN from 'bn.js'
 import { concat, createPublicClient, http, padHex, recoverAddress } from 'viem'
 
@@ -25,13 +30,13 @@ import type {
 } from '../evm/types'
 import { generateRequestIdSolana } from './utils'
 import { chainAdapters } from '../..'
-import { signature } from 'bitcoinjs-lib/src/script'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly provider: AnchorProvider
   private readonly program: Program<ChainSignaturesProject>
   private readonly programId: PublicKey
   private readonly rootPublicKey: NajPublicKey
+  private readonly requesterAddress: string
 
   /**
    * Creates a new instance of the ChainSignatureContract for Solana chains.
@@ -40,14 +45,18 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @param args.provider - An Anchor Provider for interacting with Solana
    * @param args.programId - The program ID as a string or PublicKey
    * @param args.rootPublicKey - Optional root public key. If not provided, it will be derived from the program ID
+   * @param args.requesterAddress - Provider wallet address is always the fee payer but can be overridden
    */
   constructor(args: {
     provider: AnchorProvider
     programId: string | PublicKey
     rootPublicKey?: NajPublicKey
+    requesterAddress?: string
   }) {
     super()
     this.provider = args.provider
+    this.requesterAddress =
+      args.requesterAddress ?? this.provider.wallet.publicKey.toString()
 
     this.programId =
       typeof args.programId === 'string'
@@ -121,52 +130,66 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return najToUncompressedPubKeySEC1(this.rootPublicKey)
   }
 
+  async getSignRequestInstruction(
+    args: SignArgs,
+    options?: SignOptions & {
+      remainingAccounts?: Array<AccountMeta>
+    }
+  ): Promise<TransactionInstruction> {
+    return this.program.methods
+      .sign(
+        Array.from(args.payload),
+        args.key_version,
+        args.path,
+        options?.sign?.algo || '',
+        options?.sign?.dest || '',
+        options?.sign?.params || ''
+      )
+      .accounts({
+        requester: this.requesterAddress,
+        feePayer: this.provider.wallet.publicKey,
+      })
+      .remainingAccounts(options?.remainingAccounts ?? [])
+      .instruction()
+  }
+
   /**
    * Sends a transaction to the program to request a signature, then
    * polls for the signature result. If the signature is not found within the retry
    * parameters, it will throw an error.
    */
   async sign(
-    args: SignArgs & { feePayer?: Wallet },
-    options: SignOptions = {
-      sign: {
-        algo: '',
-        dest: '',
-        params: '',
-      },
-      retry: {
-        delay: 5000,
-        retryCount: 12,
-      },
+    args: SignArgs,
+    options?: SignOptions & {
+      remainingAccounts?: Array<AccountMeta>
     }
   ): Promise<RSVSignature> {
-    const wallet = this.provider.wallet
+    const algo = options?.sign?.algo ?? ''
+    const dest = options?.sign?.dest ?? ''
+    const params = options?.sign?.params ?? ''
+    const delay = options?.retry?.delay ?? 5000
+    const retryCount = options?.retry?.retryCount ?? 12
 
-    const feePayer = args.feePayer || wallet
-
-    const requestId = this.getRequestId(args, options.sign)
+    const requestId = this.getRequestId(args, {
+      algo,
+      dest,
+      params,
+    })
 
     const eventPromise = this.listenForSignatureEvents({
       requestId,
       payload: args.payload,
       path: args.path,
-      options: options.retry,
+      options: {
+        delay,
+        retryCount,
+      },
     })
 
-    const hash = await this.program.methods
-      .sign(
-        Array.from(args.payload),
-        args.key_version,
-        args.path,
-        options.sign?.algo || '',
-        options.sign?.dest || '',
-        options.sign?.params || ''
-      )
-      .accounts({
-        requester: wallet.publicKey,
-        feePayer: feePayer.publicKey,
-      })
-      .rpc()
+    const instruction = await this.getSignRequestInstruction(args, options)
+    const transaction = new Transaction().add(instruction)
+    transaction.feePayer = this.provider.wallet.publicKey
+    const hash = await this.provider.sendAndConfirm(transaction)
 
     try {
       const pollResult = await eventPromise
@@ -210,7 +233,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     requestId: string
     payload: number[]
     path: string
-    options?: RetryOptions & { requesterAddress?: string }
+    options?: RetryOptions
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
     const retryCount = options?.retryCount ?? 12
@@ -242,17 +265,15 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             const rsvSignature: RSVSignature = {
               r: bigRx,
               s: s,
-              v: recoveryId + 27, // Convert to Ethereum v value
+              v: recoveryId + 27,
             }
 
+            // Verify the signature using ecrecover
             const sig = concat([
               padHex(`0x${rsvSignature.r}`, { size: 32 }),
               padHex(`0x${rsvSignature.s}`, { size: 32 }),
               `0x${rsvSignature.v.toString(16)}`,
             ])
-
-            const requesterAddress =
-              options?.requesterAddress || this.provider.publicKey.toString()
 
             const verifySignature = async () => {
               try {
@@ -264,7 +285,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
                 })
 
                 const { address: expectedAddress } =
-                  await evm.deriveAddressAndPublicKey(requesterAddress, path)
+                  await evm.deriveAddressAndPublicKey(
+                    this.requesterAddress,
+                    path
+                  )
 
                 const recoveredAddress = await recoverAddress({
                   hash: new Uint8Array(payload),
@@ -320,16 +344,12 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   getRequestId(
     args: SignArgs,
-    options: SignOptions['sign'] & { requesterAddress?: string } = {
+    options: SignOptions['sign'] = {
       algo: '',
       dest: '',
       params: '',
-      requesterAddress: '',
     }
   ): string {
-    const requesterAddress =
-      options.requesterAddress || this.provider.wallet.publicKey.toString()
-
     return generateRequestIdSolana({
       payload: args.payload,
       path: args.path,
@@ -337,7 +357,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       algo: options.algo || '',
       dest: options.dest || '',
       params: options.params || '',
-      address: requesterAddress,
+      address: this.requesterAddress,
     })
   }
 }

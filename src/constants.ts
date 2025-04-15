@@ -3,8 +3,7 @@ import { type NajPublicKey } from '@types'
 export const ENVS = {
   TESTNET_DEV: 'TESTNET_DEV',
   TESTNET: 'TESTNET',
-  MAINNET: 'MAINNET',
-  SOLANA_STUB: 'SOLANA_STUB',
+  MAINNET: 'MAINNET'
 } as const
 
 export const CHAINS = {
@@ -25,8 +24,6 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
     'secp256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5',
   [ENVS.MAINNET]:
     'secp256k1:4tY4qMzusmgX5wYdG35663Y3Qar3CTbpApotwk9ZKLoF79XA4DjG8XoByaKdNHKQX9Lz5hd7iJqsWdTKyA7dKa6Z',
-  [ENVS.SOLANA_STUB]:
-    'secp256k1:2aXyFojLFqE4jtWTVwyGRrJoik8UfBCx2AU7VALhDPAnNjnGYEtwHgiaHxu8S5tvbLnzSoojQAGeJcxz9YHa32cs',
 }
 
 /**
@@ -52,7 +49,7 @@ export const KDF_CHAIN_IDS = {
  */
 export const CONTRACT_ADDRESSES: Record<
   keyof typeof CHAINS,
-  Partial<Record<keyof typeof ENVS, string>>
+  Record<keyof typeof ENVS, string>
 > = {
   [CHAINS.NEAR]: {
     [ENVS.TESTNET_DEV]: 'dev.sig-net.testnet',
@@ -65,6 +62,8 @@ export const CONTRACT_ADDRESSES: Record<
     [ENVS.MAINNET]: '0xf8bdC0612361a1E49a8E01423d4C0cFc5dF4791A',
   },
   [CHAINS.SOLANA]: {
-    [ENVS.SOLANA_STUB]: '4uvZW8K4g4jBg7dzPNbb9XDxJLFBK7V6iC76uofmYvEU',
-  },
+    [ENVS.TESTNET_DEV]: '',
+    [ENVS.TESTNET]: '',
+    [ENVS.MAINNET]: '',
+  }
 }
