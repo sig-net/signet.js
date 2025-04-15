@@ -1,7 +1,7 @@
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
-import { withRetry, type PublicClient, type WalletClient, type Hex } from 'viem'
+import { withRetry, type PublicClient, type WalletClient, type Hex, padHex, concat, recoverAddress, encodeFunctionData } from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -22,11 +22,13 @@ import {
 } from './errors'
 import type {
   RequestIdArgs,
+  RetryOptions,
   SignOptions,
   SignRequest,
   SignatureErrorData,
 } from './types'
 import { getRequestId } from './utils'
+import { chainAdapters } from '../..'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -137,31 +139,16 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       throw new Error('Wallet client required for signing operations')
     }
 
-    const request: SignRequest = {
-      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
-      path: args.path,
-      keyVersion: args.key_version,
-      algo: options.sign.algo ?? '',
-      dest: options.sign.dest ?? '',
-      params: options.sign.params ?? '',
-    }
+    const requestParams = await this.getSignRequestParams(args, options.sign)
 
-    const requestId = this.getRequestId({
-      ...request,
-      address: this.walletClient.account.address,
-      chainId: this.publicClient.chain?.id
-        ? BigInt(this.publicClient.chain.id)
-        : 0n,
-    })
+    const requestId = this.getRequestId(args, options.sign)
 
-    const hash = await this.walletClient.writeContract({
-      address: this.contractAddress,
-      abi,
-      chain: this.publicClient.chain,
+    const hash = await this.walletClient.sendTransaction({
       account: this.walletClient.account,
-      functionName: 'sign',
-      args: [request],
-      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+      to: requestParams.target,
+      data: requestParams.data,
+      value: requestParams.value,
+      chain: this.walletClient.chain,
     })
 
     return {
@@ -199,47 +186,23 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     })
 
     try {
-      const result = await withRetry(
-        async () => {
-          const result = await this.getSignatureFromEvents(
-            requestId,
-            receipt.blockNumber
-          )
+      const pollResult = await this.pollForRequestId({
+        requestId,
+        payload: args.payload,
+        path: args.path,
+        fromBlock: receipt.blockNumber,
+        options: options.retry,
+      });
 
-          // TODO: Validate if this is the signature corresponding to the transaction as anybody can call respond on the contract
-
-          if (result) {
-            return result
-          } else {
-            throw new Error('Signature not found yet')
-          }
-        },
-        {
-          delay: options.retry.delay,
-          retryCount: options.retry.retryCount,
-          shouldRetry: ({ count, error }) => {
-            // TODO: Should be enabled only on debug mode
-            console.log(
-              `Retrying get signature: ${count}/${options.retry.retryCount}`
-            )
-            return error.message === 'Signature not found yet'
-          },
-        }
-      )
-
-      if (result) {
-        return result
-      } else {
-        const errorData = await this.getErrorFromEvents(
-          requestId,
-          receipt.blockNumber
-        )
-        if (errorData) {
-          throw new SignatureContractError(errorData.error, requestId, receipt)
-        } else {
-          throw new SignatureNotFoundError(requestId, receipt)
-        }
+      if (!pollResult) {
+        throw new SignatureNotFoundError(requestId, receipt)
       }
+
+      if(pollResult.hasOwnProperty('error')) {
+        throw new SignatureContractError((pollResult as SignatureErrorData).error, requestId, receipt)
+      }
+
+      return pollResult as RSVSignature;
     } catch (error) {
       if (
         error instanceof SignatureNotFoundError ||
@@ -256,37 +219,157 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
+  async pollForRequestId({
+    requestId,
+    payload,
+    path,
+    fromBlock,
+    options,
+  }: {
+    requestId: Hex
+    payload: number[]
+    path: string
+    fromBlock: bigint
+    options?: RetryOptions
+  }): Promise<RSVSignature | SignatureErrorData | undefined> {
+    const delay = options?.delay ?? 5000
+    const retryCount = options?.retryCount ?? 12
+
+    const result = await withRetry(
+      async () => {
+        const result = await this.getSignatureFromEvents(requestId, fromBlock)
+
+        if (result) {
+          // Verify the signature using ecrecover
+          const signature = concat([
+            padHex(`0x${result.r}`, { size: 32 }),
+            padHex(`0x${result.s}`, { size: 32 }),
+            `0x${result.v.toString(16)}`,
+          ])
+          const recoveredAddress = await recoverAddress({
+            hash: new Uint8Array(payload),
+            signature,
+          })
+          const evm = new chainAdapters.evm.EVM({
+            publicClient: this.publicClient,
+            contract: this,
+          })
+
+          const { address: expectedAddress } =
+            await evm.deriveAddressAndPublicKey(
+              this.walletClient.account?.address as string,
+              path
+            )
+
+          if (
+            recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()
+          ) {
+            throw new Error('Signature not found yet')
+          }
+          return result
+        } else {
+          throw new Error('Signature not found yet')
+        }
+      },
+      {
+        delay,
+        retryCount,
+        shouldRetry: ({ count, error }) => {
+          // TODO: Should be enabled only on debug mode
+          console.log(`Retrying get signature: ${count}/${retryCount}`)
+          return error.message === 'Signature not found yet'
+        },
+      }
+    )
+
+    if(result) {
+      return result
+    }
+
+    return this.getErrorFromEvents(requestId, fromBlock)
+  }
+
+  async getSignRequestParams(
+    args: SignArgs,
+    options: SignOptions['sign'] = {
+      algo: '',
+      dest: '',
+      params: '',
+    }
+  ): Promise<{
+    target: Hex
+    data: Hex
+    value: bigint
+  }> {
+    const request: SignRequest = {
+      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      path: args.path,
+      keyVersion: args.key_version,
+      algo: options.algo ?? '',
+      dest: options.dest ?? '',
+      params: options.params ?? '',
+    }
+
+    return {
+      target: this.contractAddress,
+      data: encodeFunctionData({
+        abi,
+        functionName: 'sign',
+        args: [
+          request,
+        ],
+      }),
+      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+    }
+  }
+
   /**
    * Generates the request ID for a signature request allowing to track the response.
    *
-   * @param request - The signature request object containing:
-   *   @param request.address - The contract/wallet address calling the signing contract
-   *   @param request.payload - The data payload to be signed as a hex string
-   *   @param request.path - The derivation path for the key
-   *   @param request.keyVersion - The version of the key to use
-   *   @param request.chainId - The chain ID as a bigint
-   *   @param request.algo - The signing algorithm to use
-   *   @param request.dest - The destination for the signature
-   *   @param request.params - Additional parameters for the signing process
+   * @param args - The signature request object containing:
+   *   @param args.payload - The data payload to be signed as a hex string
+   *   @param args.path - The derivation path for the key
+   *   @param args.keyVersion - The version of the key to use
+   * @param options - The signature request object containing:
+   *   @param options.algo - The signing algorithm to use
+   *   @param options.dest - The destination for the signature
+   *   @param options.params - Additional parameters for the signing process
    * @returns A hex string representing the unique request ID
    *
    * @example
    * ```typescript
    * const requestId = ChainSignatureContract.getRequestId({
-   *   address: walletClient.account.address,
    *   payload: payload: `0x${Buffer.from(args.payload).toString('hex')}`,,
    *   path: '',
-   *   keyVersion: 0,
-   *   chainId: 1n,
-   *   algo: '',
-   *   dest: '',
-   *   params: ''
+   *   keyVersion: 0
    * });
    * console.log(requestId); // 0x...
    * ```
    */
-  getRequestId(request: RequestIdArgs): Hex {
-    return getRequestId(request)
+  getRequestId(
+    args: SignArgs,
+    options: SignOptions['sign'] = {
+      algo: '',
+      dest: '',
+      params: '',
+    }
+  ): Hex {
+    if (!this.walletClient.account) {
+      throw new Error('Wallet client account required to compute requestId')
+    }
+    if (!this.publicClient.chain?.id) {
+      throw new Error('Public client chain required to compute requestId')
+    }
+    return getRequestId({
+      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      path: args.path,
+      keyVersion: args.key_version,
+      algo: options.algo ?? '',
+      dest: options.dest ?? '',
+      params: options.params ?? '',
+      address: this.walletClient.account.address,
+      chainId: BigInt(this.publicClient.chain.id),
+    })
   }
 
   async getErrorFromEvents(
