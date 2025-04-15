@@ -45,7 +45,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @param args.provider - An Anchor Provider for interacting with Solana
    * @param args.programId - The program ID as a string or PublicKey
    * @param args.rootPublicKey - Optional root public key. If not provided, it will be derived from the program ID
-   * @param args.requesterAddress - Provider wallet address is always the fee payer but can be overridden
+   * @param args.requesterAddress - Provider wallet address is always the fee payer but requester can be overridden
    */
   constructor(args: {
     provider: AnchorProvider
