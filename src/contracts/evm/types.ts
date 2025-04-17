@@ -15,7 +15,6 @@ export interface SignOptions {
 
 export interface SignatureErrorData {
   requestId: string
-  responder: string
   error: string
 }
 

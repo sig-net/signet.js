@@ -30,6 +30,7 @@ import type {
 } from '../evm/types'
 import { generateRequestIdSolana } from './utils'
 import { chainAdapters } from '../..'
+import { SignatureErrorEvent, SignatureRespondedEvent } from './types/events'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly provider: AnchorProvider
@@ -132,7 +133,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   async getSignRequestInstruction(
     args: SignArgs,
-    options?: Partial<SignOptions> & {
+    options?: Pick<SignOptions, 'sign'> & {
       remainingAccounts?: Array<AccountMeta>
     }
   ): Promise<TransactionInstruction> {
@@ -184,9 +185,16 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         delay,
         retryCount,
       },
-    })
+    });
 
-    const instruction = await this.getSignRequestInstruction(args, options)
+    const instruction = await this.getSignRequestInstruction(args, {
+      sign: {
+        algo,
+        dest,
+        params,
+      },
+      remainingAccounts: options?.remainingAccounts,
+    });
     const transaction = new Transaction().add(instruction)
     transaction.feePayer = this.provider.wallet.publicKey
     const hash = await this.provider.sendAndConfirm(transaction)
@@ -253,7 +261,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
       signatureListener = this.program.addEventListener(
         'signatureRespondedEvent',
-        (event: any) => {
+        (event: SignatureRespondedEvent) => {
           const eventRequestIdHex =
             '0x' + Buffer.from(event.requestId).toString('hex')
           if (eventRequestIdHex === requestId) {
@@ -319,7 +327,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
       errorListener = this.program.addEventListener(
         'signatureErrorEvent',
-        (event: any) => {
+        (event: SignatureErrorEvent) => {
           const eventRequestIdHex =
             '0x' + Buffer.from(event.requestId).toString('hex')
           if (eventRequestIdHex === requestId) {
@@ -329,8 +337,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             this.program.removeEventListener(errorListener)
 
             resolve({
-              requestId: event.requestId,
-              responder: event.responder,
+              requestId: '0x' + Buffer.from(event.requestId).toString('hex'),
               error: event.error,
             })
           }

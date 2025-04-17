@@ -1,11 +1,3 @@
-import { PublicKey } from '@solana/web3.js'
-
-export type SignatureErrorData = {
-  requestId: Uint8Array
-  responder: PublicKey
-  error: string
-}
-
 export class SignatureNotFoundError extends Error {
   public readonly requestId?: string
   public readonly hash?: string
@@ -25,7 +17,7 @@ export class SignatureNotFoundError extends Error {
 export class SignatureContractError extends Error {
   public readonly requestId?: string
   public readonly hash?: string
-  public readonly originalError?: any
+  public readonly originalError?: { hash: string }
 
   constructor(
     message: string,
