@@ -3,12 +3,13 @@ import { type NajPublicKey } from '@types'
 export const ENVS = {
   TESTNET_DEV: 'TESTNET_DEV',
   TESTNET: 'TESTNET',
-  MAINNET: 'MAINNET',
+  MAINNET: 'MAINNET'
 } as const
 
 export const CHAINS = {
   ETHEREUM: 'ETHEREUM',
   NEAR: 'NEAR',
+  SOLANA: 'SOLANA',
 } as const
 
 /**
@@ -34,6 +35,7 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
 export const KDF_CHAIN_IDS = {
   [CHAINS.ETHEREUM]: '0x1',
   [CHAINS.NEAR]: '0x18d',
+  [CHAINS.SOLANA]: '0x800001f5',
 } as const
 
 /**
@@ -59,4 +61,9 @@ export const CONTRACT_ADDRESSES: Record<
     [ENVS.TESTNET]: '0x83458E8Bf8206131Fe5c05127007FA164c0948A2',
     [ENVS.MAINNET]: '0xf8bdC0612361a1E49a8E01423d4C0cFc5dF4791A',
   },
+  [CHAINS.SOLANA]: {
+    [ENVS.TESTNET_DEV]: '',
+    [ENVS.TESTNET]: '',
+    [ENVS.MAINNET]: '',
+  }
 }
