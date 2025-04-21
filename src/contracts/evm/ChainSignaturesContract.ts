@@ -21,7 +21,6 @@ import {
   SigningError,
 } from './errors'
 import type {
-  RequestIdArgs,
   RetryOptions,
   SignOptions,
   SignRequest,
