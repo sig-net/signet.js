@@ -11,6 +11,12 @@ export interface SignOptions {
     params?: string
   }
   retry: RetryOptions
+  transaction?: {
+    gas?: bigint
+    maxFeePerGas?: bigint
+    maxPriorityFeePerGas?: bigint
+    nonce?: number
+  }
 }
 
 export interface SignatureErrorData {

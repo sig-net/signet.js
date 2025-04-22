@@ -1,7 +1,16 @@
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
-import { withRetry, type PublicClient, type WalletClient, type Hex, padHex, concat, recoverAddress, encodeFunctionData } from 'viem'
+import {
+  withRetry,
+  type PublicClient,
+  type WalletClient,
+  type Hex,
+  padHex,
+  concat,
+  recoverAddress,
+  encodeFunctionData,
+} from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -13,6 +22,8 @@ import type {
   UncompressedPubKeySEC1,
 } from '@types'
 import { cryptography } from '@utils'
+
+import { chainAdapters } from '../..'
 
 import { abi } from './ChainSignaturesContractABI'
 import {
@@ -27,7 +38,6 @@ import type {
   SignatureErrorData,
 } from './types'
 import { getRequestId } from './utils'
-import { chainAdapters } from '../..'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -123,7 +133,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   async createSignatureRequest(
     args: SignArgs,
-    options: Pick<SignOptions, 'sign'> = {
+    options: Pick<SignOptions, 'sign' | 'transaction'> = {
       sign: {
         algo: '',
         dest: '',
@@ -143,6 +153,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const requestId = this.getRequestId(args, options.sign)
 
     const hash = await this.walletClient.sendTransaction({
+      ...options.transaction,
       account: this.walletClient.account,
       to: requestParams.target,
       data: requestParams.data,
@@ -191,17 +202,17 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         path: args.path,
         fromBlock: receipt.blockNumber,
         options: options.retry,
-      });
+      })
 
       if (!pollResult) {
         throw new SignatureNotFoundError(requestId, receipt)
       }
 
-      if(pollResult.hasOwnProperty('error')) {
-        throw new SignatureContractError((pollResult as SignatureErrorData).error, requestId, receipt)
+      if ('error' in pollResult) {
+        throw new SignatureContractError(pollResult.error, requestId, receipt)
       }
 
-      return pollResult as RSVSignature;
+      return pollResult
     } catch (error) {
       if (
         error instanceof SignatureNotFoundError ||
@@ -281,11 +292,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       }
     )
 
-    if(result) {
+    if (result) {
       return result
     }
 
-    return this.getErrorFromEvents(requestId, fromBlock)
+    return await this.getErrorFromEvents(requestId, fromBlock)
   }
 
   async getSignRequestParams(
@@ -314,9 +325,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       data: encodeFunctionData({
         abi,
         functionName: 'sign',
-        args: [
-          request,
-        ],
+        args: [request],
       }),
       value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
     }
