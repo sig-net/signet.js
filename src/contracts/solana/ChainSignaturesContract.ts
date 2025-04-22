@@ -2,6 +2,7 @@ import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor'
 import {
   AccountMeta,
   PublicKey,
+  Signer,
   Transaction,
   TransactionInstruction,
 } from '@solana/web3.js'
@@ -163,6 +164,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     args: SignArgs,
     options?: Partial<SignOptions> & {
       remainingAccounts?: Array<AccountMeta>
+      remainingSigners?: Array<Signer>
     }
   ): Promise<RSVSignature> {
     const algo = options?.sign?.algo ?? ''
@@ -170,6 +172,21 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const params = options?.sign?.params ?? ''
     const delay = options?.retry?.delay ?? 5000
     const retryCount = options?.retry?.retryCount ?? 12
+
+    const missingSigners = options?.remainingAccounts
+      ?.filter((acc) => acc.isSigner)
+      ?.some(
+        (acc) =>
+          !options?.remainingSigners?.some((signer) =>
+            signer.publicKey.equals(acc.pubkey)
+          )
+      )
+
+    if (missingSigners) {
+      throw new Error(
+        'All accounts marked as signers must have a corresponding signer'
+      )
+    }
 
     const requestId = this.getRequestId(args, {
       algo,
@@ -185,7 +202,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         delay,
         retryCount,
       },
-    });
+    })
 
     const instruction = await this.getSignRequestInstruction(args, {
       sign: {
@@ -194,10 +211,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         params,
       },
       remainingAccounts: options?.remainingAccounts,
-    });
+    })
     const transaction = new Transaction().add(instruction)
     transaction.feePayer = this.provider.wallet.publicKey
-    const hash = await this.provider.sendAndConfirm(transaction)
+    const hash = await this.provider.sendAndConfirm(
+      transaction,
+      options?.remainingSigners
+    )
 
     try {
       const pollResult = await eventPromise
