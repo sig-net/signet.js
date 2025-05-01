@@ -1,0 +1,26 @@
+## getDerivedPublicKey
+
+Derives a public key based on a predecessor address and a derivation path.
+
+### Usage
+
+```ts
+const publicKey = await solanaChainSigContract.getDerivedPublicKey({
+  path: 'my_derivation_path',
+  predecessor: '7yvgcBEf6TuXeD1s2XcPX7XM5faVerS4rydTE6McVAzX',
+})
+```
+
+### Parameters
+
+| Parameter          | Type     | Description                           |
+| ------------------ | -------- | ------------------------------------- |
+| `args`             | `object` | Arguments for deriving the public key |
+| `args.path`        | `string` | The derivation path to use            |
+| `args.predecessor` | `string` | Address requesting the signature      |
+
+### Returns
+
+| Type                              | Description                                    |
+| --------------------------------- | ---------------------------------------------- |
+| `Promise<UncompressedPubKeySEC1>` | Derived public key in SEC1 uncompressed format |

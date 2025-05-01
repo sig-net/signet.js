@@ -1,0 +1,100 @@
+# Paying for Another Account's Signature Using Solana Chain Signatures
+
+Let's walk through a scenario where one wallet handles transaction fees while another account makes a signature request using the Solana Chain Signatures Contract. This setup is common when an app or service covers fees for users.
+
+## Setting up the Scenario
+
+First, you'll set up your connection to Solana using a wallet that will pay for the transaction fees (fee payer).
+
+Next, you'll generate a new account for the requester—the user or service asking for a signature. This requester will initiate the request but won't handle any transaction fees.
+
+With your fee payer and requester ready, you'll configure the Chain Signature Contract to clearly specify who's making the request and who's paying the fees.
+
+Finally, you'll make the actual request for the signature. The fee payer's wallet will automatically cover the fees, while the requester account will be the signer of the request.
+
+## Example Walkthrough
+
+First, create a connection to Solana and set up your wallet as the fee payer:
+
+```ts
+const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+const feePayerWallet = new Wallet(Keypair.generate());
+const provider = new AnchorProvider(connection, feePayerWallet, AnchorProvider.defaultOptions());
+```
+
+Then, generate a requester account:
+
+```ts
+const requester = Keypair.generate();
+```
+
+Next, initialize your Chain Signature Contract:
+
+```ts
+const chainSigContract = new contracts.solana.ChainSignatureContract({
+  provider,
+  programId: 'YourChainSignatureProgramIdHere',
+  requesterAddress: requester.publicKey.toString(),
+});
+```
+
+Now, directly call the `sign` method on your Chain Signature Contract, specifying the requester details in `remainingAccounts` and their keypair in `remainingSigners`:
+
+```ts
+const signature = await chainSigContract.sign(
+  {
+    path: 'example_path',
+    payload: Array(32).fill(1),
+    key_version: 0,
+  },
+  {
+    remainingAccounts: [{ pubkey: requester.publicKey, isSigner: true, isWritable: false }],
+    remainingSigners: [requester],
+  }
+);
+
+console.log('Received signature:', signature);
+```
+
+## Complete Example
+
+Here's the full example for quick reference:
+
+```ts
+import { Connection, Keypair } from '@solana/web3.js';
+import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import { contracts } from 'signet.js';
+
+const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+const feePayerWallet = new Wallet(Keypair.generate());
+const provider = new AnchorProvider(connection, feePayerWallet, AnchorProvider.defaultOptions());
+
+const requester = Keypair.generate();
+
+const chainSigContract = new contracts.solana.ChainSignatureContract({
+  provider,
+  programId: 'YourChainSignatureProgramIdHere',
+  requesterAddress: requester.publicKey.toString(),
+});
+
+(async () => {
+  try {
+    const signature = await chainSigContract.sign(
+      {
+        path: 'example_path',
+        payload: Array(32).fill(1),
+        key_version: 0,
+      },
+      {
+        remainingAccounts: [{ pubkey: requester.publicKey, isSigner: true, isWritable: false }],
+        remainingSigners: [requester],
+      }
+    );
+
+    console.log('Signature obtained:', signature);
+  } catch (error) {
+    console.error('Transaction failed:', error);
+  }
+})();
+```
+
