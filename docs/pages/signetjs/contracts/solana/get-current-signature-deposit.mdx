@@ -1,0 +1,15 @@
+## getCurrentSignatureDeposit
+
+Retrieves the current signature deposit required by the program.
+
+### Usage
+
+```ts
+const deposit = await solanaChainSigContract.getCurrentSignatureDeposit()
+```
+
+### Returns
+
+| Type          | Description                                     |
+| ------------- | ----------------------------------------------- |
+| `Promise<BN>` | The current signature deposit amount (lamports) |

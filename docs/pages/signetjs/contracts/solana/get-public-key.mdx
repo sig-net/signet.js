@@ -1,0 +1,15 @@
+## getPublicKey
+
+Retrieves the root public key from the program.
+
+### Usage
+
+```ts
+const publicKey = await solanaChainSigContract.getPublicKey()
+```
+
+### Returns
+
+| Type                              | Description                                 |
+| --------------------------------- | ------------------------------------------- |
+| `Promise<UncompressedPubKeySEC1>` | Root public key in SEC1 uncompressed format |
