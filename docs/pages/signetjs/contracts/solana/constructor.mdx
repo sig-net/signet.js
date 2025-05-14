@@ -4,13 +4,13 @@ The Solana Chain Signatures Contract provides an implementation of the abstract 
 
 ## Usage
 
-```ts
+```ts twoslash
 import { contracts, constants } from 'signet.js'
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor'
-import { Connection, PublicKey } from '@solana/web3.js'
+import { Connection, PublicKey, Keypair } from '@solana/web3.js'
 
 const connection = new Connection('https://api.devnet.solana.com')
-const wallet = new Wallet(/* your keypair here */)
+const wallet = new Wallet(/* Use your actual keypair here */ Keypair.generate())
 const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
 
 const contract = new contracts.solana.ChainSignatureContract({

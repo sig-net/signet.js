@@ -4,7 +4,10 @@ Retrieves the current signature deposit required by the program.
 
 ### Usage
 
-```ts
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
+const solanaChainSigContract = chainSigContract
+// ---cut---
 const deposit = await solanaChainSigContract.getCurrentSignatureDeposit()
 ```
 

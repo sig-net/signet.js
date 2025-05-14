@@ -16,31 +16,38 @@ Finally, you'll make the actual request for the signature. The fee payer's walle
 
 First, create a connection to Solana and set up your wallet as the fee payer:
 
-```ts
-const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-const feePayerWallet = new Wallet(Keypair.generate());
-const provider = new AnchorProvider(connection, feePayerWallet, AnchorProvider.defaultOptions());
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts:import]
+// ---cut---
+// [!include ~/snippets/code/solana/fee-delegation.ts:create-connection]
 ```
 
 Then, generate a requester account:
 
-```ts
-const requester = Keypair.generate();
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts:import]
+// ---cut---
+// [!include ~/snippets/code/solana/fee-delegation.ts:generate-keypair]
 ```
 
 Next, initialize your Chain Signature Contract:
 
-```ts
-const chainSigContract = new contracts.solana.ChainSignatureContract({
-  provider,
-  programId: 'YourChainSignatureProgramIdHere',
-  requesterAddress: requester.publicKey.toString(),
-});
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts:import]
+// [!include ~/snippets/code/solana/fee-delegation.ts:create-connection]
+// [!include ~/snippets/code/solana/fee-delegation.ts:generate-keypair]
+// ---cut---
+// [!include ~/snippets/code/solana/fee-delegation.ts:initialize-contract]
 ```
 
 Now, directly call the `sign` method on your Chain Signature Contract, specifying the requester details in `remainingAccounts` and their keypair in `remainingSigners`:
 
-```ts
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts:import]
+// [!include ~/snippets/code/solana/fee-delegation.ts:create-connection]
+// [!include ~/snippets/code/solana/fee-delegation.ts:generate-keypair]
+// [!include ~/snippets/code/solana/fee-delegation.ts:initialize-contract]
+// ---cut---
 const signature = await chainSigContract.sign(
   {
     path: 'example_path',
@@ -48,53 +55,20 @@ const signature = await chainSigContract.sign(
     key_version: 0,
   },
   {
-    remainingAccounts: [{ pubkey: requester.publicKey, isSigner: true, isWritable: false }],
+    remainingAccounts: [
+      { pubkey: requester.publicKey, isSigner: true, isWritable: false },
+    ],
     remainingSigners: [requester],
   }
-);
+)
 
-console.log('Received signature:', signature);
+console.log('Received signature:', signature)
 ```
 
 ## Complete Example
 
 Here's the full example for quick reference:
 
-```ts
-import { Connection, Keypair } from '@solana/web3.js';
-import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
-import { contracts } from 'signet.js';
-
-const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-const feePayerWallet = new Wallet(Keypair.generate());
-const provider = new AnchorProvider(connection, feePayerWallet, AnchorProvider.defaultOptions());
-
-const requester = Keypair.generate();
-
-const chainSigContract = new contracts.solana.ChainSignatureContract({
-  provider,
-  programId: 'YourChainSignatureProgramIdHere',
-  requesterAddress: requester.publicKey.toString(),
-});
-
-(async () => {
-  try {
-    const signature = await chainSigContract.sign(
-      {
-        path: 'example_path',
-        payload: Array(32).fill(1),
-        key_version: 0,
-      },
-      {
-        remainingAccounts: [{ pubkey: requester.publicKey, isSigner: true, isWritable: false }],
-        remainingSigners: [requester],
-      }
-    );
-
-    console.log('Signature obtained:', signature);
-  } catch (error) {
-    console.error('Transaction failed:', error);
-  }
-})();
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
 ```
-

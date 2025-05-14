@@ -4,7 +4,16 @@ Listens for signature events matching a given request ID. Should be called when 
 
 ### Usage
 
-```ts
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
+const solanaChainSigContract = chainSigContract
+
+const req = {
+  requestId: '1',
+  payload: Array(32).fill(1),
+  path: 'example_path',
+}
+// ---cut---
 const promise = solanaChainSigContract.listenForSignatureEvents({
   requestId: req.requestId,
   payload: req.payload,
@@ -19,6 +28,8 @@ const promise = solanaChainSigContract.listenForSignatureEvents({
 
 const signature = (await promise) as RSVSignature
 ```
+
+_Note:_ The requestId and payload parameters are essential for identifying and verifying incoming signatures against the original request.
 
 ### Parameters
 

@@ -51,7 +51,7 @@ export default defineConfig({
       text: 'Examples',
       items: [
         { text: 'Signing an arbitrary hash using EVM chain signatures', link: '/examples/arbitrary-hash' },
-        { text: `Paying for another account's signature using Solana chain signatures`, link: '/examples/solana-fee-delegation' },
+        { text: `Sponsor a chain signatures transaction on Solana`, link: '/examples/solana-fee-delegation' },
       ],
     },
     {
