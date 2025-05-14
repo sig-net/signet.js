@@ -1,0 +1,38 @@
+## sign
+
+Requests a signature through the Chain Signatures program.
+
+### Usage
+
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
+const solanaChainSigContract = chainSigContract
+// ---cut---
+const signature = await solanaChainSigContract.sign({
+  path: 'my_derivation_path',
+  payload: Array.from(new Uint8Array(32).fill(1)), // 32-byte array
+  key_version: 0,
+})
+```
+
+### Parameters
+
+| Parameter                   | Type             | Description                                           |
+|-----------------------------|------------------|-------------------------------------------------------|
+| `args.path`                 | `string`         | The derivation path to use                            |
+| `args.payload`              | `number[]`       | The data to sign as an array of 32 bytes              |
+| `args.key_version`          | `number`         | Version of the key to use                             |
+| `options?`                  | `SignOptions`    | Optional configuration for signing                    |
+| `options.sign.algo?`        | `string`         | Optional algorithm for the signature                  |
+| `options.sign.dest?`        | `string`         | Optional destination address for the signature        |
+| `options.sign.params?`      | `string`         | Additional parameters for signing                     |
+| `options.retry.delay?`      | `number`         | Delay between retries in milliseconds (default: 5000) |
+| `options.retry.retryCount?` | `number`         | Number of retries to attempt (default: 12)            |
+| `options.remainingAccounts?`| `AccountMeta[]`  | Additional accounts required for the transaction      |
+| `options.remainingSigners?` | `Signer[]`       | Additional signers required for the transaction       |
+
+### Returns
+
+| Type                    | Description                 |
+| ----------------------- | --------------------------- |
+| `Promise<RSVSignature>` | The signature in RSV format |

@@ -50,7 +50,8 @@ export default defineConfig({
     {
       text: 'Examples',
       items: [
-        { text: 'Signing an arbitrary hash', link: '/examples/arbitrary-hash' },
+        { text: 'Signing an arbitrary hash using EVM chain signatures', link: '/examples/arbitrary-hash' },
+        { text: `Sponsor a chain signatures transaction on Solana`, link: '/examples/solana-fee-delegation' },
       ],
     },
     {
@@ -162,6 +163,32 @@ export default defineConfig({
                   link: '/signetjs/contracts/evm/get-latest-key-version',
                 },
                 { text: 'sign', link: '/signetjs/contracts/evm/sign' },
+              ],
+            },
+            {
+              text: 'Solana',
+              items: [
+                {
+                  text: 'constructor',
+                  link: '/signetjs/contracts/solana/constructor',
+                },
+                {
+                  text: 'getCurrentSignatureDeposit',
+                  link: '/signetjs/contracts/solana/get-current-signature-deposit',
+                },
+                {
+                  text: 'getDerivedPublicKey',
+                  link: '/signetjs/contracts/solana/get-derived-public-key',
+                },
+                {
+                  text: 'getPublicKey',
+                  link: '/signetjs/contracts/solana/get-public-key',
+                },
+                {
+                  text: 'listenForSignatureEvents',
+                  link: '/signetjs/contracts/solana/listen-for-signature-events',
+                },
+                { text: 'sign', link: '/signetjs/contracts/solana/sign' },
               ],
             },
             {

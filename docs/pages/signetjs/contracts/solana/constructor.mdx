@@ -1,0 +1,30 @@
+# Solana Chain Signatures Contract
+
+The Solana Chain Signatures Contract provides an implementation of the abstract `ChainSignatureContract` for Solana-based blockchains using Anchor and Solana's Web3.js. It enables interaction with Chain Signatures programs deployed on Solana.
+
+## Usage
+
+```ts twoslash
+import { contracts, constants } from 'signet.js'
+import { AnchorProvider, Wallet } from '@coral-xyz/anchor'
+import { Connection, PublicKey, Keypair } from '@solana/web3.js'
+
+const connection = new Connection('https://api.devnet.solana.com')
+const wallet = new Wallet(/* Use your actual keypair here */ Keypair.generate())
+const provider = new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())
+
+const contract = new contracts.solana.ChainSignatureContract({
+  provider,
+  programId: new PublicKey(constants.CONTRACT_ADDRESSES.SOLANA.TESTNET_DEV),
+})
+```
+
+## Parameters
+
+| Parameter                | Type                  | Description                                                               |
+| ------------------------ | --------------------- | ------------------------------------------------------------------------- |
+| `args`                   | `object`              | Configuration options for the contract                                    |
+| `args.provider`          | `AnchorProvider`      | Anchor provider instance for interacting with Solana                      |
+| `args.programId`         | `string \| PublicKey` | The program ID of the deployed ChainSignatures program                    |
+| `args.rootPublicKey?`    | `NajPublicKey`        | Optional root public key; derived from program ID if not provided         |
+| `args.requesterAddress?` | `string`              | Optional requester wallet address. If not provided, defaults to the wallet address. Fee payer is always the wallet address. |
