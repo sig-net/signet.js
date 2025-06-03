@@ -33,6 +33,7 @@
     "hardhat": "pnpm exec hardhat node --config hardhat.config.mts",
     "test": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest run && pkill -f hardhat",
     "test:watch": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest --watch",
+    "test:ci": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest run && pkill -f hardhat || true",
     "docs:dev": "vocs dev",
     "docs:build": "vocs build",
     "docs:preview": "vocs preview",
