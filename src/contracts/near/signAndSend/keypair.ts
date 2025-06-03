@@ -10,7 +10,7 @@ import {
   type CosmosRequest,
   type EVMRequest,
 } from '@contracts/near/types'
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http } from 'viem'
 
 export const EVMTransaction = async (
   req: EVMRequest,

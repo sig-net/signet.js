@@ -62,7 +62,7 @@ export class EVM extends ChainAdapter<
     super()
 
     this.contract = contract
-    this.client = publicClient;
+    this.client = publicClient
   }
 
   private async attachGasAndNonce(

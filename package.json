@@ -35,7 +35,8 @@
     "test:watch": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest --watch",
     "docs:dev": "vocs dev",
     "docs:build": "vocs build",
-    "docs:preview": "vocs preview"
+    "docs:preview": "vocs preview",
+    "format": "prettier --write ."
   },
   "author": "Sig Network",
   "license": "MIT",

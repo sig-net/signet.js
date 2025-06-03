@@ -9,16 +9,7 @@
   "instructions": [
     {
       "name": "initialize",
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
+      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
       "accounts": [
         {
           "name": "program_state",
@@ -28,19 +19,7 @@
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  114,
-                  111,
-                  103,
-                  114,
-                  97,
-                  109,
-                  45,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
+                  112, 114, 111, 103, 114, 97, 109, 45, 115, 116, 97, 116, 101
                 ]
               }
             ]
@@ -65,16 +44,7 @@
     },
     {
       "name": "respond",
-      "discriminator": [
-        72,
-        65,
-        227,
-        97,
-        42,
-        255,
-        147,
-        12
-      ],
+      "discriminator": [72, 65, 227, 97, 42, 255, 147, 12],
       "accounts": [
         {
           "name": "responder",
@@ -86,10 +56,7 @@
           "name": "request_ids",
           "type": {
             "vec": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           }
         },
@@ -107,16 +74,7 @@
     },
     {
       "name": "respond_error",
-      "discriminator": [
-        3,
-        170,
-        41,
-        132,
-        72,
-        184,
-        252,
-        69
-      ],
+      "discriminator": [3, 170, 41, 132, 72, 184, 252, 69],
       "accounts": [
         {
           "name": "responder",
@@ -128,10 +86,7 @@
           "name": "request_ids",
           "type": {
             "vec": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           }
         },
@@ -145,16 +100,7 @@
     },
     {
       "name": "sign",
-      "discriminator": [
-        5,
-        221,
-        155,
-        46,
-        237,
-        91,
-        28,
-        236
-      ],
+      "discriminator": [5, 221, 155, 46, 237, 91, 28, 236],
       "accounts": [
         {
           "name": "program_state",
@@ -164,19 +110,7 @@
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  114,
-                  111,
-                  103,
-                  114,
-                  97,
-                  109,
-                  45,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
+                  112, 114, 111, 103, 114, 97, 109, 45, 115, 116, 97, 116, 101
                 ]
               }
             ]
@@ -202,10 +136,7 @@
         {
           "name": "payload",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
@@ -232,16 +163,7 @@
     },
     {
       "name": "update_deposit",
-      "discriminator": [
-        126,
-        116,
-        15,
-        164,
-        238,
-        179,
-        155,
-        59
-      ],
+      "discriminator": [126, 116, 15, 164, 238, 179, 155, 59],
       "accounts": [
         {
           "name": "program_state",
@@ -251,19 +173,7 @@
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  114,
-                  111,
-                  103,
-                  114,
-                  97,
-                  109,
-                  45,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
+                  112, 114, 111, 103, 114, 97, 109, 45, 115, 116, 97, 116, 101
                 ]
               }
             ]
@@ -273,9 +183,7 @@
           "name": "admin",
           "writable": true,
           "signer": true,
-          "relations": [
-            "program_state"
-          ]
+          "relations": ["program_state"]
         },
         {
           "name": "system_program",
@@ -291,16 +199,7 @@
     },
     {
       "name": "withdraw_funds",
-      "discriminator": [
-        241,
-        36,
-        29,
-        111,
-        208,
-        31,
-        104,
-        217
-      ],
+      "discriminator": [241, 36, 29, 111, 208, 31, 104, 217],
       "accounts": [
         {
           "name": "program_state",
@@ -310,19 +209,7 @@
               {
                 "kind": "const",
                 "value": [
-                  112,
-                  114,
-                  111,
-                  103,
-                  114,
-                  97,
-                  109,
-                  45,
-                  115,
-                  116,
-                  97,
-                  116,
-                  101
+                  112, 114, 111, 103, 114, 97, 109, 45, 115, 116, 97, 116, 101
                 ]
               }
             ]
@@ -332,15 +219,11 @@
           "name": "admin",
           "writable": true,
           "signer": true,
-          "relations": [
-            "program_state"
-          ]
+          "relations": ["program_state"]
         },
         {
           "name": "recipient",
-          "docs": [
-            "function by checking it is not the zero address."
-          ],
+          "docs": ["function by checking it is not the zero address."],
           "writable": true
         },
         {
@@ -359,83 +242,29 @@
   "accounts": [
     {
       "name": "ProgramState",
-      "discriminator": [
-        77,
-        209,
-        137,
-        229,
-        149,
-        67,
-        167,
-        230
-      ]
+      "discriminator": [77, 209, 137, 229, 149, 67, 167, 230]
     }
   ],
   "events": [
     {
       "name": "DepositUpdatedEvent",
-      "discriminator": [
-        215,
-        193,
-        53,
-        27,
-        221,
-        101,
-        249,
-        108
-      ]
+      "discriminator": [215, 193, 53, 27, 221, 101, 249, 108]
     },
     {
       "name": "FundsWithdrawnEvent",
-      "discriminator": [
-        86,
-        232,
-        194,
-        4,
-        211,
-        69,
-        172,
-        202
-      ]
+      "discriminator": [86, 232, 194, 4, 211, 69, 172, 202]
     },
     {
       "name": "SignatureErrorEvent",
-      "discriminator": [
-        42,
-        28,
-        210,
-        105,
-        9,
-        196,
-        189,
-        51
-      ]
+      "discriminator": [42, 28, 210, 105, 9, 196, 189, 51]
     },
     {
       "name": "SignatureRequestedEvent",
-      "discriminator": [
-        171,
-        129,
-        105,
-        91,
-        154,
-        49,
-        160,
-        34
-      ]
+      "discriminator": [171, 129, 105, 91, 154, 49, 160, 34]
     },
     {
       "name": "SignatureRespondedEvent",
-      "discriminator": [
-        118,
-        146,
-        248,
-        151,
-        194,
-        93,
-        18,
-        86
-      ]
+      "discriminator": [118, 146, 248, 151, 194, 93, 18, 86]
     }
   ],
   "errors": [
@@ -474,19 +303,13 @@
           {
             "name": "x",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "y",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           }
         ]
@@ -556,10 +379,7 @@
           {
             "name": "s",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -577,10 +397,7 @@
           {
             "name": "request_id",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -606,10 +423,7 @@
           {
             "name": "payload",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -657,10 +471,7 @@
           {
             "name": "request_id",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
