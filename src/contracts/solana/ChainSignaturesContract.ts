@@ -1,11 +1,13 @@
-import { AnchorProvider, Program, Wallet } from '@coral-xyz/anchor'
+import { type AnchorProvider, Program, Wallet } from '@coral-xyz/anchor'
 import {
-  AccountMeta,
+  type AccountMeta,
   PublicKey,
-  Signer,
+  type Signer,
   Transaction,
-  TransactionInstruction,
+  type TransactionInstruction,
 } from '@solana/web3.js'
+import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
 import { concat, createPublicClient, http, padHex, recoverAddress } from 'viem'
 
@@ -14,24 +16,26 @@ import { ChainSignatureContract as AbstractChainSignatureContract } from '@contr
 import type { SignArgs } from '@contracts/ChainSignatureContract'
 import type { NajPublicKey, RSVSignature, UncompressedPubKeySEC1 } from '@types'
 import { cryptography } from '@utils'
-import { getRootPublicKey } from '@utils/publicKey'
-import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
-import { ChainSignaturesProject } from './types/chain_signatures_project'
-import IDL from './types/chain_signatures_project.json'
+
+import { chainAdapters } from '../..'
+import type {
+  RetryOptions,
+  SignOptions,
+  SignatureErrorData,
+} from '../evm/types'
 
 import {
   SignatureNotFoundError,
   SignatureContractError,
   SigningError,
 } from './errors'
-import type {
-  RetryOptions,
-  SignOptions,
-  SignatureErrorData,
-} from '../evm/types'
+import { type ChainSignaturesProject } from './types/chain_signatures_project'
+import IDL from './types/chain_signatures_project.json'
+import {
+  type SignatureErrorEvent,
+  type SignatureRespondedEvent,
+} from './types/events'
 import { generateRequestIdSolana } from './utils'
-import { chainAdapters } from '../..'
-import { SignatureErrorEvent, SignatureRespondedEvent } from './types/events'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly provider: AnchorProvider
@@ -135,10 +139,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   async getSignRequestInstruction(
     args: SignArgs,
     options?: Pick<SignOptions, 'sign'> & {
-      remainingAccounts?: Array<AccountMeta>
+      remainingAccounts?: AccountMeta[]
     }
   ): Promise<TransactionInstruction> {
-    return this.program.methods
+    return await this.program.methods
       .sign(
         Array.from(args.payload),
         args.key_version,
@@ -163,8 +167,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   async sign(
     args: SignArgs,
     options?: Partial<SignOptions> & {
-      remainingAccounts?: Array<AccountMeta>
-      remainingSigners?: Array<Signer>
+      remainingAccounts?: AccountMeta[]
+      remainingSigners?: Signer[]
     }
   ): Promise<RSVSignature> {
     const algo = options?.sign?.algo ?? ''
@@ -230,7 +234,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         throw new SignatureContractError(pollResult.error, requestId, { hash })
       }
 
-      return pollResult as RSVSignature
+      return pollResult
     } catch (error) {
       if (
         error instanceof SignatureNotFoundError ||
@@ -267,7 +271,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const retryCount = options?.retryCount ?? 12
     const timeout = delay * retryCount
 
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       let resolved = false
       let signatureListener: number
       let errorListener: number
@@ -292,7 +296,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
             const rsvSignature: RSVSignature = {
               r: bigRx,
-              s: s,
+              s,
               v: recoveryId + 27,
             }
 
