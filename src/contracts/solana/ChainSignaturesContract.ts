@@ -5,6 +5,7 @@ import {
   type Signer,
   Transaction,
   type TransactionInstruction,
+  TransactionExpiredTimeoutError
 } from '@solana/web3.js'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
@@ -208,7 +209,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     })
     const transaction = new Transaction().add(instruction)
     transaction.feePayer = this.provider.wallet.publicKey
-    const hash = await this.provider.sendAndConfirm(
+    const hash = await this.sendAndConfirmWithoutWebSocket(
       transaction,
       options?.remainingSigners
     )
@@ -250,6 +251,55 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
+  private async sendAndConfirmWithoutWebSocket(
+    transaction: Transaction,
+    signers?: Array<Signer>
+  ): Promise<string> {
+    const { blockhash } =
+      await this.provider.connection.getLatestBlockhash('confirmed')
+    transaction.recentBlockhash = blockhash
+
+    transaction = await this.provider.wallet.signTransaction(transaction)
+
+    if (signers && signers.length > 0) {
+      transaction.partialSign(...signers)
+    }
+
+    const signature = await this.provider.connection.sendRawTransaction(
+      transaction.serialize(),
+      {
+        skipPreflight: false,
+        preflightCommitment: 'processed',
+        maxRetries: 3,
+      }
+    )
+
+    const startTime = Date.now()
+    const timeout = 30000 // 30 seconds, same as default sendAndConfirm
+
+    while (Date.now() - startTime < timeout) {
+      const status =
+        await this.provider.connection.getSignatureStatus(signature)
+
+      if (status.value?.err) {
+        throw new Error(
+          `Transaction failed: ${JSON.stringify(status.value.err)}`
+        )
+      }
+
+      if (
+        status.value?.confirmationStatus === 'confirmed' ||
+        status.value?.confirmationStatus === 'finalized'
+      ) {
+        return signature
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+    }
+
+    throw new TransactionExpiredTimeoutError(signature, timeout / 1000)
+  }
+
   /**
    * Polls for signature or error events matching the given requestId starting from the solana transaction with signature afterSignature.
    * Returns a signature, error data, or undefined if nothing is found.
@@ -269,7 +319,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
     const retryCount = options?.retryCount ?? 12
-    
+
     let lastCheckedSignature = afterSignature
 
     for (let i = 0; i < retryCount; i++) {
@@ -277,9 +327,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         // Get all transactions since last check
         const signatures = await this.connection.getSignaturesForAddress(
           this.programId,
-          { 
+          {
             until: lastCheckedSignature,
-            limit: 50 
+            limit: 50,
           },
           'confirmed'
         )
@@ -295,8 +345,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
           })
 
           if (tx?.meta?.logMessages) {
-            const result = await this.parseLogsForEvents(tx.meta.logMessages, requestId, payload, path)
-            
+            const result = await this.parseLogsForEvents(
+              tx.meta.logMessages,
+              requestId,
+              payload,
+              path
+            )
+
             if (result) {
               return result
             }
@@ -338,7 +393,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
           const eventData = Buffer.from(dataMatch[1], 'base64')
 
           // Check if this is a SignatureRespondedEvent
-          if (eventData.subarray(0, 8).equals(SIGNATURE_RESPONDED_DISCRIMINATOR)) {
+          if (
+            eventData.subarray(0, 8).equals(SIGNATURE_RESPONDED_DISCRIMINATOR)
+          ) {
             const eventRequestId = eventData.subarray(8, 40)
             const eventRequestIdHex = '0x' + eventRequestId.toString('hex')
 
@@ -368,10 +425,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
               })
 
               const { address: expectedAddress } =
-                await evm.deriveAddressAndPublicKey(
-                  this.requesterAddress,
-                  path
-                )
+                await evm.deriveAddressAndPublicKey(this.requesterAddress, path)
 
               const recoveredAddress = await recoverAddress({
                 hash: new Uint8Array(payload),
@@ -379,8 +433,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
               })
 
               if (
-                recoveredAddress.toLowerCase() ===
-                expectedAddress.toLowerCase()
+                recoveredAddress.toLowerCase() === expectedAddress.toLowerCase()
               ) {
                 return rsvSignature
               } else {
