@@ -5,7 +5,7 @@ import {
   type Signer,
   Transaction,
   type TransactionInstruction,
-  TransactionExpiredTimeoutError
+  TransactionExpiredTimeoutError,
 } from '@solana/web3.js'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
@@ -143,6 +143,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       remainingAccounts?: AccountMeta[]
     }
   ): Promise<TransactionInstruction> {
+    const fixedRemainingAccounts: AccountMeta[] = [
+      {
+        pubkey: PublicKey.findProgramAddressSync(
+          [Buffer.from('__event_authority')],
+          this.program.programId
+        )[0],
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: this.program.programId,
+        isWritable: false,
+        isSigner: false,
+      },
+    ]
+
     return await this.program.methods
       .sign(
         Array.from(args.payload),
@@ -156,7 +172,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         requester: this.requesterAddress,
         feePayer: this.provider.wallet.publicKey,
       })
-      .remainingAccounts(options?.remainingAccounts ?? [])
+      .remainingAccounts([
+        ...fixedRemainingAccounts,
+        ...(options?.remainingAccounts ?? []),
+      ])
       .instruction()
   }
 
