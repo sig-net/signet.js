@@ -1,4 +1,4 @@
-## listenForSignatureEvents
+## pollForRequestId
 
 Listens for signature events matching a given request ID. Should be called when invoking the `sign` method on the contract without using this class's `sign` method (e.g. for cross contract invocations).
 
@@ -14,10 +14,11 @@ const req = {
   path: 'example_path',
 }
 // ---cut---
-const promise = solanaChainSigContract.listenForSignatureEvents({
+const promise = solanaChainSigContract.pollForRequestId({
   requestId: req.requestId,
   payload: req.payload,
   path: req.path,
+  afterSignature: "signatureOfTheSignRequestTransaction",
   options: {
     delay: 5000,
     retryCount: 12,
@@ -38,6 +39,7 @@ _Note:_ The requestId and payload parameters are essential for identifying and v
 | `requestId`           | `string`   | Unique identifier for the signature request           |
 | `payload`             | `number[]` | Data payload used in the signature request            |
 | `path`                | `string`   | Derivation path used in the signature request         |
+| `afterSignature`      | `string`   | Transaction signature to start polling from           |
 | `options?`            | `object`   | Optional retry configuration                          |
 | `options.delay?`      | `number`   | Delay between retries in milliseconds (default: 5000) |
 | `options.retryCount?` | `number`   | Number of retries (default: 12)                       |

@@ -5,6 +5,7 @@ import {
   type Signer,
   Transaction,
   type TransactionInstruction,
+  TransactionExpiredTimeoutError,
 } from '@solana/web3.js'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
@@ -142,6 +143,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       remainingAccounts?: AccountMeta[]
     }
   ): Promise<TransactionInstruction> {
+    const fixedRemainingAccounts: AccountMeta[] = [
+      {
+        pubkey: PublicKey.findProgramAddressSync(
+          [Buffer.from('__event_authority')],
+          this.program.programId
+        )[0],
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: this.program.programId,
+        isWritable: false,
+        isSigner: false,
+      },
+    ]
+
     return await this.program.methods
       .sign(
         Array.from(args.payload),
@@ -155,7 +172,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         requester: this.requesterAddress,
         feePayer: this.provider.wallet.publicKey,
       })
-      .remainingAccounts(options?.remainingAccounts ?? [])
+      .remainingAccounts([
+        ...fixedRemainingAccounts,
+        ...(options?.remainingAccounts ?? []),
+      ])
       .instruction()
   }
 
@@ -198,16 +218,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       params,
     })
 
-    const eventPromise = this.listenForSignatureEvents({
-      requestId,
-      payload: args.payload,
-      path: args.path,
-      options: {
-        delay,
-        retryCount,
-      },
-    })
-
     const instruction = await this.getSignRequestInstruction(args, {
       sign: {
         algo,
@@ -218,13 +228,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     })
     const transaction = new Transaction().add(instruction)
     transaction.feePayer = this.provider.wallet.publicKey
-    const hash = await this.provider.sendAndConfirm(
+    const hash = await this.sendAndConfirmWithoutWebSocket(
       transaction,
       options?.remainingSigners
     )
 
     try {
-      const pollResult = await eventPromise
+      const pollResult = await this.pollForRequestId({
+        requestId,
+        payload: args.payload,
+        path: args.path,
+        afterSignature: hash,
+        options: {
+          delay,
+          retryCount,
+        },
+      })
 
       if (!pollResult) {
         throw new SignatureNotFoundError(requestId, { hash })
@@ -251,123 +270,219 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }
 
+  private async sendAndConfirmWithoutWebSocket(
+    transaction: Transaction,
+    signers?: Array<Signer>
+  ): Promise<string> {
+    const { blockhash } =
+      await this.provider.connection.getLatestBlockhash('confirmed')
+    transaction.recentBlockhash = blockhash
+
+    transaction = await this.provider.wallet.signTransaction(transaction)
+
+    if (signers && signers.length > 0) {
+      transaction.partialSign(...signers)
+    }
+
+    const signature = await this.provider.connection.sendRawTransaction(
+      transaction.serialize(),
+      {
+        skipPreflight: false,
+        preflightCommitment: 'processed',
+        maxRetries: 3,
+      }
+    )
+
+    const startTime = Date.now()
+    const timeout = 30000 // 30 seconds, same as default sendAndConfirm
+
+    while (Date.now() - startTime < timeout) {
+      const status =
+        await this.provider.connection.getSignatureStatus(signature)
+
+      if (status.value?.err) {
+        throw new Error(
+          `Transaction failed: ${JSON.stringify(status.value.err)}`
+        )
+      }
+
+      if (
+        status.value?.confirmationStatus === 'confirmed' ||
+        status.value?.confirmationStatus === 'finalized'
+      ) {
+        return signature
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+    }
+
+    throw new TransactionExpiredTimeoutError(signature, timeout / 1000)
+  }
+
   /**
-   * Listens for signature or error events matching the given requestId.
-   * Sets up listeners for both event types and returns a promise that resolves when
-   * either a valid signature or an error is received.
+   * Polls for signature or error events matching the given requestId starting from the solana transaction with signature afterSignature.
+   * Returns a signature, error data, or undefined if nothing is found.
    */
-  async listenForSignatureEvents({
+  async pollForRequestId({
     requestId,
     payload,
     path,
+    afterSignature,
     options,
   }: {
     requestId: string
     payload: number[]
     path: string
+    afterSignature: string
     options?: RetryOptions
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
     const delay = options?.delay ?? 5000
     const retryCount = options?.retryCount ?? 12
-    const timeout = delay * retryCount
 
-    return await new Promise((resolve, reject) => {
-      let resolved = false
-      let signatureListener: number
-      let errorListener: number
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          this.program.removeEventListener(signatureListener)
-          this.program.removeEventListener(errorListener)
-          reject(new SignatureNotFoundError(requestId))
+    let lastCheckedSignature = afterSignature
+
+    for (let i = 0; i < retryCount; i++) {
+      try {
+        // Get all transactions since last check
+        const signatures = await this.connection.getSignaturesForAddress(
+          this.programId,
+          {
+            until: lastCheckedSignature,
+            limit: 50,
+          },
+          'confirmed'
+        )
+
+        if (signatures.length > 0) {
+          lastCheckedSignature = signatures[signatures.length - 1].signature
         }
-      }, timeout)
 
-      signatureListener = this.program.addEventListener(
-        'signatureRespondedEvent',
-        (event: SignatureRespondedEvent) => {
-          const eventRequestIdHex =
-            '0x' + Buffer.from(event.requestId).toString('hex')
-          if (eventRequestIdHex === requestId) {
-            const signature = event.signature
-            const bigRx = Buffer.from(signature.bigR.x).toString('hex')
-            const s = Buffer.from(signature.s).toString('hex')
-            const recoveryId = signature.recoveryId
+        for (const sig of signatures) {
+          const tx = await this.connection.getParsedTransaction(sig.signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          })
 
-            const rsvSignature: RSVSignature = {
-              r: bigRx,
-              s,
-              v: recoveryId + 27,
+          if (tx?.meta?.logMessages) {
+            const result = await this.parseLogsForEvents(
+              tx.meta.logMessages,
+              requestId,
+              payload,
+              path
+            )
+
+            if (result) {
+              return result
             }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for events:', error)
+      }
 
-            // Verify the signature using ecrecover
-            const sig = concat([
-              padHex(`0x${rsvSignature.r}`, { size: 32 }),
-              padHex(`0x${rsvSignature.s}`, { size: 32 }),
-              `0x${rsvSignature.v.toString(16)}`,
-            ])
+      if (i < retryCount - 1) {
+        console.log(`Retrying get signature: ${i + 1}/${retryCount}`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
 
-            const verifySignature = async () => {
-              try {
-                const evm = new chainAdapters.evm.EVM({
-                  publicClient: createPublicClient({
-                    transport: http('https://dontcare.com'),
-                  }),
-                  contract: this,
-                })
+    return undefined
+  }
 
-                const { address: expectedAddress } =
-                  await evm.deriveAddressAndPublicKey(
-                    this.requesterAddress,
-                    path
-                  )
+  /**
+   * Parses transaction logs for signature or error events.
+   */
+  private async parseLogsForEvents(
+    logs: string[],
+    requestId: string,
+    payload: number[],
+    path: string
+  ): Promise<RSVSignature | SignatureErrorData | undefined> {
+    const SIGNATURE_RESPONDED_DISCRIMINATOR = Buffer.from([
+      118, 146, 248, 151, 194, 93, 18, 86,
+    ])
+    const SIGNATURE_ERROR_DISCRIMINATOR = Buffer.from([
+      42, 28, 210, 105, 9, 196, 189, 51,
+    ])
 
-                const recoveredAddress = await recoverAddress({
-                  hash: new Uint8Array(payload),
-                  signature: sig,
-                })
+    for (const log of logs) {
+      if (log.includes('Program data:')) {
+        const dataMatch = log.match(/Program data: (.+)/)
+        if (dataMatch) {
+          const eventData = Buffer.from(dataMatch[1], 'base64')
 
-                if (
-                  recoveredAddress.toLowerCase() ===
-                  expectedAddress.toLowerCase()
-                ) {
-                  resolved = true
-                  clearTimeout(timeoutId)
-                  this.program.removeEventListener(signatureListener)
-                  this.program.removeEventListener(errorListener)
-                  resolve(rsvSignature)
-                } else {
-                  console.warn('Signature verification failed, ignoring event')
-                }
-              } catch (e) {
-                console.error('Error verifying signature:', e)
+          // Check if this is a SignatureRespondedEvent
+          if (
+            eventData.subarray(0, 8).equals(SIGNATURE_RESPONDED_DISCRIMINATOR)
+          ) {
+            const eventRequestId = eventData.subarray(8, 40)
+            const eventRequestIdHex = '0x' + eventRequestId.toString('hex')
+
+            if (eventRequestIdHex === requestId) {
+              const bigRx = eventData.subarray(72, 104)
+              const s = eventData.subarray(136, 168)
+              const recoveryId = eventData[168]
+
+              const rsvSignature: RSVSignature = {
+                r: bigRx.toString('hex'),
+                s: s.toString('hex'),
+                v: recoveryId + 27,
+              }
+
+              // Verify the signature using ecrecover
+              const sig = concat([
+                padHex(`0x${rsvSignature.r}`, { size: 32 }),
+                padHex(`0x${rsvSignature.s}`, { size: 32 }),
+                `0x${rsvSignature.v.toString(16)}`,
+              ])
+
+              const evm = new chainAdapters.evm.EVM({
+                publicClient: createPublicClient({
+                  transport: http('https://dontcare.com'),
+                }),
+                contract: this,
+              })
+
+              const { address: expectedAddress } =
+                await evm.deriveAddressAndPublicKey(this.requesterAddress, path)
+
+              const recoveredAddress = await recoverAddress({
+                hash: new Uint8Array(payload),
+                signature: sig,
+              })
+
+              if (
+                recoveredAddress.toLowerCase() === expectedAddress.toLowerCase()
+              ) {
+                return rsvSignature
+              } else {
+                console.warn('Signature verification failed, ignoring event')
               }
             }
+          }
 
-            verifySignature()
+          // Check if this is a SignatureErrorEvent
+          if (eventData.subarray(0, 8).equals(SIGNATURE_ERROR_DISCRIMINATOR)) {
+            const eventRequestId = eventData.subarray(8, 40)
+            const eventRequestIdHex = '0x' + eventRequestId.toString('hex')
+
+            if (eventRequestIdHex === requestId) {
+              const errorLength = eventData.readUInt32LE(72)
+              const error = eventData
+                .subarray(76, 76 + errorLength)
+                .toString('utf8')
+
+              return {
+                requestId: eventRequestIdHex,
+                error: error,
+              }
+            }
           }
         }
-      )
+      }
+    }
 
-      errorListener = this.program.addEventListener(
-        'signatureErrorEvent',
-        (event: SignatureErrorEvent) => {
-          const eventRequestIdHex =
-            '0x' + Buffer.from(event.requestId).toString('hex')
-          if (eventRequestIdHex === requestId) {
-            resolved = true
-            clearTimeout(timeoutId)
-            this.program.removeEventListener(signatureListener)
-            this.program.removeEventListener(errorListener)
-
-            resolve({
-              requestId: '0x' + Buffer.from(event.requestId).toString('hex'),
-              error: event.error,
-            })
-          }
-        }
-      )
-    })
+    return undefined
   }
 
   /**
