@@ -11,8 +11,8 @@ import {
 } from '@cosmjs/proto-signing'
 import { GasPrice, StargateClient, calculateFee } from '@cosmjs/stargate'
 import { bech32 } from 'bech32'
-import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
-import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
+import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing.js'
+import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx.js'
 
 import { ChainAdapter } from '@chain-adapters/ChainAdapter'
 import type {

@@ -1,6 +1,4 @@
 import {
-  createPublicClient,
-  http,
   parseTransaction,
   type PublicClient,
   hashMessage,
@@ -62,7 +60,7 @@ export class EVM extends ChainAdapter<
     super()
 
     this.contract = contract
-    this.client = publicClient;
+    this.client = publicClient
   }
 
   private async attachGasAndNonce(

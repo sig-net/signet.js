@@ -13,7 +13,7 @@ import {
   connect,
   type KeyPair,
 } from 'near-api-js'
-import { getTransactionLastResult } from 'near-api-js/lib/providers'
+import { getTransactionLastResult } from 'near-api-js/lib/providers/index.js'
 import { withRetry } from 'viem'
 
 import { ChainSignatureContract } from '@contracts/near/ChainSignatureContract'

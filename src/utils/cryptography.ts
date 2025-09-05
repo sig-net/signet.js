@@ -1,6 +1,6 @@
 import { base58 } from '@scure/base'
-import { ec as EC } from 'elliptic'
-import { sha3_256 } from 'js-sha3'
+import elliptic from 'elliptic'
+import jsSha3 from 'js-sha3'
 import { keccak256 } from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
@@ -10,6 +10,7 @@ import {
   type RSVSignature,
   type UncompressedPubKeySEC1,
 } from '@types'
+const { ec: EC } = elliptic
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   // Handle NearNearMpcSignature
@@ -122,7 +123,7 @@ export function deriveChildPublicKey(
   if (chainId === KDF_CHAIN_IDS.ETHEREUM) {
     scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
   } else if (chainId === KDF_CHAIN_IDS.NEAR) {
-    scalarHex = sha3_256(derivationPath)
+    scalarHex = jsSha3.sha3_256(derivationPath)
   } else if (chainId === KDF_CHAIN_IDS.SOLANA) {
     scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
   } else {
