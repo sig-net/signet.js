@@ -63,13 +63,13 @@ You can use any EVM-compatible network by providing the appropriate client:
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
 import { chainAdapters } from 'signet.js'
-import { polygon, bsc, mainnet } from "viem/chains";
+import { polygon, bsc, mainnet } from 'viem/chains'
 
 // Ethereum Mainnet
 const clientEthereum = createPublicClient({
   chain: mainnet,
   transport: http(),
-});
+})
 
 const ethereumChain = new chainAdapters.evm.EVM({
   publicClient: clientEthereum,
@@ -80,7 +80,7 @@ const ethereumChain = new chainAdapters.evm.EVM({
 const clientPolygon = createPublicClient({
   chain: bsc,
   transport: http(),
-});
+})
 
 const polygonChain = new chainAdapters.evm.EVM({
   publicClient: clientEthereum,
@@ -91,7 +91,7 @@ const polygonChain = new chainAdapters.evm.EVM({
 const clientBSC = createPublicClient({
   chain: polygon,
   transport: http(),
-});
+})
 
 const bscChain = new chainAdapters.evm.EVM({
   publicClient: clientBSC,

@@ -1,24 +1,24 @@
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js'
 
 interface AffinePoint {
-  x: number[];
-  y: number[];
+  x: number[]
+  y: number[]
 }
 
 interface Signature {
-  bigR: AffinePoint;
-  s: number[];
-  recoveryId: number;
+  bigR: AffinePoint
+  s: number[]
+  recoveryId: number
 }
 
 export interface SignatureRespondedEvent {
-  requestId: number[];
-  responder: PublicKey;
-  signature: Signature;
+  requestId: number[]
+  responder: PublicKey
+  signature: Signature
 }
 
 export interface SignatureErrorEvent {
-  requestId: number[];
-  responder: PublicKey;
-  error: string;
+  requestId: number[]
+  responder: PublicKey
+  error: string
 }

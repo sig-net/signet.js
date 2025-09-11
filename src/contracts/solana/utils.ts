@@ -17,7 +17,8 @@ export function generateRequestIdSolana({
   dest: string
   params: string
 }): string {
-  const payloadHex: `0x${string}` = ('0x' + Buffer.from(payload as any).toString('hex')) as `0x${string}` 
+  const payloadHex: `0x${string}` = ('0x' +
+    Buffer.from(payload as any).toString('hex')) as `0x${string}`
 
   const encoded = encodeAbiParameters(
     parseAbiParameters(

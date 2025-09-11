@@ -17,17 +17,17 @@ Prepare your 32-byte payload (hash of your message) and choose an arbitrary `pat
 ```ts twoslash
 // [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
 // ---cut---
-import { keccak256, stringToBytes, toBytes } from "viem";
+import { keccak256, stringToBytes, toBytes } from 'viem'
 
-const message = "dontcare";
-const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
-const path = "randomPath";
+const message = 'dontcare'
+const payload = Array.from(toBytes(keccak256(stringToBytes(message))))
+const path = 'randomPath'
 
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
   key_version: 0,
-});
+})
 ```
 
 At this stage, the MPC network processes your signature request off-chain, subsequently calling the `respond()` method on-chain.
@@ -38,21 +38,21 @@ After the MPC responds, retrieve your signature components:
 
 ```ts twoslash
 // [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
-import { keccak256, stringToBytes, toBytes } from "viem";
+import { keccak256, stringToBytes, toBytes } from 'viem'
 
-const message = "dontcare";
-const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
-const path = "randomPath";
+const message = 'dontcare'
+const payload = Array.from(toBytes(keccak256(stringToBytes(message))))
+const path = 'randomPath'
 
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
   key_version: 0,
-});
+})
 // ---cut---
-console.log('r:', rsvSignature.r);
-console.log('s:', rsvSignature.s);
-console.log('v:', rsvSignature.v);
+console.log('r:', rsvSignature.r)
+console.log('s:', rsvSignature.s)
+console.log('v:', rsvSignature.v)
 ```
 
 ### Verify the Signature
@@ -61,39 +61,48 @@ You can verify the signature to ensure it was correctly signed:
 
 ```ts twoslash
 // [!include ~/snippets/code/evm/sign-hash-example-setup.ts]
-import { keccak256, stringToBytes, toBytes } from "viem";
-const message = "dontcare";
-const payload = Array.from(toBytes(keccak256(stringToBytes(message))));
-const path = "randomPath";
+import { keccak256, stringToBytes, toBytes } from 'viem'
+const message = 'dontcare'
+const payload = Array.from(toBytes(keccak256(stringToBytes(message))))
+const path = 'randomPath'
 
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
   key_version: 0,
-});
+})
 // ---cut---
-import { concat, padHex, recoverAddress } from "viem";
+import { concat, padHex, recoverAddress } from 'viem'
 
-const messageHash = keccak256(stringToBytes(message));
+const messageHash = keccak256(stringToBytes(message))
 
 const signature = concat([
   padHex(`0x${rsvSignature.r}`, { size: 32 }),
   padHex(`0x${rsvSignature.s}`, { size: 32 }),
   `0x${rsvSignature.v.toString(16)}`,
-]);
+])
 
 const recoveredAddress = await recoverAddress({
   hash: messageHash,
   signature,
-});
+})
 
-const evm = new chainAdapters.evm.EVM({ publicClient, contract: evmChainSigContract });
+const evm = new chainAdapters.evm.EVM({
+  publicClient,
+  contract: evmChainSigContract,
+})
 
-const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(account.address, path);
+const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(
+  account.address,
+  path
+)
 
-console.log("Recovered address:", recoveredAddress);
-console.log("Original address:", expectedAddress);
-console.log("Signature is valid:", recoveredAddress.toLowerCase() === expectedAddress.toLowerCase());
+console.log('Recovered address:', recoveredAddress)
+console.log('Original address:', expectedAddress)
+console.log(
+  'Signature is valid:',
+  recoveredAddress.toLowerCase() === expectedAddress.toLowerCase()
+)
 ```
 
 ### Complete Code Example
@@ -101,4 +110,3 @@ console.log("Signature is valid:", recoveredAddress.toLowerCase() === expectedAd
 For a complete working example, [see the full implementation here](https://github.com/signet-examples/sign-arbitrary-hash).
 
 This approach ensures secure, verifiable signatures for arbitrary payloads through the ChainSignatures smart contract.
-

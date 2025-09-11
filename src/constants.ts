@@ -3,7 +3,7 @@ import { type NajPublicKey } from '@types'
 export const ENVS = {
   TESTNET_DEV: 'TESTNET_DEV',
   TESTNET: 'TESTNET',
-  MAINNET: 'MAINNET'
+  MAINNET: 'MAINNET',
 } as const
 
 export const CHAINS = {
@@ -65,5 +65,5 @@ export const CONTRACT_ADDRESSES: Record<
     [ENVS.TESTNET_DEV]: 'BtGZEs9ZJX3hAQuY5er8iyWrGsrPRZYupEtVSS129XKo',
     [ENVS.TESTNET]: 'JazJogTrTb6cCjPGKCBv19JvfqJqG5sxF5FiUKSZov1',
     [ENVS.MAINNET]: '',
-  }
+  },
 }
