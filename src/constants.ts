@@ -8,7 +8,6 @@ export const ENVS = {
 
 export const CHAINS = {
   ETHEREUM: 'ETHEREUM',
-  NEAR: 'NEAR',
   SOLANA: 'SOLANA',
 } as const
 
@@ -34,7 +33,6 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
  */
 export const KDF_CHAIN_IDS = {
   [CHAINS.ETHEREUM]: '0x1',
-  [CHAINS.NEAR]: '0x18d',
   [CHAINS.SOLANA]: '0x800001f5',
 } as const
 
@@ -51,11 +49,6 @@ export const CONTRACT_ADDRESSES: Record<
   keyof typeof CHAINS,
   Record<keyof typeof ENVS, string>
 > = {
-  [CHAINS.NEAR]: {
-    [ENVS.TESTNET_DEV]: 'dev.sig-net.testnet',
-    [ENVS.TESTNET]: 'v1.sig-net.testnet',
-    [ENVS.MAINNET]: 'v1.sig-net.near',
-  },
   [CHAINS.ETHEREUM]: {
     [ENVS.TESTNET_DEV]: '0x69C6b28Fdc74618817fa380De29a653060e14009',
     [ENVS.TESTNET]: '0x83458E8Bf8206131Fe5c05127007FA164c0948A2',

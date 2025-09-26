@@ -25,36 +25,22 @@ yarn add signet.js
 pnpm add signet.js
 ```
 
-## Quick Example
+## Quick Example (EVM)
 
 ```ts twoslash
 import { chainAdapters, contracts } from 'signet.js'
-import { KeyPair, type KeyPairString } from '@near-js/crypto'
 import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
-
-// Initialize NEAR connection with credentials from environment
-const accountId = process.env.NEAR_ACCOUNT_ID
-const privateKey = process.env.NEAR_PRIVATE_KEY as KeyPairString
-
-if (!accountId || !privateKey) {
-  throw new Error(
-    'NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY must be set in environment'
-  )
-}
-
-const keypair = KeyPair.fromString(privateKey)
-
-const contract = new contracts.near.ChainSignatureContract({
-  networkId: 'testnet',
-  contractId: 'v1.signer-prod.testnet',
-  accountId,
-  keypair,
-})
 
 const publicClient = createPublicClient({
   chain: mainnet,
   transport: http(),
+})
+
+// Assume you already instantiated your ChainSignatures EVM contract wrapper
+const contract = new contracts.evm.ChainSignaturesContract({
+  contractAddress: '0xYourContractAddress' as `0x${string}`,
+  walletClient: /* your WalletClient */ undefined as any,
 })
 
 const evmChain = new chainAdapters.evm.EVM({
@@ -62,9 +48,10 @@ const evmChain = new chainAdapters.evm.EVM({
   contract,
 })
 
-// Derive address and public key
+// Derive address and public key for a predecessor identifier
+const predecessorId = '0xYourEOAOrContract'
 const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
-  accountId,
+  predecessorId,
   'any_string'
 )
 
@@ -74,25 +61,24 @@ const { balance, decimals } = await evmChain.getBalance(address)
 // Create and sign transaction
 const { transaction, hashesToSign } =
   await evmChain.prepareTransactionForSigning({
-    from: '0x...',
+    from: address,
     to: '0x...',
     value: 1n,
   })
 
-// Sign with MPC
-const signature = await contract.sign({
-  payload: hashesToSign[0].payload,
+// Request MPC signature
+const rsvSignature = await contract.sign({
+  payload: hashesToSign[0],
   path: 'any_string',
   key_version: 0,
 })
 
-// Add signature
+// Finalize and broadcast
 const signedTx = evmChain.finalizeTransactionSigning({
   transaction,
-  rsvSignatures: [signature],
+  rsvSignatures: [rsvSignature],
 })
 
-// Broadcast transaction
 const txHash = await evmChain.broadcastTx(signedTx)
 ```
 

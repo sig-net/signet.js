@@ -1,6 +1,5 @@
 import { base58 } from '@scure/base'
-import elliptic from 'elliptic'
-import jsSha3 from 'js-sha3'
+import { ec as EC } from 'elliptic'
 import { keccak256 } from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
@@ -13,36 +12,7 @@ import {
 const { ec: EC } = elliptic
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
-  // Handle NearNearMpcSignature
   if (
-    'big_r' in signature &&
-    typeof signature.big_r === 'object' &&
-    'affine_point' in signature.big_r &&
-    's' in signature &&
-    typeof signature.s === 'object' &&
-    'scalar' in signature.s
-  ) {
-    return {
-      r: signature.big_r.affine_point.substring(2),
-      s: signature.s.scalar,
-      v: signature.recovery_id + 27,
-    }
-  }
-  // Handle SigNetNearMpcSignature
-  else if (
-    'big_r' in signature &&
-    typeof signature.big_r === 'string' &&
-    's' in signature &&
-    typeof signature.s === 'string'
-  ) {
-    return {
-      r: signature.big_r.substring(2),
-      s: signature.s,
-      v: signature.recovery_id + 27,
-    }
-  }
-  // Handle SigNetEvmMpcSignature
-  else if (
     'bigR' in signature &&
     'x' in signature.bigR &&
     's' in signature &&
@@ -122,8 +92,6 @@ export function deriveChildPublicKey(
 
   if (chainId === KDF_CHAIN_IDS.ETHEREUM) {
     scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
-  } else if (chainId === KDF_CHAIN_IDS.NEAR) {
-    scalarHex = jsSha3.sha3_256(derivationPath)
   } else if (chainId === KDF_CHAIN_IDS.SOLANA) {
     scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
   } else {
