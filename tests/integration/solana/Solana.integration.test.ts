@@ -9,13 +9,15 @@ import { constants, contracts } from '../../../src'
 
 const DEFAULT_RPC =
   process.env.SOLANA_RPC_URL ?? 'https://api.devnet.solana.com'
-const envSk = process.env.SOLANA_PRIVATE_KEY
-const PROGRAM_ID =
-  process.env.SOLANA_PROGRAM_ID ?? constants.CONTRACT_ADDRESSES.SOLANA.TESTNET_DEV
+const envSk: string = process.env.SOLANA_PRIVATE_KEY ?? ''
+const PROGRAM_ID: string =
+  process.env.SOLANA_PROGRAM_ID ??
+  constants.CONTRACT_ADDRESSES.SOLANA.TESTNET_DEV
 
-
-describe('Solana ChainSignatures integration (emit!)', async () => {
-    const payer = Keypair.fromSecretKey(new Uint8Array(JSON.parse(envSk as string)))
+describe('Solana ChainSignatures integration (emit!)', () => {
+  const payer = Keypair.fromSecretKey(
+    new Uint8Array(JSON.parse(envSk) as number[])
+  )
   const solanaAddress = payer.publicKey.toString()
   console.log('Solana address:', solanaAddress)
   const connection = new Connection(DEFAULT_RPC, 'confirmed')

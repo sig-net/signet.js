@@ -1,4 +1,7 @@
-import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+import {
+  najToUncompressedPubKeySEC1,
+  verifyRecoveredAddress,
+} from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
 import {
@@ -6,9 +9,6 @@ import {
   type PublicClient,
   type WalletClient,
   type Hex,
-  padHex,
-  concat,
-  recoverAddress,
   encodeFunctionData,
 } from 'viem'
 
@@ -22,8 +22,6 @@ import type {
   UncompressedPubKeySEC1,
 } from '@types'
 import { cryptography } from '@utils'
-
-import { chainAdapters } from '../..'
 
 import { abi } from './ChainSignaturesContractABI'
 import {
@@ -250,30 +248,16 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         const result = await this.getSignatureFromEvents(requestId, fromBlock)
 
         if (result) {
-          // Verify the signature using ecrecover
-          const signature = concat([
-            padHex(`0x${result.r}`, { size: 32 }),
-            padHex(`0x${result.s}`, { size: 32 }),
-            `0x${result.v.toString(16)}`,
-          ])
-          const recoveredAddress = await recoverAddress({
-            hash: new Uint8Array(payload),
-            signature,
-          })
-          const evm = new chainAdapters.evm.EVM({
-            publicClient: this.publicClient,
-            contract: this,
-          })
+          // Verify the signature
+          const isValid = await verifyRecoveredAddress(
+            result,
+            payload,
+            this.walletClient.account?.address as string,
+            path,
+            this
+          )
 
-          const { address: expectedAddress } =
-            await evm.deriveAddressAndPublicKey(
-              this.walletClient.account?.address as string,
-              path
-            )
-
-          if (
-            recoveredAddress.toLowerCase() !== expectedAddress.toLowerCase()
-          ) {
+          if (!isValid) {
             throw new Error('Signature not found yet')
           }
           return result
