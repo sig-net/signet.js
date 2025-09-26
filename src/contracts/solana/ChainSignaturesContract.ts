@@ -8,7 +8,10 @@ import {
   TransactionExpiredTimeoutError,
   type Connection,
 } from '@solana/web3.js'
-import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+import {
+  najToUncompressedPubKeySEC1,
+  verifyRecoveredAddress,
+} from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
 
@@ -256,6 +259,23 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
       if ('error' in pollResult) {
         throw new SignatureContractError(pollResult.error, requestId, { hash })
+      }
+
+      const isValid = await verifyRecoveredAddress(
+        pollResult,
+        args.payload,
+        this.requesterAddress,
+        args.path,
+        this
+      )
+      if (!isValid) {
+        throw new SigningError(
+          requestId,
+          { hash },
+          new Error(
+            'Signature verification failed: recovered address does not match expected address'
+          )
+        )
       }
 
       return pollResult

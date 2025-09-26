@@ -1,6 +1,13 @@
 import { base58 } from '@scure/base'
 import { ec as EC } from 'elliptic'
-import { keccak256 } from 'viem'
+import {
+  keccak256,
+  concat,
+  padHex,
+  recoverAddress,
+  createPublicClient,
+  http,
+} from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
 import {
@@ -109,4 +116,60 @@ export function deriveChildPublicKey(
   const newY = newPublicKeyPoint.getY().toString('hex').padStart(64, '0')
 
   return `04${newX}${newY}`
+}
+
+/**
+ * Verifies that a secp256k1 signature was created by the expected derived address
+ * by recovering the signing address and comparing it with the address derived from the contract.
+ *
+ * @param signature - The RSV signature to verify
+ * @param payload - The original message that was signed (as byte array)
+ * @param requesterAddress - The address of the requester
+ * @param path - The derivation path used for key generation
+ * @param contract - The contract instance for deriving addresses
+ * @returns Promise resolving to true if the recovered address matches the expected address
+ */
+export async function verifyRecoveredAddress(
+  signature: RSVSignature,
+  payload: number[] | Uint8Array,
+  requesterAddress: string,
+  path: string,
+  contract: any // Using any to avoid circular dependency with BaseChainSignatureContract
+): Promise<boolean> {
+  try {
+    // Derive the expected address using EVM chain adapter
+    // We use EVM adapter even for non-EVM chains since we're dealing with secp256k1 signatures
+    const { chainAdapters } = await import('..')
+
+    const evm = new chainAdapters.evm.EVM({
+      publicClient: createPublicClient({
+        transport: http('https://dontcare.com'),
+      }),
+      contract,
+    })
+
+    const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(
+      requesterAddress,
+      path
+    )
+
+    // Construct the signature in the format expected by viem
+    const viemSignature = concat([
+      padHex(`0x${signature.r}`, { size: 32 }),
+      padHex(`0x${signature.s}`, { size: 32 }),
+      `0x${signature.v.toString(16)}`,
+    ])
+
+    // Recover the address from the signature
+    const recoveredAddress = await recoverAddress({
+      hash: new Uint8Array(payload),
+      signature: viemSignature,
+    })
+
+    // Compare the addresses (case-insensitive)
+    return recoveredAddress.toLowerCase() === expectedAddress.toLowerCase()
+  } catch (error) {
+    console.error('Signature verification failed:', error)
+    return false
+  }
 }
