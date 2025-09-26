@@ -1,4 +1,4 @@
-import { type AnchorProvider, Program, Wallet } from '@coral-xyz/anchor'
+import { type AnchorProvider, Program, EventParser } from '@coral-xyz/anchor'
 import {
   type AccountMeta,
   PublicKey,
@@ -6,11 +6,11 @@ import {
   Transaction,
   type TransactionInstruction,
   TransactionExpiredTimeoutError,
+  type Connection,
 } from '@solana/web3.js'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
 import BN from 'bn.js'
-import { concat, createPublicClient, http, padHex, recoverAddress } from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -18,13 +18,13 @@ import type { SignArgs } from '@contracts/ChainSignatureContract'
 import type { NajPublicKey, RSVSignature, UncompressedPubKeySEC1 } from '@types'
 import { cryptography } from '@utils'
 
-import { chainAdapters } from '../..'
 import type {
   RetryOptions,
   SignOptions,
   SignatureErrorData,
 } from '../evm/types'
 
+import { CpiEventParser } from './CpiEventParser'
 import {
   SignatureNotFoundError,
   SignatureContractError,
@@ -32,8 +32,12 @@ import {
 } from './errors'
 import { type ChainSignaturesProject } from './types/chain_signatures_project'
 import IDL from './types/chain_signatures_project.json'
+import type {
+  SignatureErrorEvent,
+  SignatureRespondedEvent,
+  ChainSignaturesEventName,
+} from './types/events'
 import { generateRequestIdSolana } from './utils'
-import { CpiEventParser } from './cpi-event-parser'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly provider: AnchorProvider
@@ -41,7 +45,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly programId: PublicKey
   private readonly rootPublicKey: NajPublicKey
   private readonly requesterAddress: string
-  private respondUsesCPI: boolean | null = null
 
   /**
    * Creates a new instance of the ChainSignatureContract for Solana chains.
@@ -89,7 +92,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   /**
    * Gets the connection from the provider
    */
-  get connection() {
+  get connection(): Connection {
     return this.provider.connection
   }
 
@@ -102,7 +105,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
       return new BN(programState.signatureDeposit.toString())
     } catch (error) {
-      throw new Error(`Failed to get signature deposit: ${error}`)
+      throw new Error(
+        `Failed to get signature deposit: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
     }
   }
 
@@ -270,7 +277,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   private async sendAndConfirmWithoutWebSocket(
     transaction: Transaction,
-    signers?: Array<Signer>
+    signers?: Signer[]
   ): Promise<string> {
     const { blockhash } =
       await this.provider.connection.getLatestBlockhash('confirmed')
@@ -323,8 +330,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   async pollForRequestId({
     requestId,
-    payload,
-    path,
+    payload: _payload,
+    path: _path,
     afterSignature,
     options,
   }: {
@@ -365,8 +372,6 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             const result = await this.parseLogsForEvents(
               tx.meta.logMessages,
               requestId,
-              payload,
-              path,
               sig.signature
             )
 
@@ -388,204 +393,67 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return undefined
   }
 
-  async detectRespondUsesCPI(): Promise<boolean> {
-    try {
-      // Use any signer pubkey - could be provider wallet
-      const dummyResponder = this.provider.wallet.publicKey
-
-      // Create properly typed test data
-      const testTx = await this.program.methods
-        .respond(
-          [Array(32).fill(0)], // request ID as number array
-          [
-            {
-              bigR: { x: Array(32).fill(0), y: Array(32).fill(0) }, // camelCase!
-              s: Array(32).fill(0),
-              recoveryId: 0, // camelCase!
-            },
-          ]
-        )
-        .accounts({
-          responder: dummyResponder, // Use provider wallet as dummy
-        })
-        .transaction()
-
-      const simulation = await this.connection.simulateTransaction(testTx)
-
-      if (simulation.value.logs) {
-        for (const log of simulation.value.logs) {
-          if (log.includes('Program data:')) {
-            const dataMatch = log.match(/Program data: (.+)/)
-            if (dataMatch) {
-              const data = Buffer.from(dataMatch[1], 'base64')
-              // Check for emit_cpi discriminator
-              if (
-                data.length >= 8 &&
-                data
-                  .subarray(0, 8)
-                  .equals(
-                    Buffer.from([
-                      0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d,
-                    ])
-                  )
-              ) {
-                return true
-              }
-            }
-          }
-        }
-      }
-      return false
-    } catch (error) {
-      console.log('CPI detection failed, assuming regular events:', error)
-      return false
-    }
-  }
-
-  private async getRespondUsesCPI(): Promise<boolean> {
-    if (this.respondUsesCPI === null) {
-      this.respondUsesCPI = await this.detectRespondUsesCPI()
-    }
-    return this.respondUsesCPI
-  }
-
   /**
    * Parses transaction logs for signature or error events.
    */
   private async parseLogsForEvents(
     logs: string[],
     requestId: string,
-    payload: number[],
-    path: string,
     signature: string
   ): Promise<RSVSignature | SignatureErrorData | undefined> {
-    const respondUsesCPI = await this.getRespondUsesCPI()
-    if (respondUsesCPI) {
-      // Parse as CPI events
-      const cpiEvents = await CpiEventParser.parseCpiEvents(
-        this.connection,
-        signature,
-        this.programId.toString(),
-        this.program
+    const cpiEvents = await CpiEventParser.parseCpiEvents(
+      this.connection,
+      signature,
+      this.programId.toString(),
+      this.program
+    )
+    for (const event of cpiEvents) {
+      const mapped = this.mapEventToResult(
+        event.name,
+        event.name === 'signatureRespondedEvent' ? event.data : event.data,
+        requestId
       )
-
-      for (const event of cpiEvents) {
-        const eventRequestIdHex =
-          '0x' + Buffer.from(event.data.requestId).toString('hex')
-        if (
-          event.name === 'signatureRespondedEvent' &&
-          eventRequestIdHex === requestId
-        ) {
-          return {
-            r: Buffer.from(event.data.signature.bigR.x).toString('hex'),
-            s: Buffer.from(event.data.signature.s).toString('hex'),
-            v: event.data.signature.recoveryId + 27,
-          }
-        } else if (event.name === 'signatureErrorEvent') {
-          const eventRequestIdHex =
-            '0x' + Buffer.from(event.data.requestId).toString('hex')
-          if (eventRequestIdHex === requestId) {
-            return {
-              requestId: eventRequestIdHex,
-              error: event.data.error,
-            }
-          }
-        }
-      }
-    } else {
-      const SIGNATURE_RESPONDED_DISCRIMINATOR = Buffer.from([
-        118, 146, 248, 151, 194, 93, 18, 86,
-      ])
-      const SIGNATURE_ERROR_DISCRIMINATOR = Buffer.from([
-        42, 28, 210, 105, 9, 196, 189, 51,
-      ])
-
-      for (const log of logs) {
-        if (log.includes('Program data:')) {
-          const dataMatch = log.match(/Program data: (.+)/)
-          if (dataMatch) {
-            const eventData = Buffer.from(dataMatch[1], 'base64')
-
-            // Check if this is a SignatureRespondedEvent
-            if (
-              eventData.subarray(0, 8).equals(SIGNATURE_RESPONDED_DISCRIMINATOR)
-            ) {
-              const eventRequestId = eventData.subarray(8, 40)
-              const eventRequestIdHex = '0x' + eventRequestId.toString('hex')
-
-              if (eventRequestIdHex === requestId) {
-                const bigRx = eventData.subarray(72, 104)
-                const s = eventData.subarray(136, 168)
-                const recoveryId = eventData[168]
-
-                const rsvSignature: RSVSignature = {
-                  r: bigRx.toString('hex'),
-                  s: s.toString('hex'),
-                  v: recoveryId + 27,
-                }
-
-                // Verify the signature using ecrecover
-                const sig = concat([
-                  padHex(`0x${rsvSignature.r}`, { size: 32 }),
-                  padHex(`0x${rsvSignature.s}`, { size: 32 }),
-                  `0x${rsvSignature.v.toString(16)}`,
-                ])
-
-                const evm = new chainAdapters.evm.EVM({
-                  publicClient: createPublicClient({
-                    transport: http('https://dontcare.com'),
-                  }),
-                  contract: this,
-                })
-
-                const { address: expectedAddress } =
-                  await evm.deriveAddressAndPublicKey(
-                    this.requesterAddress,
-                    path
-                  )
-
-                const recoveredAddress = await recoverAddress({
-                  hash: new Uint8Array(payload),
-                  signature: sig,
-                })
-
-                if (
-                  recoveredAddress.toLowerCase() ===
-                  expectedAddress.toLowerCase()
-                ) {
-                  return rsvSignature
-                } else {
-                  console.warn('Signature verification failed, ignoring event')
-                }
-              }
-            }
-
-            // Check if this is a SignatureErrorEvent
-            if (
-              eventData.subarray(0, 8).equals(SIGNATURE_ERROR_DISCRIMINATOR)
-            ) {
-              const eventRequestId = eventData.subarray(8, 40)
-              const eventRequestIdHex = '0x' + eventRequestId.toString('hex')
-
-              if (eventRequestIdHex === requestId) {
-                const errorLength = eventData.readUInt32LE(72)
-                const error = eventData
-                  .subarray(76, 76 + errorLength)
-                  .toString('utf8')
-
-                return {
-                  requestId: eventRequestIdHex,
-                  error: error,
-                }
-              }
-            }
-          }
-        }
-      }
-
-      return undefined
+      if (mapped) return mapped
     }
 
+    // 2) Parse regular Anchor events from logs (emit!)
+    const parser = new EventParser(this.program.programId, this.program.coder)
+    for (const evt of parser.parseLogs(logs)) {
+      if (!evt) continue
+      const mapped = this.mapEventToResult(
+        evt.name as ChainSignaturesEventName,
+        evt.name === 'signatureRespondedEvent'
+          ? (evt.data as SignatureRespondedEvent)
+          : (evt.data as SignatureErrorEvent),
+        requestId
+      )
+      if (mapped) return mapped
+    }
+
+    return undefined
+  }
+
+  private mapEventToResult(
+    name: ChainSignaturesEventName,
+    data: SignatureRespondedEvent | SignatureErrorEvent,
+    requestId: string
+  ): RSVSignature | SignatureErrorData | undefined {
+    const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
+    if (name === 'signatureRespondedEvent' && eventRequestIdHex === requestId) {
+      const d = data as SignatureRespondedEvent
+      return {
+        r: Buffer.from(d.signature.bigR.x).toString('hex'),
+        s: Buffer.from(d.signature.s).toString('hex'),
+        v: d.signature.recoveryId + 27,
+      }
+    }
+    if (name === 'signatureErrorEvent' && eventRequestIdHex === requestId) {
+      const d = data as SignatureErrorEvent
+      return {
+        requestId: eventRequestIdHex,
+        error: d.error,
+      }
+    }
     return undefined
   }
 
@@ -609,5 +477,82 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       params: options.params || '',
       address: this.requesterAddress,
     })
+  }
+
+  /**
+   * Subscribes to program events using Anchor's EventParser for regular events,
+   * and CPI parsing for emit_cpi!-emitted events. Returns an unsubscribe fn.
+   */
+  async subscribeToEvents(handlers: {
+    onSignatureResponded?: (
+      event: SignatureRespondedEvent,
+      slot: number
+    ) => Promise<void> | void
+    onSignatureError?: (
+      event: SignatureErrorEvent,
+      slot: number
+    ) => Promise<void> | void
+  }): Promise<() => Promise<void>> {
+    const commitment: 'processed' | 'confirmed' | 'finalized' = 'confirmed'
+    // Subscribe to CPI events (emit_cpi!)
+    const cpiHandlers = new Map<
+      ChainSignaturesEventName,
+      (
+        event: SignatureRespondedEvent | SignatureErrorEvent,
+        slot: number
+      ) => Promise<void>
+    >()
+    if (handlers.onSignatureResponded) {
+      const onSignatureResponded = handlers.onSignatureResponded
+      cpiHandlers.set('signatureRespondedEvent', async (e, s) => {
+        await onSignatureResponded(e as SignatureRespondedEvent, s)
+      })
+    }
+    if (handlers.onSignatureError) {
+      const onSignatureError = handlers.onSignatureError
+      cpiHandlers.set('signatureErrorEvent', async (e, s) => {
+        await onSignatureError(e as SignatureErrorEvent, s)
+      })
+    }
+    const cpiSubId = CpiEventParser.subscribeToCpiEvents(
+      this.connection,
+      this.program,
+      cpiHandlers
+    )
+
+    const parser = new EventParser(this.program.programId, this.program.coder)
+    const subId = this.connection.onLogs(
+      this.program.programId,
+      (logs, context) => {
+        if (logs.err) return
+        for (const evt of parser.parseLogs(logs.logs)) {
+          if (!evt) continue
+          if (evt.name === 'signatureRespondedEvent') {
+            const onSignatureResponded = handlers.onSignatureResponded
+            if (onSignatureResponded) {
+              void onSignatureResponded(
+                evt.data as SignatureRespondedEvent,
+                context.slot
+              )
+            }
+          }
+          if (evt.name === 'signatureErrorEvent') {
+            const onSignatureError = handlers.onSignatureError
+            if (onSignatureError) {
+              void onSignatureError(
+                evt.data as SignatureErrorEvent,
+                context.slot
+              )
+            }
+          }
+        }
+      },
+      commitment
+    )
+
+    return async () => {
+      await this.connection.removeOnLogsListener(subId)
+      await this.connection.removeOnLogsListener(cpiSubId)
+    }
   }
 }
