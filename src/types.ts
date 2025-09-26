@@ -18,29 +18,10 @@ export interface RSVSignature {
   v: number
 }
 
-export interface NearNearMpcSignature {
-  big_r: {
-    affine_point: string
-  }
-  s: {
-    scalar: string
-  }
-  recovery_id: number
-}
-
-export interface SigNetNearMpcSignature {
-  big_r: string
-  s: string
-  recovery_id: number
-}
-
 export interface SigNetEvmMpcSignature {
   bigR: { x: bigint; y: bigint }
   s: bigint
   recoveryId: number
 }
 
-export type MPCSignature =
-  | NearNearMpcSignature
-  | SigNetNearMpcSignature
-  | SigNetEvmMpcSignature
+export type MPCSignature = SigNetEvmMpcSignature

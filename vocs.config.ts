@@ -197,31 +197,6 @@ export default defineConfig({
                 { text: 'sign', link: '/signetjs/contracts/solana/sign' },
               ],
             },
-            {
-              text: 'NEAR',
-              items: [
-                {
-                  text: 'constructor',
-                  link: '/signetjs/contracts/near/constructor',
-                },
-                {
-                  text: 'getCurrentSignatureDeposit',
-                  link: '/signetjs/contracts/near/get-current-signature-deposit',
-                },
-                {
-                  text: 'getDerivedPublicKey',
-                  link: '/signetjs/contracts/near/get-derived-public-key',
-                },
-                {
-                  text: 'getPublicKey',
-                  link: '/signetjs/contracts/near/get-public-key',
-                },
-                {
-                  text: 'sign',
-                  link: '/signetjs/contracts/near/sign',
-                },
-              ],
-            },
           ],
         },
       ],

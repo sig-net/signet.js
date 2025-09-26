@@ -120,7 +120,8 @@
     "src/**/*.d.ts",
     "hardhat.config.mts",
     "vitest.config.ts",
-    "tsup.config.ts"
+    "tsup.config.ts",
+    "tests/**/*.ts"
   ],
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "node_modules", "dist"]
 }

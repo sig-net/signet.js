@@ -11,20 +11,17 @@ The `ChainSignatureContract` is an abstract class that defines the interface for
 - Current Fee: Gets the current signature deposit that handles network congestion
 - Root Public Key: Gets the root public key of the Smart Contract on Sig Network MPC
 
-While the library includes a default implementation for the NEAR protocol, you have the flexibility to implement your own contract for other blockchain networks.
+You have the flexibility to implement your own contract for other blockchain networks.
 
-## Using the NEAR Implementation
+## Using the EVM Implementation
 
 ```ts twoslash
-// [!include ~/snippets/code/near/env.ts]
-// ---cut---
 import { contracts, chainAdapters } from 'signet.js'
 
-const contract = new contracts.near.ChainSignatureContract({
-  networkId: 'testnet',
-  contractId: 'v1.signer-prod.testnet',
-  accountId,
-  keypair,
+const contract = new contracts.evm.ChainSignatureContract({
+  publicClient: undefined as any,
+  walletClient: undefined as any,
+  contractAddress: '0x...'
 })
 ```
 
@@ -38,10 +35,6 @@ In case you need you want all Sig Network Smart Contract capabilities, you can i
 // [!include ~/../src/contracts/ChainSignatureContract.ts]
 ```
 
-### Example: NEAR Implementation
+### Example: EVM Implementation
 
-Below is the reference implementation for the NEAR, which you can use as a guide for implementing your own chain signature contract:
-
-```ts twoslash
-// [!include ~/../src/contracts/near/ChainSignatureContract.ts]
-```
+Refer to the EVM contract in the source tree at `src/contracts/evm/ChainSignaturesContract.ts`.

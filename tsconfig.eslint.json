@@ -4,5 +4,11 @@
     "noEmit": true,
     "types": ["@types/node"]
   },
-  "include": [".eslintrc.cjs", "src/**/*.ts", "tsup.config.ts"]
+  "include": [
+    ".eslintrc.cjs",
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "vitest.config.ts",
+    "tsup.config.ts"
+  ]
 }
