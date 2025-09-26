@@ -10,6 +10,7 @@ import {
 } from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
+import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
 import {
   type NajPublicKey,
   type MPCSignature,
@@ -134,7 +135,7 @@ export async function verifyRecoveredAddress(
   payload: number[] | Uint8Array,
   requesterAddress: string,
   path: string,
-  contract: any // Using any to avoid circular dependency with BaseChainSignatureContract
+  contract: BaseChainSignatureContract
 ): Promise<boolean> {
   try {
     // Derive the expected address using EVM chain adapter
