@@ -4,7 +4,7 @@
  * Note that this is only a type helper and is not the actual IDL. The original
  * IDL can be found at `target/idl/chain_signatures_project.json`.
  */
-export type ChainSignaturesProject = {
+export interface ChainSignaturesProject {
   address: '4uvZW8K4g4jBg7dzPNbb9XDxJLFBK7V6iC76uofmYvEU'
   metadata: {
     name: 'chainSignaturesProject'
