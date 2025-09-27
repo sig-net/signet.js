@@ -1,4 +1,9 @@
-import { type AnchorProvider, Program, EventParser } from '@coral-xyz/anchor'
+import {
+  type AnchorProvider,
+  Program,
+  EventParser,
+  type Idl,
+} from '@coral-xyz/anchor'
 import {
   type AccountMeta,
   PublicKey,
@@ -55,32 +60,38 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @param args - Configuration options for the contract
    * @param args.provider - An Anchor Provider for interacting with Solana
    * @param args.programId - The program ID as a string or PublicKey
-   * @param args.rootPublicKey - Optional root public key. If not provided, it will be derived from the program ID
-   * @param args.requesterAddress - Provider wallet address is always the fee payer but requester can be overridden
+   * @param args.config - Optional configuration
+   * @param args.config.rootPublicKey - Optional root public key. If not provided, it will be derived from the program ID
+   * @param args.config.requesterAddress - Provider wallet address is always the fee payer but requester can be overridden
+   * @param args.config.idl - Optional custom IDL. If not provided, the default ChainSignatures IDL will be used
    */
   constructor(args: {
     provider: AnchorProvider
     programId: string | PublicKey
-    rootPublicKey?: NajPublicKey
-    requesterAddress?: string
+    config?: {
+      rootPublicKey?: NajPublicKey
+      requesterAddress?: string
+      idl?: ChainSignaturesProject & Idl
+    }
   }) {
     super()
     this.provider = args.provider
     this.requesterAddress =
-      args.requesterAddress ?? this.provider.wallet.publicKey.toString()
+      args.config?.requesterAddress ?? this.provider.wallet.publicKey.toString()
 
     this.programId =
       typeof args.programId === 'string'
         ? new PublicKey(args.programId)
         : args.programId
 
+    const idl = args.config?.idl || (IDL as ChainSignaturesProject & Idl)
     this.program = new Program<ChainSignaturesProject>(
-      { ...IDL, address: this.programId.toString() },
+      { ...idl, address: this.programId.toString() },
       this.provider
     )
 
     const rootPublicKey =
-      args.rootPublicKey ||
+      args.config?.rootPublicKey ||
       getRootPublicKey(this.programId.toString(), CHAINS.SOLANA)
 
     if (!rootPublicKey) {

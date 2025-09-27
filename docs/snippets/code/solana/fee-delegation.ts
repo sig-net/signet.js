@@ -26,7 +26,9 @@ const requester = Keypair.generate()
 const chainSigContract = new contracts.solana.ChainSignatureContract({
   provider,
   programId: 'ChainSignatureProgramIdHere',
-  requesterAddress: requester.publicKey.toString(),
+  config: {
+    requesterAddress: requester.publicKey.toString(),
+  },
 })
 // [!endregion initialize-contract]
 
