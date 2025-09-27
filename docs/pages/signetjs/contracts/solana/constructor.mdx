@@ -23,12 +23,42 @@ const contract = new contracts.solana.ChainSignatureContract({
 })
 ```
 
+### With Custom Configuration
+
+```ts
+import { contracts, constants } from 'signet.js'
+import type { ChainSignaturesProject } from 'signet.js/contracts/solana'
+import { AnchorProvider, Wallet, type Idl } from '@coral-xyz/anchor'
+import { Connection, PublicKey, Keypair } from '@solana/web3.js'
+import customIdl from './custom-idl.json'
+
+const connection = new Connection('https://api.devnet.solana.com')
+const wallet = new Wallet(Keypair.generate())
+const provider = new AnchorProvider(
+  connection,
+  wallet,
+  AnchorProvider.defaultOptions()
+)
+
+const contract = new contracts.solana.ChainSignatureContract({
+  provider,
+  programId: new PublicKey(constants.CONTRACT_ADDRESSES.SOLANA.TESTNET_DEV),
+  config: {
+    rootPublicKey: 'secp256k1:...',
+    requesterAddress: 'Dewq9xyD1MZi1rE588XZFvK7uUqkcHLgCnDsn9Ns4H9M',
+    idl: customIdl as ChainSignaturesProject & Idl,
+  },
+})
+```
+
 ## Parameters
 
-| Parameter                | Type                  | Description                                                                                                                 |
-| ------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `args`                   | `object`              | Configuration options for the contract                                                                                      |
-| `args.provider`          | `AnchorProvider`      | Anchor provider instance for interacting with Solana                                                                        |
-| `args.programId`         | `string \| PublicKey` | The program ID of the deployed ChainSignatures program                                                                      |
-| `args.rootPublicKey?`    | `NajPublicKey`        | Optional root public key; derived from program ID if not provided                                                           |
-| `args.requesterAddress?` | `string`              | Optional requester wallet address. If not provided, defaults to the wallet address. Fee payer is always the wallet address. |
+| Parameter                       | Type                           | Description                                                                                                                 |
+| ------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `args`                          | `object`                       | Configuration options for the contract                                                                                      |
+| `args.provider`                 | `AnchorProvider`               | Anchor provider instance for interacting with Solana                                                                        |
+| `args.programId`                | `string \| PublicKey`          | The program ID of the deployed ChainSignatures program                                                                      |
+| `args.config?`                  | `object`                       | Optional configuration object                                                                                               |
+| `args.config.rootPublicKey?`    | `NajPublicKey`                 | Optional root public key; derived from program ID if not provided                                                           |
+| `args.config.requesterAddress?` | `string`                       | Optional requester wallet address. If not provided, defaults to the wallet address. Fee payer is always the wallet address. |
+| `args.config.idl?`              | `ChainSignaturesProject & Idl` | Optional custom IDL. If not provided, the default ChainSignatures IDL will be used                                          |

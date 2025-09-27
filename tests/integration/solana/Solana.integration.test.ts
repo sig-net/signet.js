@@ -29,7 +29,9 @@ describe('Solana ChainSignatures integration (emit!)', () => {
   const contract = new contracts.solana.ChainSignatureContract({
     provider,
     programId: PROGRAM_ID,
-    requesterAddress: payer.publicKey.toString(),
+    config: {
+      requesterAddress: payer.publicKey.toString(),
+    },
   })
 
   it('sign() returns RSV from on-chain emit!', async () => {
