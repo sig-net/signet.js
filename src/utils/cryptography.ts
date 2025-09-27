@@ -1,13 +1,6 @@
 import { base58 } from '@scure/base'
 import { ec as EC } from 'elliptic'
-import {
-  keccak256,
-  concat,
-  padHex,
-  recoverAddress,
-  createPublicClient,
-  http,
-} from 'viem'
+import { keccak256, recoverAddress, createPublicClient, http } from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -18,6 +11,8 @@ import {
   type UncompressedPubKeySEC1,
 } from '@types'
 const { ec: EC } = elliptic
+
+import { chainAdapters } from '..'
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   if (
@@ -140,8 +135,6 @@ export async function verifyRecoveredAddress(
   try {
     // Derive the expected address using EVM chain adapter
     // We use EVM adapter even for non-EVM chains since we're dealing with secp256k1 signatures
-    const { chainAdapters } = await import('..')
-
     const evm = new chainAdapters.evm.EVM({
       publicClient: createPublicClient({
         transport: http('https://dontcare.com'),
@@ -154,20 +147,15 @@ export async function verifyRecoveredAddress(
       path
     )
 
-    // Construct the signature in the format expected by viem
-    const viemSignature = concat([
-      padHex(`0x${signature.r}`, { size: 32 }),
-      padHex(`0x${signature.s}`, { size: 32 }),
-      `0x${signature.v.toString(16)}`,
-    ])
-
-    // Recover the address from the signature
     const recoveredAddress = await recoverAddress({
       hash: new Uint8Array(payload),
-      signature: viemSignature,
+      signature: {
+        r: `0x${signature.r}`,
+        s: `0x${signature.s}`,
+        yParity: signature.v,
+      },
     })
 
-    // Compare the addresses (case-insensitive)
     return recoveredAddress.toLowerCase() === expectedAddress.toLowerCase()
   } catch (error) {
     console.error('Signature verification failed:', error)
