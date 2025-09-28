@@ -1,6 +1,6 @@
 {
   "name": "signet.js",
-  "version": "0.0.12-beta.11",
+  "version": "0.0.12-beta.12",
   "description": "A TypeScript library for handling multi-chain transactions and signatures using Signet MPC",
   "type": "module",
   "exports": {

@@ -1,5 +1,5 @@
 import { base58 } from '@scure/base'
-import { ec as EC } from 'elliptic'
+import elliptic from 'elliptic'
 import { keccak256, recoverAddress, createPublicClient, http } from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
@@ -10,9 +10,9 @@ import {
   type RSVSignature,
   type UncompressedPubKeySEC1,
 } from '@types'
-const { ec: EC } = elliptic
 
 import { chainAdapters } from '..'
+const { ec: EC } = elliptic
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   if (
@@ -61,7 +61,7 @@ export const compressPubKey = (
 /**
  * Converts a NAJ public key to an uncompressed SEC1 public key.
  *
- * @param najPublicKey - The NAJ public key to convert (e.g. secp256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5)
+ * @param najPublicKey - The NAJ public key to convert (e.g. secp 256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5)
  * @returns The uncompressed SEC1 public key (e.g. 04 || x || y)
  */
 export const najToUncompressedPubKeySEC1 = (
