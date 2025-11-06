@@ -56,7 +56,7 @@ export const CONTRACT_ADDRESSES: Record<
   },
   [CHAINS.SOLANA]: {
     [ENVS.TESTNET_DEV]: 'SigDuEPNeDjh3oJv7MUraPN7zaTFomS6ZWfpXwjUg4B',
-    [ENVS.TESTNET]: 'JazJogTrTb6cCjPGKCBv19JvfqJqG5sxF5FiUKSZov1',
-    [ENVS.MAINNET]: '',
+    [ENVS.TESTNET]: 'SigTVbfRK9LsXWpSv9KgpabrQcFKr5hDdUwMhYsXyKg',
+    [ENVS.MAINNET]: 'SigMcRMjKfnC7RDG5q4yUMZM1s5KJ9oYTPP4NmJRDRw',
   },
 }
