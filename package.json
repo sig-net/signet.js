@@ -1,6 +1,6 @@
 {
   "name": "signet.js",
-  "version": "0.0.12-beta.13",
+  "version": "0.0.12-beta.16",
   "description": "A TypeScript library for handling multi-chain transactions and signatures using Signet MPC",
   "type": "module",
   "exports": {
@@ -32,6 +32,10 @@
     "pre:deploy": "npm run build && npm run docs:build",
     "publish-npm": "npm run pre:deploy && cd dist && npm publish",
     "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
+    "release:patch": "npm version patch --no-git-tag-version --force && npm run publish-npm",
+    "release:minor": "npm version minor --no-git-tag-version --force && npm run publish-npm",
+    "release:major": "npm version major --no-git-tag-version --force && npm run publish-npm",
+    "release:beta": "npm version prerelease --preid=beta --no-git-tag-version --force && npm run publish-npm:beta",
     "hardhat": "pnpm exec hardhat node --config hardhat.config.mts",
     "test": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest run && pkill -f hardhat",
     "test:watch": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest --watch",
