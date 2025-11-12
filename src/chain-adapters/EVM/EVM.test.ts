@@ -50,7 +50,7 @@ describe('EVM', async () => {
         v: recovery + 27,
       }
     },
-    getDerivedPublicKey: async () => {
+    getDerivedPublicKey: async ({ keyVersion }) => {
       return '04' as UncompressedPubKeySEC1
     },
     getPublicKey: async () => {

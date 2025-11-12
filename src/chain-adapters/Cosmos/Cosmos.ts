@@ -116,7 +116,8 @@ export class Cosmos extends ChainAdapter<
 
   async deriveAddressAndPublicKey(
     predecessor: string,
-    path: KeyDerivationPath
+    path: KeyDerivationPath,
+    keyVersion: number
   ): Promise<{
     address: string
     publicKey: string
@@ -125,6 +126,7 @@ export class Cosmos extends ChainAdapter<
     const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor,
+      keyVersion,
     })
 
     if (!uncompressedPubKey) {

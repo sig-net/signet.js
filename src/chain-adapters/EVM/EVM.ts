@@ -102,7 +102,8 @@ export class EVM extends ChainAdapter<
 
   async deriveAddressAndPublicKey(
     predecessor: string,
-    path: KeyDerivationPath
+    path: KeyDerivationPath,
+    keyVersion: number
   ): Promise<{
     address: string
     publicKey: string
@@ -110,6 +111,7 @@ export class EVM extends ChainAdapter<
     const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor,
+      keyVersion,
     })
 
     if (!uncompressedPubKey) {

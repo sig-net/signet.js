@@ -141,12 +141,14 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   async getDerivedPublicKey(args: {
     path: string
     predecessor: string
+    keyVersion: number
   }): Promise<UncompressedPubKeySEC1> {
     const pubKey = cryptography.deriveChildPublicKey(
       await this.getPublicKey(),
       args.predecessor,
       args.path,
-      KDF_CHAIN_IDS.SOLANA
+      KDF_CHAIN_IDS.SOLANA,
+      args.keyVersion
     )
 
     return pubKey
@@ -190,6 +192,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       .accounts({
         requester: this.requesterAddress,
         feePayer: this.provider.wallet.publicKey,
+        program: this.programId,
       })
       .remainingAccounts([
         ...fixedRemainingAccounts,
@@ -277,8 +280,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         args.payload,
         this.requesterAddress,
         args.path,
-        this
+        this,
+        args.key_version
       )
+
       if (!isValid) {
         throw new SigningError(
           requestId,
@@ -507,6 +512,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       dest: options.dest || '',
       params: options.params || '',
       address: this.requesterAddress,
+      chainId: KDF_CHAIN_IDS.SOLANA,
     })
   }
 
