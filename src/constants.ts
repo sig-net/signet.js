@@ -32,8 +32,8 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
  * @see {@link deriveChildPublicKey} in cryptography.ts for usage details
  */
 export const KDF_CHAIN_IDS = {
-  [CHAINS.ETHEREUM]: '0x1',
-  [CHAINS.SOLANA]: '0x800001f5',
+  [CHAINS.ETHEREUM]: 'eip155:1',
+  [CHAINS.SOLANA]: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
 } as const
 
 /**

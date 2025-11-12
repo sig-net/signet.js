@@ -97,12 +97,14 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   async getDerivedPublicKey(args: {
     path: string
     predecessor: string
+    keyVersion: number
   }): Promise<UncompressedPubKeySEC1> {
     const pubKey = cryptography.deriveChildPublicKey(
       await this.getPublicKey(),
       args.predecessor.toLowerCase(),
       args.path,
-      KDF_CHAIN_IDS.ETHEREUM
+      KDF_CHAIN_IDS.ETHEREUM,
+      args.keyVersion
     )
 
     return pubKey
@@ -198,6 +200,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         requestId,
         payload: args.payload,
         path: args.path,
+        keyVersion: args.key_version,
         fromBlock: receipt.blockNumber,
         options: options.retry,
       })
@@ -231,12 +234,14 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     requestId,
     payload,
     path,
+    keyVersion,
     fromBlock,
     options,
   }: {
     requestId: Hex
     payload: number[]
     path: string
+    keyVersion: number
     fromBlock: bigint
     options?: RetryOptions
   }): Promise<RSVSignature | SignatureErrorData | undefined> {
@@ -254,7 +259,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
             payload,
             this.walletClient.account?.address as string,
             path,
-            this
+            this,
+            keyVersion
           )
 
           if (!isValid) {

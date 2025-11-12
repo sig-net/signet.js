@@ -71,25 +71,32 @@ export const najToUncompressedPubKeySEC1 = (
   return `04${Buffer.from(decodedKey).toString('hex')}`
 }
 
+const EPSILON_DERIVATION_PREFIX_V1 = 'sig.network v1.0.0 epsilon derivation'
+const EPSILON_DERIVATION_PREFIX_V2 = 'sig.network v2.0.0 epsilon derivation'
+
 /**
- * Derives a child public key from a parent public key using the sig.network v1.0.0 epsilon derivation scheme.
+ * Derives a child public key from a parent public key using the Sig.Network epsilon derivation scheme.
  * The parent public keys are defined in @constants.ts
  *
- * @param najPublicKey - The parent public key in uncompressed SEC1 format (e.g. 04 || x || y)
+ * @param rootUncompressedPubKeySEC1 - The parent public key in uncompressed SEC1 format (e.g. 04 || x || y)
  * @param predecessorId - The predecessor ID is the address of the account calling the signer contract (e.g EOA or Contract Address)
  * @param path - Optional derivation path suffix (defaults to empty string)
+ * @param chainId - CAIP-2 chain identifier used for derivation
+ * @param keyVersion - Key version controlling which derivation prefix to use (legacy v1 for 0, CAIP-2 v2 otherwise)
  * @returns The derived child public key in uncompressed SEC1 format (04 || x || y)
  */
 export function deriveChildPublicKey(
   rootUncompressedPubKeySEC1: UncompressedPubKeySEC1,
   predecessorId: string,
   path: string = '',
-  chainId: string
+  chainId: string,
+  keyVersion: number
 ): UncompressedPubKeySEC1 {
   const ec = new EC('secp256k1')
-
-  const EPSILON_DERIVATION_PREFIX = 'sig.network v1.0.0 epsilon derivation'
-  const derivationPath = `${EPSILON_DERIVATION_PREFIX},${chainId},${predecessorId},${path}`
+  const derivationPath =
+    keyVersion <= 0
+      ? `${EPSILON_DERIVATION_PREFIX_V1},${chainId},${predecessorId},${path}`
+      : `${EPSILON_DERIVATION_PREFIX_V2}:${chainId}:${predecessorId}:${path}`
 
   let scalarHex = ''
 
@@ -130,7 +137,8 @@ export async function verifyRecoveredAddress(
   payload: number[] | Uint8Array,
   requesterAddress: string,
   path: string,
-  contract: BaseChainSignatureContract
+  contract: BaseChainSignatureContract,
+  keyVersion: number
 ): Promise<boolean> {
   try {
     // Derive the expected address using EVM chain adapter
@@ -144,7 +152,8 @@ export async function verifyRecoveredAddress(
 
     const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(
       requesterAddress,
-      path
+      path,
+      keyVersion
     )
 
     const recoveredAddress = await recoverAddress({

@@ -31,12 +31,14 @@ export abstract class BaseChainSignatureContract {
    * @param args - Arguments for key derivation
    * @param args.path - The string path to use derive the key
    * @param args.predecessor - The id/address of the account requesting signature
+   * @param args.keyVersion - Optional key version controlling the derivation prefix (defaults to 0)
    * @returns Promise resolving to the derived SEC1 uncompressed public key
    */
   abstract getDerivedPublicKey(
     args: {
       path: string
       predecessor: string
+      keyVersion: number
     } & Record<string, unknown>
   ): Promise<UncompressedPubKeySEC1>
 }

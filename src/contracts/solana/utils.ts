@@ -5,6 +5,7 @@ export function generateRequestIdSolana({
   payload,
   path,
   keyVersion,
+  chainId,
   algo,
   dest,
   params,
@@ -13,6 +14,7 @@ export function generateRequestIdSolana({
   payload: Uint8Array | number[]
   path: string
   keyVersion: number
+  chainId: string
   algo: string
   dest: string
   params: string
@@ -22,9 +24,9 @@ export function generateRequestIdSolana({
 
   const encoded = encodeAbiParameters(
     parseAbiParameters(
-      'string, bytes, string, uint32, uint256, string, string, string'
+      'string, bytes, string, uint32, string, string, string, string'
     ),
-    [address, payloadHex, path, keyVersion, 0n, algo, dest, params]
+    [address, payloadHex, path, keyVersion, chainId, algo, dest, params]
   )
 
   return keccak256(encoded)

@@ -174,11 +174,13 @@ export class Bitcoin extends ChainAdapter<
 
   async deriveAddressAndPublicKey(
     predecessor: string,
-    path: KeyDerivationPath
+    path: KeyDerivationPath,
+    keyVersion: number
   ): Promise<{ address: string; publicKey: string }> {
     const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor,
+      keyVersion,
     })
 
     if (!uncompressedPubKey) {
