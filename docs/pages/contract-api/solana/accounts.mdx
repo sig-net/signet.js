@@ -1,0 +1,245 @@
+# Solana Program Accounts
+
+This page documents the account structures used by the Signet Solana Program.
+
+## ProgramState
+
+The main program state account that stores configuration and admin information.
+
+### Structure
+
+```rust
+#[account]
+pub struct ProgramState {
+    pub admin: Pubkey,
+    pub signature_deposit: u64,
+    pub chain_id: String,
+}
+```
+
+### Fields
+
+| Field | Type | Size | Description |
+|-------|------|------|-------------|
+| `admin` | `Pubkey` | 32 bytes | Administrator address with management permissions |
+| `signature_deposit` | `u64` | 8 bytes | Required deposit for signature requests (lamports) |
+| `chain_id` | `String` | 4 + 128 bytes | CAIP-2 chain identifier |
+
+### PDA Derivation
+
+```typescript
+const [programStatePDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("program-state")],
+  programId
+);
+```
+
+**Seeds**: `["program-state"]`
+
+### Space Allocation
+
+```
+Total: 8 + 32 + 8 + 4 + 128 = 180 bytes
+
+- Discriminator: 8 bytes
+- admin: 32 bytes
+- signature_deposit: 8 bytes
+- chain_id length: 4 bytes
+- chain_id max content: 128 bytes
+```
+
+### Example: Fetching Program State
+
+```typescript
+import { PublicKey } from '@solana/web3.js';
+import { Program } from '@coral-xyz/anchor';
+
+const [programStatePDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("program-state")],
+  program.programId
+);
+
+const state = await program.account.programState.fetch(programStatePDA);
+
+console.log("Admin:", state.admin.toString());
+console.log("Deposit:", state.signatureDeposit.toString());
+console.log("Chain ID:", state.chainId);
+```
+
+---
+
+## Account Contexts
+
+### Initialize
+
+```rust
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+    #[account(
+        init,
+        payer = admin,
+        space = 8 + 32 + 8 + 4 + 128,
+        seeds = [b"program-state"],
+        bump
+    )]
+    pub program_state: Account<'info, ProgramState>,
+
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+```
+
+### AdminOnly
+
+Used for admin-only operations like `update_deposit`.
+
+```rust
+#[derive(Accounts)]
+pub struct AdminOnly<'info> {
+    #[account(
+        mut,
+        seeds = [b"program-state"],
+        bump,
+        has_one = admin @ ChainSignaturesError::Unauthorized
+    )]
+    pub program_state: Account<'info, ProgramState>,
+
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+```
+
+### WithdrawFunds
+
+```rust
+#[derive(Accounts)]
+pub struct WithdrawFunds<'info> {
+    #[account(
+        mut,
+        seeds = [b"program-state"],
+        bump,
+        has_one = admin @ ChainSignaturesError::Unauthorized
+    )]
+    pub program_state: Account<'info, ProgramState>,
+
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    /// CHECK: Safety check performed in withdraw_funds function
+    #[account(mut)]
+    pub recipient: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+```
+
+### Sign
+
+```rust
+#[event_cpi]
+#[derive(Accounts)]
+pub struct Sign<'info> {
+    #[account(mut, seeds = [b"program-state"], bump)]
+    pub program_state: Account<'info, ProgramState>,
+
+    #[account(mut)]
+    pub requester: Signer<'info>,
+
+    #[account(mut)]
+    pub fee_payer: Option<Signer<'info>>,
+
+    pub system_program: Program<'info, System>,
+}
+```
+
+### SignBidirectional
+
+```rust
+#[event_cpi]
+#[derive(Accounts)]
+pub struct SignBidirectional<'info> {
+    #[account(mut, seeds = [b"program-state"], bump)]
+    pub program_state: Account<'info, ProgramState>,
+
+    #[account(mut)]
+    pub requester: Signer<'info>,
+
+    #[account(mut)]
+    pub fee_payer: Option<Signer<'info>>,
+
+    pub system_program: Program<'info, System>,
+
+    pub instructions: Option<AccountInfo<'info>>,
+}
+```
+
+### Respond
+
+```rust
+#[event_cpi]
+#[derive(Accounts)]
+pub struct Respond<'info> {
+    pub responder: Signer<'info>,
+}
+```
+
+### RespondError
+
+```rust
+#[derive(Accounts)]
+pub struct RespondError<'info> {
+    pub responder: Signer<'info>,
+}
+```
+
+### ReadRespond
+
+Used for `respond_bidirectional`.
+
+```rust
+#[derive(Accounts)]
+pub struct ReadRespond<'info> {
+    pub responder: Signer<'info>,
+}
+```
+
+### GetSignatureDeposit
+
+```rust
+#[derive(Accounts)]
+pub struct GetSignatureDeposit<'info> {
+    #[account(seeds = [b"program-state"], bump)]
+    pub program_state: Account<'info, ProgramState>,
+}
+```
+
+---
+
+## CPI Event Authority
+
+For instructions that emit CPI events (`sign`, `sign_bidirectional`, `respond`), an event authority PDA must be included in remaining accounts:
+
+```typescript
+const eventAuthorityPDA = PublicKey.findProgramAddressSync(
+  [Buffer.from("__event_authority")],
+  programId
+)[0];
+
+// Add to remaining accounts
+const remainingAccounts = [
+  {
+    pubkey: eventAuthorityPDA,
+    isWritable: false,
+    isSigner: false,
+  },
+  {
+    pubkey: programId,
+    isWritable: false,
+    isSigner: false,
+  },
+];
+```

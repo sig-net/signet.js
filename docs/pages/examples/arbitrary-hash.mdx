@@ -26,7 +26,7 @@ const path = 'randomPath'
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
-  key_version: 0,
+  key_version: 1,
 })
 ```
 
@@ -47,7 +47,7 @@ const path = 'randomPath'
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
-  key_version: 0,
+  key_version: 1,
 })
 // ---cut---
 console.log('r:', rsvSignature.r)
@@ -69,7 +69,7 @@ const path = 'randomPath'
 const rsvSignature = await evmChainSigContract.sign({
   payload,
   path,
-  key_version: 0,
+  key_version: 1,
 })
 // ---cut---
 import { concat, padHex, recoverAddress } from 'viem'
@@ -92,9 +92,11 @@ const evm = new chainAdapters.evm.EVM({
   contract: evmChainSigContract,
 })
 
+const keyVersion = 1
 const { address: expectedAddress } = await evm.deriveAddressAndPublicKey(
   account.address,
-  path
+  path,
+  keyVersion
 )
 
 console.log('Recovered address:', recoveredAddress)

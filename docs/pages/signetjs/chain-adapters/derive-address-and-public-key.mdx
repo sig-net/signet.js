@@ -7,9 +7,14 @@ The `deriveAddressAndPublicKey` method derives an address and public key from a 
 ```ts twoslash
 // [!include ~/snippets/code/chains.ts]
 // ---cut---
+const predecessor = '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199'
+const path = 'my_derivation_path'
+const keyVersion = 1
+
 const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
-  '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
-  'my_derivation_path'
+  predecessor,
+  path,
+  keyVersion
 )
 ```
 
@@ -19,6 +24,7 @@ const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
 | ------------- | -------- | ---------------------------------------------------- |
 | `predecessor` | `string` | The wallet/contract address requesting the signature |
 | `path`        | `string` | The derivation path to use                           |
+| `keyVersion`  | `number` | The version of the MPC key to use                    |
 
 ## Returns
 

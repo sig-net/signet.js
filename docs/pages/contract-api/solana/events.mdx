@@ -1,0 +1,344 @@
+# Solana Program Events
+
+This page documents all events emitted by the Signet Solana Program.
+
+## Event Types
+
+The program uses two types of events:
+
+| Type | Macro | Use Case |
+|------|-------|----------|
+| **CPI Events** | `emit_cpi!` | Cross-program invocations, parsed from inner instructions |
+| **Regular Events** | `emit!` | Direct program calls, parsed from logs |
+
+## SignatureRequestedEvent
+
+Emitted when a signature is requested via the `sign` instruction.
+
+### Structure
+
+```rust
+#[event]
+pub struct SignatureRequestedEvent {
+    pub sender: Pubkey,
+    pub payload: [u8; 32],
+    pub key_version: u32,
+    pub deposit: u64,
+    pub chain_id: String,
+    pub path: String,
+    pub algo: String,
+    pub dest: String,
+    pub params: String,
+    pub fee_payer: Option<Pubkey>,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sender` | `Pubkey` | Address of the requester |
+| `payload` | `[u8; 32]` | 32-byte data to be signed |
+| `key_version` | `u32` | MPC key version |
+| `deposit` | `u64` | Deposit amount paid |
+| `chain_id` | `String` | CAIP-2 chain ID of the program |
+| `path` | `String` | Derivation path for key |
+| `algo` | `String` | Signing algorithm |
+| `dest` | `String` | Response destination |
+| `params` | `String` | Additional parameters |
+| `fee_payer` | `Option<Pubkey>` | Fee payer if different from sender |
+
+### Emitted By
+
+- `sign` instruction (via CPI)
+
+---
+
+## SignBidirectionalEvent
+
+Emitted when a bidirectional signature request is made via the `sign_bidirectional` instruction.
+
+### Structure
+
+```rust
+#[event]
+pub struct SignBidirectionalEvent {
+    pub sender: Pubkey,
+    pub serialized_transaction: Vec<u8>,
+    pub caip2_id: String,
+    pub key_version: u32,
+    pub deposit: u64,
+    pub path: String,
+    pub algo: String,
+    pub dest: String,
+    pub params: String,
+    pub program_id: Pubkey,
+    pub output_deserialization_schema: Vec<u8>,
+    pub respond_serialization_schema: Vec<u8>,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sender` | `Pubkey` | Address of the requester |
+| `serialized_transaction` | `Vec<u8>` | RLP-encoded transaction for target chain |
+| `caip2_id` | `String` | Target chain CAIP-2 identifier |
+| `key_version` | `u32` | MPC key version |
+| `deposit` | `u64` | Deposit amount paid |
+| `path` | `String` | Derivation path for key |
+| `algo` | `String` | Signing algorithm |
+| `dest` | `String` | Response destination |
+| `params` | `String` | Additional parameters |
+| `program_id` | `Pubkey` | Callback program (reserved) |
+| `output_deserialization_schema` | `Vec<u8>` | Schema for parsing call output |
+| `respond_serialization_schema` | `Vec<u8>` | Schema for response serialization |
+
+### Emitted By
+
+- `sign_bidirectional` instruction (via CPI)
+
+---
+
+## SignatureRespondedEvent
+
+Emitted when the MPC network returns a signature.
+
+### Structure
+
+```rust
+#[event]
+pub struct SignatureRespondedEvent {
+    pub request_id: [u8; 32],
+    pub responder: Pubkey,
+    pub signature: Signature,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `request_id` | `[u8; 32]` | Identifier linking response to request |
+| `responder` | `Pubkey` | Address of MPC responder |
+| `signature` | `Signature` | ECDSA signature (big_r, s, recovery_id) |
+
+### Emitted By
+
+- `respond` instruction (via CPI)
+
+### Security Note
+
+Any address can emit this event. Clients **must** verify the signature validity before use.
+
+---
+
+## SignatureErrorEvent
+
+Emitted when signature generation fails.
+
+### Structure
+
+```rust
+#[event]
+pub struct SignatureErrorEvent {
+    pub request_id: [u8; 32],
+    pub responder: Pubkey,
+    pub error: String,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `request_id` | `[u8; 32]` | Identifier of failed request |
+| `responder` | `Pubkey` | Address of MPC responder |
+| `error` | `String` | Error message |
+
+### Emitted By
+
+- `respond_error` instruction
+
+### Security Note
+
+Any address can emit this event. Do not rely on it for business logic.
+
+---
+
+## RespondBidirectionalEvent
+
+Emitted when the MPC network returns execution results for a bidirectional request.
+
+### Structure
+
+```rust
+#[event]
+pub struct RespondBidirectionalEvent {
+    pub request_id: [u8; 32],
+    pub responder: Pubkey,
+    pub serialized_output: Vec<u8>,
+    pub signature: Signature,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `request_id` | `[u8; 32]` | Original request identifier |
+| `responder` | `Pubkey` | Address of MPC responder |
+| `serialized_output` | `Vec<u8>` | Borsh-serialized execution result |
+| `signature` | `Signature` | Signature over `keccak256(request_id \|\| output)` |
+
+### Emitted By
+
+- `respond_bidirectional` instruction
+
+### Output Format
+
+**Success**: Serialized return value per `respond_serialization_schema`
+
+**Failure**: Magic prefix `0xdeadbeef` + boolean `true`
+
+---
+
+## DepositUpdatedEvent
+
+Emitted when the admin updates the signature deposit.
+
+### Structure
+
+```rust
+#[event]
+pub struct DepositUpdatedEvent {
+    pub old_deposit: u64,
+    pub new_deposit: u64,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `old_deposit` | `u64` | Previous deposit amount |
+| `new_deposit` | `u64` | New deposit amount |
+
+### Emitted By
+
+- `update_deposit` instruction
+
+---
+
+## FundsWithdrawnEvent
+
+Emitted when the admin withdraws funds.
+
+### Structure
+
+```rust
+#[event]
+pub struct FundsWithdrawnEvent {
+    pub amount: u64,
+    pub recipient: Pubkey,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `amount` | `u64` | Withdrawn amount in lamports |
+| `recipient` | `Pubkey` | Recipient address |
+
+### Emitted By
+
+- `withdraw_funds` instruction
+
+---
+
+## Parsing Events
+
+### Using Anchor EventParser
+
+```typescript
+import { EventParser } from '@coral-xyz/anchor';
+
+const parser = new EventParser(program.programId, program.coder);
+
+// From transaction logs
+const tx = await connection.getParsedTransaction(signature, {
+  commitment: 'confirmed',
+  maxSupportedTransactionVersion: 0,
+});
+
+for (const event of parser.parseLogs(tx.meta.logMessages)) {
+  if (event.name === 'signatureRespondedEvent') {
+    console.log('Request ID:', Buffer.from(event.data.requestId).toString('hex'));
+    console.log('Signature R:', Buffer.from(event.data.signature.bigR.x).toString('hex'));
+    console.log('Signature S:', Buffer.from(event.data.signature.s).toString('hex'));
+  }
+}
+```
+
+### CPI Event Parsing
+
+For CPI events (emit_cpi!), parse from inner instructions:
+
+```typescript
+// Parse CPI events from inner instructions
+const innerInstructions = tx.meta.innerInstructions;
+for (const inner of innerInstructions) {
+  for (const ix of inner.instructions) {
+    // Decode CPI event data
+  }
+}
+```
+
+### Request ID Calculation
+
+**For regular `sign` instruction:**
+
+```typescript
+import { keccak256, encodeAbiParameters, parseAbiParameters } from 'viem';
+
+// Order: sender, payload, path, keyVersion, chainId, algo, dest, params
+const encoded = encodeAbiParameters(
+  parseAbiParameters('string, bytes, string, uint32, string, string, string, string'),
+  [
+    sender,      // Solana Pubkey as string
+    payload,     // 32-byte payload as hex
+    path,        // Derivation path
+    keyVersion,  // Key version (u32)
+    chainId,     // CAIP-2 chain ID
+    algo,        // Algorithm
+    dest,        // Destination
+    params       // Additional params
+  ]
+);
+const requestId = keccak256(encoded);
+```
+
+**For `sign_bidirectional` instruction:**
+
+```typescript
+// Order: sender, serializedTx, caip2Id, keyVersion, path, algo, dest, params
+// Uses ABI-packed encoding (not standard ABI encoding)
+const encoded = encodePacked(
+  ['string', 'bytes', 'string', 'uint32', 'string', 'string', 'string', 'string'],
+  [
+    sender,                 // Solana Pubkey as string
+    serializedTransaction,  // RLP-encoded transaction
+    caip2Id,               // Target chain CAIP-2 ID
+    keyVersion,            // Key version (u32)
+    path,                  // Derivation path
+    algo,                  // Algorithm
+    dest,                  // Destination
+    params                 // Additional params
+  ]
+);
+const requestId = keccak256(encoded);
+```
+
+Note: The field order differs between `sign` and `sign_bidirectional`. Always verify against the MPC implementation.

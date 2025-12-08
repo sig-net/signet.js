@@ -26,10 +26,12 @@ const cosmos = new chainAdapters.cosmos.Cosmos({
 
 const path = 'cosmos'
 const predecessorId = walletClient.account.address
+const keyVersion = 1
 
 const { address: from, publicKey } = await cosmos.deriveAddressAndPublicKey(
   predecessorId,
-  path
+  path,
+  keyVersion
 )
 
 const { balance, decimals } = await cosmos.getBalance(from)
@@ -60,7 +62,7 @@ const { transaction, hashesToSign } = await cosmos.prepareTransactionForSigning(
 const rsvSignature = await evmChainSigContract.sign({
   payload: hashesToSign[0],
   path,
-  key_version: 0,
+  key_version: keyVersion,
 })
 
 const tx = cosmos.finalizeTransactionSigning({

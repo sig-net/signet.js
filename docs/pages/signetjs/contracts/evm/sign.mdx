@@ -10,7 +10,7 @@ Signs data using the Chain Signatures contract.
 const signature = await evmChainSigContract.sign({
   path: 'my_derivation_path',
   payload: Array.from(new Uint8Array(32).fill(1)), // 32-byte array
-  key_version: 0,
+  key_version: 1,
 })
 ```
 

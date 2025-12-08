@@ -10,6 +10,7 @@ Derives a public key from a predecessor ID and derivation path.
 const publicKey = await evmChainSigContract.getDerivedPublicKey({
   path: 'my_derivation_path',
   predecessor: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
+  keyVersion: 1,
 })
 ```
 
@@ -20,6 +21,7 @@ const publicKey = await evmChainSigContract.getDerivedPublicKey({
 | `args`             | `object` | Arguments for deriving the public key                |
 | `args.path`        | `string` | The derivation path to use                           |
 | `args.predecessor` | `string` | The wallet/contract address requesting the signature |
+| `args.keyVersion`  | `number` | The version of the MPC key to use                    |
 
 ## Returns
 

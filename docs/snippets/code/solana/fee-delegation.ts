@@ -38,7 +38,7 @@ const chainSigContract = new contracts.solana.ChainSignatureContract({
       {
         path: 'example_path',
         payload: Array(32).fill(1),
-        key_version: 0,
+        key_version: 1,
       },
       {
         remainingAccounts: [

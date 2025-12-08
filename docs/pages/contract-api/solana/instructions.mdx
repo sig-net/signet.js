@@ -1,0 +1,344 @@
+# Solana Program Instructions
+
+This page documents all instructions available in the Signet Solana Program.
+
+For program addresses, see [Contract Addresses](/primitives/contract-addresses).
+
+## sign
+
+Requests a signature from the MPC network on a 32-byte payload.
+
+### Signature
+
+```rust
+pub fn sign(
+    ctx: Context<Sign>,
+    payload: [u8; 32],
+    key_version: u32,
+    path: String,
+    algo: String,
+    dest: String,
+    params: String,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `payload` | `[u8; 32]` | 32-byte data to be signed (typically a transaction hash) |
+| `key_version` | `u32` | Version of the MPC key to use |
+| `path` | `String` | Derivation path for the user's key (e.g., `"eth"`, `"btc"`) |
+| `algo` | `String` | Signing algorithm (optional, e.g., `"secp256k1"`) |
+| `dest` | `String` | Response destination chain (optional) |
+| `params` | `String` | Additional parameters as JSON (optional) |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `program_state` | `Account<ProgramState>` | No | Yes | Program state PDA |
+| `requester` | `Signer` | Yes | Yes | Account requesting signature |
+| `fee_payer` | `Option<Signer>` | Yes | Yes | Optional separate fee payer |
+| `system_program` | `Program<System>` | No | No | System program |
+
+### Emits
+
+- `SignatureRequestedEvent` (via CPI)
+
+### Example
+
+```typescript
+await program.methods
+  .sign(
+    Array.from(payloadHash),  // [u8; 32]
+    0,                         // key_version
+    "eth",                     // path
+    "",                        // algo
+    "",                        // dest
+    ""                         // params
+  )
+  .accounts({
+    programState: programStatePDA,
+    requester: userKeypair.publicKey,
+    feePayer: null,
+    systemProgram: SystemProgram.programId,
+  })
+  .signers([userKeypair])
+  .rpc();
+```
+
+---
+
+## sign_bidirectional
+
+Initiates a cross-chain transaction with response callback. The MPC network will sign the transaction, observe its execution on the target chain, and return the result.
+
+### Signature
+
+```rust
+pub fn sign_bidirectional(
+    ctx: Context<SignBidirectional>,
+    serialized_transaction: Vec<u8>,
+    caip2_id: String,
+    key_version: u32,
+    path: String,
+    algo: String,
+    dest: String,
+    params: String,
+    program_id: Pubkey,
+    output_deserialization_schema: Vec<u8>,
+    respond_serialization_schema: Vec<u8>,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `serialized_transaction` | `Vec<u8>` | RLP-encoded unsigned transaction for target chain |
+| `caip2_id` | `String` | CAIP-2 identifier of target chain (e.g., `"eip155:1"`) |
+| `key_version` | `u32` | MPC key version |
+| `path` | `String` | Derivation path for signing key |
+| `algo` | `String` | Signing algorithm |
+| `dest` | `String` | Response destination |
+| `params` | `String` | Additional parameters |
+| `program_id` | `Pubkey` | Callback program ID (reserved for future use) |
+| `output_deserialization_schema` | `Vec<u8>` | ABI schema for parsing EVM call output |
+| `respond_serialization_schema` | `Vec<u8>` | Borsh schema for serializing response |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `program_state` | `Account<ProgramState>` | No | Yes | Program state PDA |
+| `requester` | `Signer` | Yes | Yes | Account requesting signature |
+| `fee_payer` | `Option<Signer>` | Yes | Yes | Optional separate fee payer |
+| `system_program` | `Program<System>` | No | No | System program |
+| `instructions` | `Option<AccountInfo>` | No | No | Instructions sysvar (optional) |
+
+### Emits
+
+- `SignBidirectionalEvent` (via CPI)
+
+### Schemas Format
+
+**output_deserialization_schema** (ABI format):
+```json
+[
+  {"name": "result", "type": "uint256"},
+  {"name": "success", "type": "bool"}
+]
+```
+
+**respond_serialization_schema** (Borsh format):
+```json
+[
+  {"name": "output", "type": "bytes"}
+]
+```
+
+---
+
+## respond
+
+Returns signatures from the MPC network. Called by MPC responders after signature generation.
+
+### Signature
+
+```rust
+pub fn respond(
+    ctx: Context<Respond>,
+    request_ids: Vec<[u8; 32]>,
+    signatures: Vec<Signature>,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `request_ids` | `Vec<[u8; 32]>` | Array of request identifiers |
+| `signatures` | `Vec<Signature>` | Corresponding ECDSA signatures |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `responder` | `Signer` | Yes | No | MPC responder account |
+
+### Emits
+
+- `SignatureRespondedEvent` for each signature (via CPI)
+
+### Notes
+
+- Array lengths must match
+- Events are emitted in canonical order (PSBT-style for batched requests)
+- Any address can call this - clients must verify signature validity
+
+---
+
+## respond_error
+
+Reports signature generation errors from the MPC network.
+
+### Signature
+
+```rust
+pub fn respond_error(
+    ctx: Context<RespondError>,
+    errors: Vec<ErrorResponse>,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `errors` | `Vec<ErrorResponse>` | Array of error responses |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `responder` | `Signer` | Yes | No | MPC responder account |
+
+### Emits
+
+- `SignatureErrorEvent` for each error
+
+---
+
+## respond_bidirectional
+
+Finalizes a bidirectional flow with execution results from the target chain.
+
+### Signature
+
+```rust
+pub fn respond_bidirectional(
+    ctx: Context<ReadRespond>,
+    request_id: [u8; 32],
+    serialized_output: Vec<u8>,
+    signature: Signature,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `request_id` | `[u8; 32]` | Original request identifier |
+| `serialized_output` | `Vec<u8>` | Borsh-serialized execution output |
+| `signature` | `Signature` | ECDSA signature over `keccak256(request_id \|\| serialized_output)` |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `responder` | `Signer` | Yes | No | MPC responder account |
+
+### Emits
+
+- `RespondBidirectionalEvent`
+
+### Output Format
+
+For successful transactions:
+- Contract call: Serialized return value per `respond_serialization_schema`
+- Simple transfer: Empty success indicator
+
+For failed transactions:
+- Magic prefix `0xdeadbeef` followed by boolean `true`
+
+---
+
+## update_deposit
+
+Updates the required signature deposit amount. Admin only.
+
+### Signature
+
+```rust
+pub fn update_deposit(
+    ctx: Context<AdminOnly>,
+    new_deposit: u64,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `new_deposit` | `u64` | New deposit amount in lamports |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `program_state` | `Account<ProgramState>` | No | Yes | Program state PDA |
+| `admin` | `Signer` | Yes | Yes | Admin account |
+| `system_program` | `Program<System>` | No | No | System program |
+
+### Emits
+
+- `DepositUpdatedEvent`
+
+---
+
+## withdraw_funds
+
+Withdraws accumulated funds from the program. Admin only.
+
+### Signature
+
+```rust
+pub fn withdraw_funds(
+    ctx: Context<WithdrawFunds>,
+    amount: u64,
+) -> Result<()>
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `amount` | `u64` | Amount to withdraw in lamports |
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `program_state` | `Account<ProgramState>` | No | Yes | Program state PDA |
+| `admin` | `Signer` | Yes | Yes | Admin account |
+| `recipient` | `AccountInfo` | No | Yes | Recipient account (cannot be zero address) |
+| `system_program` | `Program<System>` | No | No | System program |
+
+### Emits
+
+- `FundsWithdrawnEvent`
+
+---
+
+## get_signature_deposit
+
+Returns the current signature deposit amount. View function.
+
+### Signature
+
+```rust
+pub fn get_signature_deposit(
+    ctx: Context<GetSignatureDeposit>,
+) -> Result<u64>
+```
+
+### Accounts
+
+| Account | Type | Signer | Mutable | Description |
+|---------|------|--------|---------|-------------|
+| `program_state` | `Account<ProgramState>` | No | No | Program state PDA |
+
+### Returns
+
+- `u64` - Current signature deposit in lamports

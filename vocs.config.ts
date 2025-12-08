@@ -34,6 +34,15 @@ export default defineConfig({
       ],
     },
     {
+      text: 'Architecture',
+      items: [
+        {
+          text: 'Sign Bidirectional Flow',
+          link: '/architecture/sign-bidirectional',
+        },
+      ],
+    },
+    {
       text: 'Primitives',
       items: [
         { text: 'Contract Addresses', link: '/primitives/contract-addresses' },
@@ -61,7 +70,37 @@ export default defineConfig({
       ],
     },
     {
-      text: 'API Reference',
+      text: 'Contract API Reference',
+      items: [
+        {
+          text: 'Solana Program',
+          items: [
+            {
+              text: 'Instructions',
+              link: '/contract-api/solana/instructions',
+            },
+            {
+              text: 'Accounts',
+              link: '/contract-api/solana/accounts',
+            },
+            {
+              text: 'Events',
+              link: '/contract-api/solana/events',
+            },
+            {
+              text: 'Errors',
+              link: '/contract-api/solana/errors',
+            },
+            {
+              text: 'Types',
+              link: '/contract-api/solana/types',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      text: 'Signet.js SDK Reference',
       items: [
         {
           text: 'Chain Adapters',

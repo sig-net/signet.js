@@ -1,0 +1,298 @@
+# Sign Bidirectional Flow
+
+The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a transaction to be signed via Solana, broadcast by the user to Ethereum, observed by the MPC network, and have the execution result returned back to Solana with cryptographic proof.
+
+## Supported Chains
+
+| Source Chain | Target Chain | Status    |
+| ------------ | ------------ | --------- |
+| **Solana**   | **Ethereum** | Supported |
+
+Currently, sign_bidirectional supports **Solana as the only source chain** and **Ethereum as the only target chain**.
+
+## Overview
+
+The bidirectional flow consists of six phases:
+
+1. **Sign Request**: User initiates a `sign_bidirectional` request on Solana with a serialized Ethereum transaction
+2. **Signature Generation & Delivery**: MPC network signs the transaction, stores it in backlog, and returns the signature to the user
+3. **User Broadcast**: User assembles the signed transaction and broadcasts it to Ethereum
+4. **Light Client Observation**: MPC network observes Ethereum via light client and detects transaction confirmation
+5. **Output Extraction**: MPC extracts execution result (contract call return value or transfer success)
+6. **Respond Bidirectional**: MPC signs the output and calls `respond_bidirectional` on Solana
+
+```
+User                     Solana                    MPC                      EVM
+  │                         │                        │                        │
+  │ sign_bidirectional()    │                        │                        │
+  ├────────────────────────►│                        │                        │
+  │                         │ SignBidirectionalEvent │                        │
+  │                         ├───────────────────────►│ Sign & store           │
+  │                         │◄───── respond() ───────┤                        │
+  │ Poll signature          │                        │                        │
+  │◄─ SignatureRespondedEvent                        │                        │
+  │                         │                        │                        │
+  │ Broadcast ──────────────┼────────────────────────┼───────────────────────►│
+  │                         │                        │◄──── Observe tx ───────┤
+  │                         │◄─ respond_bidirectional() ◄─────────────────────┤
+  │ Poll response           │                        │                        │
+  │◄─ RespondBidirectionalEvent                      │                        │
+  │                         │                        │                        │
+```
+
+**Key Insights**:
+
+1. The MPC network does NOT broadcast transactions - the user does
+2. After signing, MPC calls `respond()` on Solana (emits `SignatureRespondedEvent`)
+3. User polls for `SignatureRespondedEvent` to receive the signature
+4. MPC stores the pending tx in backlog and observes the target chain via light client
+5. When tx is confirmed, MPC calls `respond_bidirectional()` with execution result
+6. Failed transactions return a magic error prefix (`0xdeadbeef`) in the output
+
+## Detailed Flow
+
+### Phase 1: Sign Request Processing
+
+When a `sign_bidirectional` request is received, the MPC network:
+
+1. Parses the `SignBidirectionalEvent` from Solana
+2. Generates a unique request ID (see below)
+3. Computes the transaction hash from the unsigned RLP data
+
+**Request ID Generation**:
+
+```typescript
+import { keccak256, encodePacked } from 'viem'
+
+const requestId = keccak256(
+  encodePacked(
+    [
+      'string',
+      'bytes',
+      'string',
+      'uint32',
+      'string',
+      'string',
+      'string',
+      'string',
+    ],
+    [
+      sender,
+      serializedTransaction,
+      caip2Id,
+      keyVersion,
+      path,
+      algo,
+      dest,
+      params,
+    ]
+  )
+)
+```
+
+Note: The `sender` is the Solana Pubkey converted to its string representation.
+
+### Phase 2: Signature Generation & Delivery
+
+The MPC protocol generates the ECDSA signature and delivers it to Solana:
+
+1. Derives the child public key using epsilon
+2. Computes the transaction hash to sign (see below)
+3. Generates the signature `(r, s, v)` for the transaction hash
+4. Creates a `BidirectionalTx` with the signed transaction details
+5. Stores the transaction in the **backlog** (keyed by target chain) with status `PendingExecution`
+6. Calls `respond()` on Solana program (same as regular sign) - emits `SignatureRespondedEvent`
+
+**What Gets Signed**:
+
+The MPC signs the **keccak256 hash of the unsigned RLP-encoded transaction**:
+
+- **EIP-1559 transactions**: Hash of `0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList])`
+- **Legacy transactions**: Hash of `RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])` where `v = chainId`, `r = 0`, `s = 0`
+
+The user polls for `SignatureRespondedEvent` to receive the signature (same as regular sign flow).
+
+### Phase 3: User Broadcasts Transaction
+
+After receiving the signature, the user:
+
+1. Assembles the signed transaction (RLP + signature)
+2. Broadcasts to the target EVM chain
+3. The MPC does NOT handle broadcasting - this is the user's responsibility
+
+### Phase 4: Light Client Observation
+
+The MPC network runs a light client to observe the target chain. The light client connects to consensus and execution RPC endpoints, syncs with the network, and subscribes to new block headers.
+
+The indexer monitors each new block:
+
+1. Gets block receipts via `get_block_receipts(block_number)`
+2. Checks if any receipt matches a pending `BidirectionalTx` by transaction hash
+3. Extracts the execution status (success/failure) from the receipt
+
+### Phase 5: Output Extraction
+
+When a transaction is found in a block:
+
+1. Transaction status is updated based on the receipt (`Success` or `Failed`)
+2. For successful **contract calls**, the MPC extracts the return value by simulating `eth_call` at `block_number - 1`
+3. For **simple transfers**, no output is extracted (returns empty success indicator)
+4. The output is deserialized using the `output_deserialization_schema` (ABI format)
+
+### Phase 6: Respond Bidirectional
+
+The MPC creates a second signature request for the response:
+
+1. Serializes the output using the `respond_serialization_schema` (Borsh format)
+2. Computes the response hash: `keccak256(request_id || serialized_output)`
+3. Signs the response hash using a special derivation path (`"solana response key"`)
+4. Calls `respond_bidirectional` on Solana with the request ID, serialized output, and signature
+5. Solana emits `RespondBidirectionalEvent` for the user to poll
+
+## Address Derivation
+
+The `from` address for the Ethereum transaction is deterministically derived from the MPC root public key combined with user-specific parameters. This allows each Solana user to have a unique, isolated Ethereum address.
+
+### Epsilon Derivation Formula
+
+The derivation uses an "epsilon" scalar multiplication scheme:
+
+```
+derivedPublicKey = rootPublicKey + (epsilon × G)
+
+where:
+  epsilon = keccak256("sig.network v2.0.0 epsilon derivation:{chainId}:{predecessor}:{path}")
+  G = secp256k1 generator point
+```
+
+### Derivation Parameters
+
+| Parameter     | Description                                   | Example                                         |
+| ------------- | --------------------------------------------- | ----------------------------------------------- |
+| `chainId`     | CAIP-2 chain identifier for KDF               | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`       |
+| `predecessor` | Solana address (requester's pubkey as string) | `"7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV"` |
+| `path`        | User-defined derivation path suffix           | `"my_vault"` or `""`                            |
+| `keyVersion`  | MPC key version                               | `1`                                             |
+
+### Converting to Ethereum Address
+
+Once the derived public key is obtained, convert it to an Ethereum address:
+
+```
+evmAddress = keccak256(uncompressedPublicKey[1:])[12:]
+```
+
+Where `uncompressedPublicKey[1:]` removes the `04` prefix from the SEC1 uncompressed public key.
+
+### Using signet.js
+
+The `signet.js` SDK provides utilities to derive addresses client-side:
+
+```ts twoslash
+// [!include ~/snippets/code/chains.ts]
+// ---cut---
+const solanaAddress = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV'
+const derivationPath = 'my_vault' // or '' for default
+const keyVersion = 1
+
+const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
+  solanaAddress,
+  derivationPath,
+  keyVersion
+)
+```
+
+## Response Structure
+
+### RespondBidirectionalTx
+
+The response contains:
+
+| Field    | Type                | Description                              |
+| -------- | ------------------- | ---------------------------------------- |
+| `tx_id`  | `BidirectionalTxId` | Original transaction ID (signed tx hash) |
+| `output` | `Vec<u8>`           | Serialized execution output              |
+
+### Response Hash Calculation
+
+The response signature is computed over `keccak256(request_id || serialized_output)`.
+
+### Error Handling
+
+Failed transactions are indicated with a magic prefix `0xdeadbeef`:
+
+- The response output starts with `0xdeadbeef`
+- Followed by boolean `true` serialized in the response format
+
+This allows clients to detect failed executions by checking for the magic prefix.
+
+## Light Client Observation
+
+The MPC network uses an Ethereum light client to trustlessly observe the target chain without running a full node.
+
+### Features Used
+
+| Feature               | Purpose                                            |
+| --------------------- | -------------------------------------------------- |
+| `get_block_receipts`  | Get transaction receipts to check execution status |
+| `get_transaction`     | Fetch transaction details                          |
+| `call`                | Simulate contract call to extract return data      |
+| `subscribe(NewHeads)` | Subscribe to new blocks                            |
+
+### Block Processing Flow
+
+For each new block, the MPC:
+
+1. Retrieves all pending bidirectional transactions from the backlog
+2. Fetches block receipts from the light client
+3. Matches receipts against pending transaction hashes
+4. For matched transactions, extracts execution status and creates the response
+
+### Output Extraction for Contract Calls
+
+For contract calls, the MPC extracts the return value by:
+
+1. Fetching the original transaction details
+2. Checking if it's a contract call (has input data > 2 bytes)
+3. Simulating the call at `block_number - 1` using `eth_call`
+4. Decoding the result using the `output_deserialization_schema`
+
+For simple transfers (no input data), no output extraction is needed.
+
+## Security Considerations
+
+### Trust Model
+
+| Component          | Trust Level           | Responsibility                                 |
+| ------------------ | --------------------- | ---------------------------------------------- |
+| **User**           | Untrusted             | Builds transaction, broadcasts to target chain |
+| **Solana Program** | Trustless             | Emits events, receives responses               |
+| **MPC Network**    | Threshold trust       | Signs transactions, observes target chain      |
+| **Light Client**   | Light client security | Validates Ethereum consensus                   |
+
+### Security Properties
+
+1. **Request ID Uniqueness**: Each request has a unique ID computed from `keccak256(sender || tx || chain_id || ...)` preventing replay attacks
+
+2. **Response Authenticity**: Responses are signed over `keccak256(request_id || serialized_output)` using MPC threshold signatures
+
+3. **Output Verification**: The `output_deserialization_schema` and `respond_serialization_schema` ensure consistent data encoding
+
+4. **Key Isolation**: Each user has isolated keys through unique derivation paths (`epsilon = derive_epsilon(predecessor, path)`)
+
+5. **Light Client Security**: The light client validates Ethereum consensus without trusting an RPC provider
+
+### Attack Vectors & Mitigations
+
+| Attack                  | Mitigation                                       |
+| ----------------------- | ------------------------------------------------ |
+| Fake response injection | MPC signature verification on Solana             |
+| Transaction replay      | Unique request ID tied to transaction parameters |
+| Output manipulation     | Signed by MPC, schema validation                 |
+| Key reuse across users  | Path-based key derivation per user               |
+
+## Related Documentation
+
+- [Solana Program Instructions](/contract-api/solana/instructions) - Program instructions
+- [Chain Signatures Contract](/primitives/chain-contract-interface) - Contract interface
+- [Sign Method](/signetjs/contracts/solana/sign) - Standard signing flow
