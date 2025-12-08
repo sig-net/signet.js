@@ -31,10 +31,12 @@ const bitcoin = new chainAdapters.btc.Bitcoin({
 
 const path = 'btc'
 const predecessorId = walletClient.account.address
+const keyVersion = 1
 
 const { address: from, publicKey } = await bitcoin.deriveAddressAndPublicKey(
   predecessorId,
-  path
+  path,
+  keyVersion
 )
 
 const { balance, decimals } = await bitcoin.getBalance(from)
@@ -50,7 +52,7 @@ const { transaction, hashesToSign } =
 const rsvSignature = await evmChainSigContract.sign({
   payload: hashesToSign[0],
   path,
-  key_version: 0,
+  key_version: keyVersion,
 })
 
 const tx = bitcoin.finalizeTransactionSigning({

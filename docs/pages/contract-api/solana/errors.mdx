@@ -1,0 +1,222 @@
+# Solana Program Errors
+
+This page documents all error codes returned by the Signet Solana Program.
+
+## Error Codes
+
+```rust
+#[error_code]
+pub enum ChainSignaturesError {
+    #[msg("Insufficient deposit amount")]
+    InsufficientDeposit,
+
+    #[msg("Arrays must have the same length")]
+    InvalidInputLength,
+
+    #[msg("Unauthorized access")]
+    Unauthorized,
+
+    #[msg("Insufficient funds for withdrawal")]
+    InsufficientFunds,
+
+    #[msg("Invalid recipient address")]
+    InvalidRecipient,
+
+    #[msg("Invalid transaction data")]
+    InvalidTransaction,
+
+    #[msg("Missing instruction sysvar")]
+    MissingInstructionSysvar,
+}
+```
+
+## Error Reference
+
+### InsufficientDeposit
+
+**Code**: `6000`
+
+**Message**: "Insufficient deposit amount"
+
+**Cause**: The fee payer's account does not have enough lamports to cover the required signature deposit.
+
+**Resolution**: Ensure the fee payer has at least `signature_deposit` lamports available.
+
+**Occurs in**: `sign`, `sign_bidirectional`
+
+```typescript
+// Check deposit requirement before calling
+const programState = await program.account.programState.fetch(programStatePDA);
+const requiredDeposit = programState.signatureDeposit;
+
+const balance = await connection.getBalance(payerPubkey);
+if (balance < requiredDeposit.toNumber()) {
+  throw new Error(`Insufficient balance. Need ${requiredDeposit} lamports`);
+}
+```
+
+---
+
+### InvalidInputLength
+
+**Code**: `6001`
+
+**Message**: "Arrays must have the same length"
+
+**Cause**: The `request_ids` and `signatures` arrays passed to `respond` have different lengths.
+
+**Resolution**: Ensure both arrays have exactly the same number of elements.
+
+**Occurs in**: `respond`
+
+```typescript
+// Correct usage
+await program.methods
+  .respond(
+    [requestId1, requestId2],  // 2 request IDs
+    [signature1, signature2]   // Must also be 2 signatures
+  )
+  .rpc();
+```
+
+---
+
+### Unauthorized
+
+**Code**: `6002`
+
+**Message**: "Unauthorized access"
+
+**Cause**: A non-admin account attempted to call an admin-only instruction.
+
+**Resolution**: Use the admin account that matches `program_state.admin`.
+
+**Occurs in**: `update_deposit`, `withdraw_funds`
+
+```typescript
+// Check admin before calling
+const programState = await program.account.programState.fetch(programStatePDA);
+if (!programState.admin.equals(callerPubkey)) {
+  throw new Error("Only admin can call this instruction");
+}
+```
+
+---
+
+### InsufficientFunds
+
+**Code**: `6003`
+
+**Message**: "Insufficient funds for withdrawal"
+
+**Cause**: Attempted to withdraw more lamports than the program state account holds.
+
+**Resolution**: Check the program state balance and withdraw only available funds.
+
+**Occurs in**: `withdraw_funds`
+
+```typescript
+// Check available balance
+const programStateInfo = await connection.getAccountInfo(programStatePDA);
+const availableBalance = programStateInfo.lamports;
+
+if (withdrawAmount > availableBalance) {
+  throw new Error(`Can only withdraw up to ${availableBalance} lamports`);
+}
+```
+
+---
+
+### InvalidRecipient
+
+**Code**: `6004`
+
+**Message**: "Invalid recipient address"
+
+**Cause**: The recipient address for withdrawal is the zero address (default Pubkey).
+
+**Resolution**: Provide a valid non-zero recipient address.
+
+**Occurs in**: `withdraw_funds`
+
+```typescript
+// Validate recipient
+if (recipientPubkey.equals(PublicKey.default)) {
+  throw new Error("Recipient cannot be zero address");
+}
+```
+
+---
+
+### InvalidTransaction
+
+**Code**: `6005`
+
+**Message**: "Invalid transaction data"
+
+**Cause**: The `serialized_transaction` parameter is empty.
+
+**Resolution**: Provide a valid RLP-encoded transaction.
+
+**Occurs in**: `sign_bidirectional`
+
+```typescript
+// Validate transaction before calling
+if (serializedTransaction.length === 0) {
+  throw new Error("Transaction data cannot be empty");
+}
+```
+
+---
+
+### MissingInstructionSysvar
+
+**Code**: `6006`
+
+**Message**: "Missing instruction sysvar"
+
+**Cause**: The instructions sysvar account was required but not provided.
+
+**Resolution**: Include the instructions sysvar in the accounts if required.
+
+**Occurs in**: `sign_bidirectional` (when instructions account is required)
+
+---
+
+## Handling Errors
+
+### Anchor Error Handling
+
+```typescript
+import { AnchorError } from '@coral-xyz/anchor';
+
+try {
+  await program.methods.sign(...).rpc();
+} catch (error) {
+  if (error instanceof AnchorError) {
+    switch (error.error.errorCode.code) {
+      case 'InsufficientDeposit':
+        console.error('Not enough lamports for deposit');
+        break;
+      case 'Unauthorized':
+        console.error('Only admin can perform this action');
+        break;
+      default:
+        console.error('Contract error:', error.error.errorMessage);
+    }
+  }
+  throw error;
+}
+```
+
+### Error Code Mapping
+
+| Error Name | Numeric Code | Hex Code |
+|------------|--------------|----------|
+| InsufficientDeposit | 6000 | 0x1770 |
+| InvalidInputLength | 6001 | 0x1771 |
+| Unauthorized | 6002 | 0x1772 |
+| InsufficientFunds | 6003 | 0x1773 |
+| InvalidRecipient | 6004 | 0x1774 |
+| InvalidTransaction | 6005 | 0x1775 |
+| MissingInstructionSysvar | 6006 | 0x1776 |

@@ -4,3 +4,9 @@ dist/
 .env
 
 .vscode/
+
+.pnpm-store/
+
+.DS_Store
+
+vocs.config.ts.timestamp-*

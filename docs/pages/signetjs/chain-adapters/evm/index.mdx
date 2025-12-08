@@ -27,10 +27,12 @@ const evm = new chainAdapters.evm.EVM({
 
 const path = 'eth'
 const predecessorId = walletClient.account.address
+const keyVersion = 1
 
 const { address: from, publicKey } = await evm.deriveAddressAndPublicKey(
   predecessorId,
-  path
+  path,
+  keyVersion
 )
 
 const { balance, decimals } = await evm.getBalance(from)
@@ -44,7 +46,7 @@ const { transaction, hashesToSign } = await evm.prepareTransactionForSigning({
 const rsvSignature = await evmChainSigContract.sign({
   payload: hashesToSign[0],
   path,
-  key_version: 0,
+  key_version: keyVersion,
 })
 
 const tx = evm.finalizeTransactionSigning({
