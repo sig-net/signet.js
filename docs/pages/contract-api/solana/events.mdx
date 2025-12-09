@@ -83,8 +83,8 @@ pub struct SignBidirectionalEvent {
 | Field | Type | Description |
 |-------|------|-------------|
 | `sender` | `Pubkey` | Address of the requester |
-| `serialized_transaction` | `Vec<u8>` | RLP-encoded transaction for target chain |
-| `caip2_id` | `String` | Target chain CAIP-2 identifier |
+| `serialized_transaction` | `Vec<u8>` | RLP-encoded transaction for destination chain |
+| `caip2_id` | `String` | Destination chain CAIP-2 identifier |
 | `key_version` | `u32` | MPC key version |
 | `deposit` | `u64` | Deposit amount paid |
 | `path` | `String` | Derivation path for key |

@@ -1,0 +1,221 @@
+# EVM Contract Events
+
+This page documents all events emitted by the Signet EVM Contract.
+
+## SignatureRequested
+
+Emitted when a signature is requested via the `sign` function.
+
+### Structure
+
+```solidity
+event SignatureRequested(
+    address sender,
+    bytes32 payload,
+    uint32 keyVersion,
+    uint256 deposit,
+    uint256 chainId,
+    string path,
+    string algo,
+    string dest,
+    string params
+);
+```
+
+### Fields
+
+| Field | Type | Indexed | Description |
+|-------|------|---------|-------------|
+| `sender` | `address` | No | Address of the requester |
+| `payload` | `bytes32` | No | 32-byte data to be signed |
+| `keyVersion` | `uint32` | No | MPC key version |
+| `deposit` | `uint256` | No | Deposit amount paid |
+| `chainId` | `uint256` | No | Chain ID where request originated |
+| `path` | `string` | No | Derivation path for key |
+| `algo` | `string` | No | Signing algorithm |
+| `dest` | `string` | No | Response destination |
+| `params` | `string` | No | Additional parameters |
+
+### Emitted By
+
+- `sign` function
+
+---
+
+## SignatureResponded
+
+Emitted when the MPC network returns a signature.
+
+### Structure
+
+```solidity
+event SignatureResponded(
+    bytes32 indexed requestId,
+    address responder,
+    Signature signature
+);
+```
+
+### Fields
+
+| Field | Type | Indexed | Description |
+|-------|------|---------|-------------|
+| `requestId` | `bytes32` | Yes | Identifier linking response to request |
+| `responder` | `address` | No | Address of MPC responder |
+| `signature` | `Signature` | No | ECDSA signature (bigR, s, recoveryId) |
+
+### Emitted By
+
+- `respond` function
+
+### Filtering by Request ID
+
+Since `requestId` is indexed, you can efficiently filter events:
+
+```typescript
+const logs = await publicClient.getLogs({
+  address: contractAddress,
+  event: parseAbiItem('event SignatureResponded(bytes32 indexed requestId, address responder, (((uint256 x, uint256 y) bigR, uint256 s, uint8 recoveryId)) signature)'),
+  args: {
+    requestId: expectedRequestId
+  },
+  fromBlock: startBlock
+})
+```
+
+---
+
+## SignatureError
+
+Emitted when signature generation fails.
+
+### Structure
+
+```solidity
+event SignatureError(
+    bytes32 indexed requestId,
+    address responder,
+    string error
+);
+```
+
+### Fields
+
+| Field | Type | Indexed | Description |
+|-------|------|---------|-------------|
+| `requestId` | `bytes32` | Yes | Identifier of failed request |
+| `responder` | `address` | No | Address of MPC responder |
+| `error` | `string` | No | Error message |
+
+### Emitted By
+
+- `respondError` function
+
+---
+
+## Withdraw
+
+Emitted when the admin withdraws funds.
+
+### Structure
+
+```solidity
+event Withdraw(
+    address indexed owner,
+    uint256 amount
+);
+```
+
+### Fields
+
+| Field | Type | Indexed | Description |
+|-------|------|---------|-------------|
+| `owner` | `address` | Yes | Admin address |
+| `amount` | `uint256` | No | Withdrawn amount in wei |
+
+### Emitted By
+
+- `withdraw` function
+
+---
+
+## Parsing Events
+
+### Using viem
+
+```typescript
+import { parseAbiItem, decodeEventLog } from 'viem'
+
+// Define event ABI
+const signatureRespondedEvent = parseAbiItem(
+  'event SignatureResponded(bytes32 indexed requestId, address responder, ((uint256 x, uint256 y) bigR, uint256 s, uint8 recoveryId) signature)'
+)
+
+// Get logs
+const logs = await publicClient.getLogs({
+  address: contractAddress,
+  event: signatureRespondedEvent,
+  fromBlock: blockNumber,
+  toBlock: 'latest'
+})
+
+// Process each log
+for (const log of logs) {
+  const { requestId, responder, signature } = log.args
+
+  console.log('Request ID:', requestId)
+  console.log('Signature R.x:', signature.bigR.x)
+  console.log('Signature R.y:', signature.bigR.y)
+  console.log('Signature s:', signature.s)
+  console.log('Recovery ID:', signature.recoveryId)
+}
+```
+
+### Watching for Events
+
+```typescript
+const unwatch = publicClient.watchContractEvent({
+  address: contractAddress,
+  abi: chainSignaturesAbi,
+  eventName: 'SignatureResponded',
+  args: {
+    requestId: expectedRequestId
+  },
+  onLogs: (logs) => {
+    for (const log of logs) {
+      console.log('Signature received:', log.args.signature)
+    }
+  }
+})
+
+// Later: stop watching
+unwatch()
+```
+
+---
+
+## Request ID Calculation
+
+The request ID is computed as a keccak256 hash of the request parameters:
+
+```typescript
+import { keccak256, encodeAbiParameters, parseAbiParameters } from 'viem'
+
+const requestId = keccak256(
+  encodeAbiParameters(
+    parseAbiParameters('address, bytes32, string, uint32, uint256, string, string, string'),
+    [
+      sender,      // msg.sender address
+      payload,     // 32-byte payload
+      path,        // Derivation path
+      keyVersion,  // Key version (u32)
+      chainId,     // Block chain ID
+      algo,        // Algorithm
+      dest,        // Destination
+      params       // Additional params
+    ]
+  )
+)
+```
+
+This allows clients to compute the expected request ID before the transaction confirms, enabling immediate event filtering.

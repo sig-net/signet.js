@@ -72,7 +72,7 @@ await program.methods
 
 ## sign_bidirectional
 
-Initiates a cross-chain transaction with response callback. The MPC network will sign the transaction, observe its execution on the target chain, and return the result.
+Initiates a cross-chain transaction with response callback. The MPC network will sign the transaction, observe its execution on the destination chain, and return the result.
 
 ### Signature
 
@@ -96,8 +96,8 @@ pub fn sign_bidirectional(
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `serialized_transaction` | `Vec<u8>` | RLP-encoded unsigned transaction for target chain |
-| `caip2_id` | `String` | CAIP-2 identifier of target chain (e.g., `"eip155:1"`) |
+| `serialized_transaction` | `Vec<u8>` | RLP-encoded unsigned transaction for destination chain |
+| `caip2_id` | `String` | CAIP-2 identifier of destination chain (e.g., `"eip155:1"`) |
 | `key_version` | `u32` | MPC key version |
 | `path` | `String` | Derivation path for signing key |
 | `algo` | `String` | Signing algorithm |
@@ -212,7 +212,7 @@ pub fn respond_error(
 
 ## respond_bidirectional
 
-Finalizes a bidirectional flow with execution results from the target chain.
+Finalizes a bidirectional flow with execution results from the destination chain.
 
 ### Signature
 

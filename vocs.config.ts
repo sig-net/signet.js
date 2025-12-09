@@ -73,6 +73,23 @@ export default defineConfig({
       text: 'Contract API Reference',
       items: [
         {
+          text: 'EVM Contract',
+          items: [
+            {
+              text: 'Functions',
+              link: '/contract-api/evm/functions',
+            },
+            {
+              text: 'Events',
+              link: '/contract-api/evm/events',
+            },
+            {
+              text: 'Types',
+              link: '/contract-api/evm/types',
+            },
+          ],
+        },
+        {
           text: 'Solana Program',
           items: [
             {
@@ -94,6 +111,15 @@ export default defineConfig({
             {
               text: 'Types',
               link: '/contract-api/solana/types',
+            },
+            {
+              text: 'Bidirectional Destination Chains',
+              items: [
+                {
+                  text: 'EVM',
+                  link: '/contract-api/solana/destination-chains/evm',
+                },
+              ],
             },
           ],
         },
