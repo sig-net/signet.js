@@ -90,38 +90,8 @@ export default defineConfig({
           ],
         },
         {
-          text: 'Solana Program',
-          items: [
-            {
-              text: 'Instructions',
-              link: '/contract-api/solana/instructions',
-            },
-            {
-              text: 'Accounts',
-              link: '/contract-api/solana/accounts',
-            },
-            {
-              text: 'Events',
-              link: '/contract-api/solana/events',
-            },
-            {
-              text: 'Errors',
-              link: '/contract-api/solana/errors',
-            },
-            {
-              text: 'Types',
-              link: '/contract-api/solana/types',
-            },
-            {
-              text: 'Bidirectional Destination Chains',
-              items: [
-                {
-                  text: 'EVM',
-                  link: '/contract-api/solana/destination-chains/evm',
-                },
-              ],
-            },
-          ],
+          text: 'Solana Program (Rust Docs)',
+          link: 'https://docs.rs/chain-signatures',
         },
       ],
     },

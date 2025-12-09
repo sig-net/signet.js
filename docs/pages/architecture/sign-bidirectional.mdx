@@ -2,6 +2,17 @@
 
 The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a transaction to be signed on a source chain, broadcast by the user to a destination chain, observed by the MPC network, and have the execution result returned back to the source chain with cryptographic proof.
 
+:::info Solana Program Documentation
+For comprehensive Solana program documentation including instructions, events, types, and the Solana → EVM flow, see the **[Signet Solana Program Rust Docs](https://docs.rs/chain-signatures)**.
+
+The Rust documentation includes:
+- Complete instruction reference with parameters and examples
+- Event structures with field-by-field documentation
+- Request ID generation formulas
+- Response signature verification procedures
+- EVM destination chain integration guide
+:::
+
 ## Supported Chains
 
 | Source Chain | Destination Chain | Status    |
@@ -136,7 +147,7 @@ The MPC creates a second signature request for the response:
 
 1. Serializes the output using the `respond_serialization_schema` (source chain format)
 2. Computes the response hash: `keccak256(request_id || serialized_output)`
-3. Signs the response hash using a special derivation path (`"response key"`)
+3. Signs the response hash using a special derivation path (`"solana response key"`)
 4. Calls `respond_bidirectional` on the source chain with the request ID, serialized output, and signature
 5. Source chain emits `RespondBidirectionalEvent` for the user to poll
 
@@ -213,7 +224,6 @@ This allows clients to detect failed executions by checking for the magic prefix
 
 ## Related Documentation
 
+- [Signet Solana Program Rust Docs](https://docs.rs/chain-signatures) - Complete Solana program reference (instructions, events, types)
 - [EVM Contract API](/contract-api/evm/functions) - EVM contract reference
-- [Solana Program API](/contract-api/solana/instructions) - Solana instructions
-- [EVM Destination Chain Guide](/contract-api/solana/destination-chains/evm) - Using sign_bidirectional with EVM destinations
 - [Chain Signatures Contract](/primitives/chain-contract-interface) - Contract interface
