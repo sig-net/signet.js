@@ -1,0 +1,250 @@
+# EVM Contract Functions
+
+This page documents all functions available in the Signet EVM Contract.
+
+For contract addresses, see [Contract Addresses](/primitives/contract-addresses).
+
+## sign
+
+Requests a signature from the MPC network on a 32-byte payload.
+
+### Signature
+
+```solidity
+function sign(SignRequest calldata _request) external payable
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_request` | `SignRequest` | Signature request struct containing payload and metadata |
+
+### SignRequest Struct
+
+```solidity
+struct SignRequest {
+    bytes32 payload;     // 32-byte data to be signed (typically a transaction hash)
+    string path;         // Derivation path for the user's key
+    uint32 keyVersion;   // Version of the MPC key to use
+    string algo;         // Signing algorithm (optional)
+    string dest;         // Response destination (optional)
+    string params;       // Additional parameters as JSON (optional)
+}
+```
+
+### Value
+
+The function is `payable`. The caller must send at least `getSignatureDeposit()` wei as the signature fee.
+
+### Emits
+
+- `SignatureRequested` event
+
+### Example
+
+```typescript
+import { encodeFunctionData } from 'viem'
+
+const signRequest = {
+  payload: payloadHash,  // bytes32
+  path: 'eth',           // derivation path
+  keyVersion: 0,         // key version
+  algo: '',              // algorithm (optional)
+  dest: '',              // destination (optional)
+  params: ''             // params (optional)
+}
+
+const deposit = await contract.read.getSignatureDeposit()
+
+const hash = await walletClient.writeContract({
+  address: contractAddress,
+  abi: chainSignaturesAbi,
+  functionName: 'sign',
+  args: [signRequest],
+  value: deposit
+})
+```
+
+---
+
+## respond
+
+Returns signatures from the MPC network. Called by MPC responders after signature generation.
+
+### Signature
+
+```solidity
+function respond(Response[] calldata _responses) external
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_responses` | `Response[]` | Array of responses containing request IDs and signatures |
+
+### Response Struct
+
+```solidity
+struct Response {
+    bytes32 requestId;   // Request identifier
+    Signature signature; // ECDSA signature
+}
+```
+
+### Emits
+
+- `SignatureResponded` event for each response
+
+### Notes
+
+- Only addresses with the MPC_NETWORK role can call this function
+- Array processing is atomic - all responses succeed or all fail
+
+---
+
+## respondError
+
+Reports signature generation errors from the MPC network.
+
+### Signature
+
+```solidity
+function respondError(ErrorResponse[] calldata _errors) external
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_errors` | `ErrorResponse[]` | Array of error responses |
+
+### ErrorResponse Struct
+
+```solidity
+struct ErrorResponse {
+    bytes32 requestId;     // Request identifier
+    string errorMessage;   // Error description
+}
+```
+
+### Emits
+
+- `SignatureError` event for each error
+
+---
+
+## getSignatureDeposit
+
+Returns the current signature deposit amount required for signing requests.
+
+### Signature
+
+```solidity
+function getSignatureDeposit() external view returns (uint256)
+```
+
+### Returns
+
+| Type | Description |
+|------|-------------|
+| `uint256` | Current signature deposit in wei |
+
+### Example
+
+```typescript
+const deposit = await publicClient.readContract({
+  address: contractAddress,
+  abi: chainSignaturesAbi,
+  functionName: 'getSignatureDeposit'
+})
+
+console.log(`Deposit required: ${formatEther(deposit)} ETH`)
+```
+
+---
+
+## setSignatureDeposit
+
+Updates the required signature deposit amount. Admin only.
+
+### Signature
+
+```solidity
+function setSignatureDeposit(uint256 _amount) external
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_amount` | `uint256` | New deposit amount in wei |
+
+### Access Control
+
+- Requires `DEFAULT_ADMIN_ROLE`
+
+---
+
+## withdraw
+
+Withdraws accumulated funds from the contract. Admin only.
+
+### Signature
+
+```solidity
+function withdraw(uint256 _amount, address _receiver) external
+```
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `_amount` | `uint256` | Amount to withdraw in wei |
+| `_receiver` | `address` | Recipient address |
+
+### Access Control
+
+- Requires `DEFAULT_ADMIN_ROLE`
+
+### Emits
+
+- `Withdraw` event
+
+---
+
+## Role Management
+
+The contract uses OpenZeppelin's AccessControl for role-based permissions.
+
+### hasRole
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool)
+```
+
+### grantRole
+
+```solidity
+function grantRole(bytes32 role, address account) external
+```
+
+### revokeRole
+
+```solidity
+function revokeRole(bytes32 role, address account) external
+```
+
+### renounceRole
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external
+```
+
+### Roles
+
+| Role | Description |
+|------|-------------|
+| `DEFAULT_ADMIN_ROLE` | Can manage other roles, update deposit, withdraw funds |
+| `MPC_NETWORK` | Can call `respond` and `respondError` |
