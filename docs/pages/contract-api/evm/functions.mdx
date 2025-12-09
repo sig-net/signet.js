@@ -11,13 +11,13 @@ Requests a signature from the MPC network on a 32-byte payload.
 ### Signature
 
 ```solidity
-function sign(SignRequest calldata _request) external payable
+function sign(SignRequest memory _request) external payable
 ```
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter  | Type          | Description                                              |
+| ---------- | ------------- | -------------------------------------------------------- |
 | `_request` | `SignRequest` | Signature request struct containing payload and metadata |
 
 ### SignRequest Struct
@@ -47,12 +47,12 @@ The function is `payable`. The caller must send at least `getSignatureDeposit()`
 import { encodeFunctionData } from 'viem'
 
 const signRequest = {
-  payload: payloadHash,  // bytes32
-  path: 'eth',           // derivation path
-  keyVersion: 0,         // key version
-  algo: '',              // algorithm (optional)
-  dest: '',              // destination (optional)
-  params: ''             // params (optional)
+  payload: payloadHash, // bytes32
+  path: 'eth', // derivation path
+  keyVersion: 0, // key version
+  algo: '', // algorithm (optional)
+  dest: '', // destination (optional)
+  params: '', // params (optional)
 }
 
 const deposit = await contract.read.getSignatureDeposit()
@@ -62,7 +62,7 @@ const hash = await walletClient.writeContract({
   abi: chainSignaturesAbi,
   functionName: 'sign',
   args: [signRequest],
-  value: deposit
+  value: deposit,
 })
 ```
 
@@ -80,8 +80,8 @@ function respond(Response[] calldata _responses) external
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter    | Type         | Description                                              |
+| ------------ | ------------ | -------------------------------------------------------- |
 | `_responses` | `Response[]` | Array of responses containing request IDs and signatures |
 
 ### Response Struct
@@ -116,8 +116,8 @@ function respondError(ErrorResponse[] calldata _errors) external
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter | Type              | Description              |
+| --------- | ----------------- | ------------------------ |
 | `_errors` | `ErrorResponse[]` | Array of error responses |
 
 ### ErrorResponse Struct
@@ -147,8 +147,8 @@ function getSignatureDeposit() external view returns (uint256)
 
 ### Returns
 
-| Type | Description |
-|------|-------------|
+| Type      | Description                      |
+| --------- | -------------------------------- |
 | `uint256` | Current signature deposit in wei |
 
 ### Example
@@ -157,7 +157,7 @@ function getSignatureDeposit() external view returns (uint256)
 const deposit = await publicClient.readContract({
   address: contractAddress,
   abi: chainSignaturesAbi,
-  functionName: 'getSignatureDeposit'
+  functionName: 'getSignatureDeposit',
 })
 
 console.log(`Deposit required: ${formatEther(deposit)} ETH`)
@@ -177,8 +177,8 @@ function setSignatureDeposit(uint256 _amount) external
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter | Type      | Description               |
+| --------- | --------- | ------------------------- |
 | `_amount` | `uint256` | New deposit amount in wei |
 
 ### Access Control
@@ -199,10 +199,10 @@ function withdraw(uint256 _amount, address _receiver) external
 
 ### Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `_amount` | `uint256` | Amount to withdraw in wei |
-| `_receiver` | `address` | Recipient address |
+| Parameter   | Type      | Description               |
+| ----------- | --------- | ------------------------- |
+| `_amount`   | `uint256` | Amount to withdraw in wei |
+| `_receiver` | `address` | Recipient address         |
 
 ### Access Control
 
@@ -244,7 +244,7 @@ function renounceRole(bytes32 role, address callerConfirmation) external
 
 ### Roles
 
-| Role | Description |
-|------|-------------|
+| Role                 | Description                                            |
+| -------------------- | ------------------------------------------------------ |
 | `DEFAULT_ADMIN_ROLE` | Can manage other roles, update deposit, withdraw funds |
-| `MPC_NETWORK` | Can call `respond` and `respondError` |
+| `MPC_NETWORK`        | Can call `respond` and `respondError`                  |
