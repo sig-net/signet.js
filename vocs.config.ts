@@ -91,7 +91,7 @@ export default defineConfig({
         },
         {
           text: 'Solana Program (Rust Docs)',
-          link: 'https://docs.rs/chain-signatures',
+          link: '/contract-api/solana',
         },
       ],
     },
