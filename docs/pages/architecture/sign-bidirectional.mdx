@@ -1,17 +1,10 @@
 # Sign Bidirectional Flow
 
-The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a transaction to be signed on a source chain, broadcast by the user to a destination chain, observed by the MPC network, and have the execution result returned back to the source chain with cryptographic proof.
+The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a source chain contract to execute a transaction on a destination chain and receive the execution result back on-chain with cryptographic proof.
 
-:::info Solana Program Documentation
-For comprehensive Solana program documentation including instructions, events, types, and the Solana → EVM flow, see the **[Signet Solana Program Rust Docs](https://docs.rs/chain-signatures)**.
+For example, a Solana program can execute a transaction on Ethereum and receive the contract return value or success/failure status back on Solana—all verified by the MPC network.
 
-The Rust documentation includes:
-- Complete instruction reference with parameters and examples
-- Event structures with field-by-field documentation
-- Request ID generation formulas
-- Response signature verification procedures
-- EVM destination chain integration guide
-:::
+> **Comprehensive Documentation**: For detailed documentation including request ID generation, serialization schemas, response verification, error handling, and security considerations, see the **[Signet Solana Program Rust Docs](https://aspect-build.github.io/signet-solana-program/)**.
 
 ## Supported Chains
 
@@ -21,14 +14,11 @@ The Rust documentation includes:
 
 ## Overview
 
-The bidirectional flow consists of six phases:
+The bidirectional flow enables a source chain contract to:
 
-1. **Sign Request**: User initiates a `sign_bidirectional` request on the source chain with a serialized transaction for the destination chain
-2. **Signature Generation & Delivery**: MPC network signs the transaction, stores it in backlog, and returns the signature to the user
-3. **User Broadcast**: User assembles the signed transaction and broadcasts it to the destination chain
-4. **Light Client Observation**: MPC network observes the destination chain via light client and detects transaction confirmation
-5. **Output Extraction**: MPC extracts execution result (contract call return value or transfer success)
-6. **Respond Bidirectional**: MPC signs the output and calls `respond_bidirectional` on the source chain
+1. Request a signature for a destination chain transaction
+2. Broadcast the signed transaction to the destination chain
+3. Receive the execution result (contract return value or success/failure) back on the source chain
 
 ```
 User                   Source Chain              MPC               Destination Chain
@@ -49,181 +39,16 @@ User                   Source Chain              MPC               Destination C
   │                         │                        │                        │
 ```
 
-**Key Insights**:
+## Flow Steps
 
-1. The MPC network does NOT broadcast transactions - the user does
-2. After signing, MPC calls `respond()` on the source chain (emits `SignatureRespondedEvent`)
-3. User polls for `SignatureRespondedEvent` to receive the signature
-4. MPC stores the pending tx in backlog and observes the destination chain via light client
-5. When tx is confirmed, MPC calls `respond_bidirectional()` with execution result
-6. Failed transactions return a magic error prefix (`0xdeadbeef`) in the output
-
-## Detailed Flow
-
-### Phase 1: Sign Request Processing
-
-When a `sign_bidirectional` request is received, the MPC network:
-
-1. Parses the `SignBidirectionalEvent` from the source chain
-2. Generates a unique request ID (see below)
-3. Computes the transaction hash from the serialized transaction data
-
-**Request ID Generation**:
-
-```typescript
-import { keccak256, encodePacked } from 'viem'
-
-const requestId = keccak256(
-  encodePacked(
-    [
-      'string',
-      'bytes',
-      'string',
-      'uint32',
-      'string',
-      'string',
-      'string',
-      'string',
-    ],
-    [
-      sender,
-      serializedTransaction,
-      caip2Id,
-      keyVersion,
-      path,
-      algo,
-      dest,
-      params,
-    ]
-  )
-)
-```
-
-Note: The `sender` is the source chain address converted to its string representation.
-
-### Phase 2: Signature Generation & Delivery
-
-The MPC protocol generates the signature and delivers it to the source chain:
-
-1. Derives the child public key using epsilon
-2. Computes the transaction hash to sign (format depends on destination chain)
-3. Generates the signature for the transaction hash
-4. Creates a `BidirectionalTx` with the signed transaction details
-5. Stores the transaction in the **backlog** (keyed by destination chain) with status `PendingExecution`
-6. Calls `respond()` on the source chain program (same as regular sign) - emits `SignatureRespondedEvent`
-
-The user polls for `SignatureRespondedEvent` to receive the signature (same as regular sign flow).
-
-### Phase 3: User Broadcasts Transaction
-
-After receiving the signature, the user:
-
-1. Assembles the signed transaction (serialized data + signature)
-2. Broadcasts to the destination chain
-3. The MPC does NOT handle broadcasting - this is the user's responsibility
-
-### Phase 4: Light Client Observation
-
-The MPC network runs a light client to observe the destination chain. The light client connects to consensus and execution endpoints, syncs with the network, and subscribes to new block headers.
-
-The indexer monitors each new block:
-
-1. Gets block receipts/confirmations
-2. Checks if any receipt matches a pending `BidirectionalTx` by transaction hash
-3. Extracts the execution status (success/failure) from the receipt
-
-### Phase 5: Output Extraction
-
-When a transaction is found in a block:
-
-1. Transaction status is updated based on the receipt (`Success` or `Failed`)
-2. For successful **contract calls**, the MPC extracts the return value by simulating the call at the previous block
-3. For **simple transfers**, no output is extracted (returns empty success indicator)
-4. The output is deserialized using the `output_deserialization_schema` (destination chain format)
-
-### Phase 6: Respond Bidirectional
-
-The MPC creates a second signature request for the response:
-
-1. Serializes the output using the `respond_serialization_schema` (source chain format)
-2. Computes the response hash: `keccak256(request_id || serialized_output)`
-3. Signs the response hash using a special derivation path (`"solana response key"`)
-4. Calls `respond_bidirectional` on the source chain with the request ID, serialized output, and signature
-5. Source chain emits `RespondBidirectionalEvent` for the user to poll
-
-## Serialization Schemas
-
-The bidirectional flow uses two schemas to handle cross-chain data encoding:
-
-| Schema                          | Purpose                                                | Direction         |
-| ------------------------------- | ------------------------------------------------------ | ----------------- |
-| `output_deserialization_schema` | Decode execution results from destination chain format | Destination → MPC |
-| `respond_serialization_schema`  | Encode response data for source chain format           | MPC → Source      |
-
-This dual-schema approach enables interoperability between chains with different serialization formats.
-
-## Address Derivation
-
-The `from` address for the destination chain transaction is deterministically derived from the MPC root public key combined with user-specific parameters. This allows each source chain user to have a unique, isolated address on the destination chain.
-
-### Using signet.js
-
-The `signet.js` SDK provides utilities to derive addresses client-side. Each chain adapter provides a `deriveAddressAndPublicKey` method:
-
-```ts twoslash
-// [!include ~/snippets/code/chains.ts]
-// ---cut---
-const sourceAddress = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV'
-const derivationPath = 'my_vault' // or '' for default
-const keyVersion = 1
-
-const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
-  sourceAddress,
-  derivationPath,
-  keyVersion
-)
-```
-
-## Response Structure
-
-### RespondBidirectionalTx
-
-The response contains:
-
-| Field    | Type                | Description                              |
-| -------- | ------------------- | ---------------------------------------- |
-| `tx_id`  | `BidirectionalTxId` | Original transaction ID (signed tx hash) |
-| `output` | `Vec<u8>`           | Serialized execution output              |
-
-### Response Hash Calculation
-
-The response signature is computed over `keccak256(request_id || serialized_output)`.
-
-### Error Handling
-
-Failed transactions are indicated with a magic prefix `0xdeadbeef`:
-
-- The response output starts with `0xdeadbeef`
-- Followed by boolean `true` serialized in the response format
-
-This allows clients to detect failed executions by checking for the magic prefix.
-
-## Security Considerations
-
-### Security Properties
-
-1. **Request ID Uniqueness**: Each request has a unique ID computed from `keccak256(sender || tx || chain_id || ...)` preventing replay attacks
-
-2. **Response Authenticity**: Responses are signed over `keccak256(request_id || serialized_output)` using MPC threshold signatures
-
-3. **Output Verification**: The `output_deserialization_schema` and `respond_serialization_schema` ensure consistent data encoding
-
-4. **Key Isolation**: Each user has isolated keys through unique derivation paths (`epsilon = derive_epsilon(predecessor, path)`)
-
-5. **Light Client Security**: The light client validates destination chain consensus without trusting an RPC provider
+1. **Sign Request**: User calls `sign_bidirectional` with a serialized unsigned transaction for the destination chain
+2. **Signature Delivery**: MPC signs the transaction and returns the signature via `respond()`
+3. **User Broadcast**: User assembles and broadcasts the signed transaction to the destination chain
+4. **Observation**: MPC light client observes the destination chain and detects confirmation
+5. **Output Extraction**: MPC extracts execution result (contract return value or transfer success)
+6. **Response Callback**: MPC calls `respond_bidirectional` with the result and a cryptographic proof
 
 ## Related Documentation
 
-- [Signet Solana Program Rust Docs](https://docs.rs/chain-signatures) - Complete Solana program reference (instructions, events, types)
-- [EVM Contract API](/contract-api/evm/functions) - EVM contract reference
+- [Signet Solana Program Rust Docs](https://aspect-build.github.io/signet-solana-program/) - Complete reference (instructions, events, types, security)
 - [Chain Signatures Contract](/primitives/chain-contract-interface) - Contract interface
