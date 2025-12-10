@@ -1,88 +1,10 @@
 # EVM Contract Types
 
-This page documents all data types used in the Signet EVM Contract.
-
-## Signature
-
-ECDSA signature structure returned by the MPC network.
-
-### Structure
-
-```solidity
-struct Signature {
-    AffinePoint bigR;  // R point of the signature
-    uint256 s;         // s component of the signature
-    uint8 recoveryId;  // Recovery ID (0 or 1)
-}
-```
-
-### Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `bigR` | `AffinePoint` | R point of ECDSA signature (x, y coordinates) |
-| `s` | `uint256` | s scalar of the signature |
-| `recoveryId` | `uint8` | Recovery ID for public key recovery (0 or 1) |
-
-### TypeScript Type
-
-```typescript
-type Signature = {
-  bigR: {
-    x: bigint
-    y: bigint
-  }
-  s: bigint
-  recoveryId: number
-}
-```
-
-### Converting to RSV Format
-
-```typescript
-function toRSV(signature: Signature): { r: Hex; s: Hex; v: number } {
-  return {
-    r: toHex(signature.bigR.x, { size: 32 }),
-    s: toHex(signature.s, { size: 32 }),
-    v: 27 + signature.recoveryId
-  }
-}
-```
-
----
-
-## AffinePoint
-
-Represents a point on the secp256k1 elliptic curve.
-
-### Structure
-
-```solidity
-struct AffinePoint {
-    uint256 x;  // x coordinate
-    uint256 y;  // y coordinate
-}
-```
-
-### Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `x` | `uint256` | x coordinate of the point |
-| `y` | `uint256` | y coordinate of the point |
-
-### Notes
-
-- Both coordinates are 256-bit unsigned integers
-- For the signature's R point, x is typically used as the `r` value in RSV format
-
----
+This page documents the data types used in the Signet EVM Contract.
 
 ## SignRequest
 
-Request structure for initiating a signature.
-
-### Structure
+Request structure for initiating a signature via [`sign`](/contract-api/evm/functions#sign).
 
 ```solidity
 struct SignRequest {
@@ -97,35 +19,18 @@ struct SignRequest {
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `payload` | `bytes32` | 32-byte data to be signed (typically a hash) |
-| `path` | `string` | Derivation path for the signing key |
-| `keyVersion` | `uint32` | Version of the MPC key to use |
-| `algo` | `string` | Signing algorithm (optional, default: secp256k1) |
-| `dest` | `string` | Response destination chain (optional) |
-| `params` | `string` | Additional parameters as JSON (optional) |
-
-### TypeScript Type
-
-```typescript
-type SignRequest = {
-  payload: Hex        // 0x-prefixed 32-byte hex string
-  path: string
-  keyVersion: number
-  algo: string
-  dest: string
-  params: string
-}
-```
-
----
+| Field        | Type      | Description                                      |
+| ------------ | --------- | ------------------------------------------------ |
+| `payload`    | `bytes32` | 32-byte data to be signed (typically a hash)     |
+| `path`       | `string`  | Derivation path for the signing key              |
+| `keyVersion` | `uint32`  | Version of the MPC key to use                    |
+| `algo`       | `string`  | Signing algorithm (optional, default: secp256k1) |
+| `dest`       | `string`  | Response destination chain (optional)            |
+| `params`     | `string`  | Additional parameters as JSON (optional)         |
 
 ## Response
 
-Response structure from MPC containing signature for a request.
-
-### Structure
+Response structure containing a signature for a request.
 
 ```solidity
 struct Response {
@@ -136,139 +41,49 @@ struct Response {
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `requestId` | `bytes32` | Identifier of the original request |
-| `signature` | `Signature` | ECDSA signature for the request |
+| Field       | Type                      | Description                        |
+| ----------- | ------------------------- | ---------------------------------- |
+| `requestId` | `bytes32`                 | Identifier of the original request |
+| `signature` | [`Signature`](#signature) | ECDSA signature for the request    |
 
----
+## Signature
 
-## ErrorResponse
-
-Error response structure when signature generation fails.
-
-### Structure
+ECDSA signature structure returned by the MPC network.
 
 ```solidity
-struct ErrorResponse {
-    bytes32 requestId;
-    string errorMessage;
+struct Signature {
+    AffinePoint bigR;
+    uint256 s;
+    uint8 recoveryId;
 }
 ```
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `requestId` | `bytes32` | Identifier of the failed request |
-| `errorMessage` | `string` | Description of the error |
+| Field        | Type                          | Description                                  |
+| ------------ | ----------------------------- | -------------------------------------------- |
+| `bigR`       | [`AffinePoint`](#affinepoint) | R point of the ECDSA signature               |
+| `s`          | `uint256`                     | s scalar of the signature                    |
+| `recoveryId` | `uint8`                       | Recovery ID for public key recovery (0 or 1) |
 
----
+## AffinePoint
 
-## ABI Encoding
+Represents a point on the secp256k1 elliptic curve.
 
-### Full Contract ABI Types
-
-```typescript
-const types = {
-  AffinePoint: {
-    components: [
-      { name: 'x', type: 'uint256' },
-      { name: 'y', type: 'uint256' }
-    ]
-  },
-  Signature: {
-    components: [
-      { name: 'bigR', type: 'tuple', components: [
-        { name: 'x', type: 'uint256' },
-        { name: 'y', type: 'uint256' }
-      ]},
-      { name: 's', type: 'uint256' },
-      { name: 'recoveryId', type: 'uint8' }
-    ]
-  },
-  SignRequest: {
-    components: [
-      { name: 'payload', type: 'bytes32' },
-      { name: 'path', type: 'string' },
-      { name: 'keyVersion', type: 'uint32' },
-      { name: 'algo', type: 'string' },
-      { name: 'dest', type: 'string' },
-      { name: 'params', type: 'string' }
-    ]
-  },
-  Response: {
-    components: [
-      { name: 'requestId', type: 'bytes32' },
-      { name: 'signature', type: 'tuple', /* Signature */ }
-    ]
-  },
-  ErrorResponse: {
-    components: [
-      { name: 'requestId', type: 'bytes32' },
-      { name: 'errorMessage', type: 'string' }
-    ]
-  }
+```solidity
+struct AffinePoint {
+    uint256 x;
+    uint256 y;
 }
 ```
 
----
+### Fields
 
-## Serialization Examples
+| Field | Type      | Description               |
+| ----- | --------- | ------------------------- |
+| `x`   | `uint256` | x coordinate of the point |
+| `y`   | `uint256` | y coordinate of the point |
 
-### Encoding a SignRequest
+### Notes
 
-```typescript
-import { encodeAbiParameters } from 'viem'
-
-const encoded = encodeAbiParameters(
-  [
-    {
-      type: 'tuple',
-      components: [
-        { name: 'payload', type: 'bytes32' },
-        { name: 'path', type: 'string' },
-        { name: 'keyVersion', type: 'uint32' },
-        { name: 'algo', type: 'string' },
-        { name: 'dest', type: 'string' },
-        { name: 'params', type: 'string' }
-      ]
-    }
-  ],
-  [{
-    payload: '0x...',
-    path: 'eth',
-    keyVersion: 0,
-    algo: '',
-    dest: '',
-    params: ''
-  }]
-)
-```
-
-### Decoding a Signature from Event
-
-```typescript
-import { decodeAbiParameters } from 'viem'
-
-const [signature] = decodeAbiParameters(
-  [
-    {
-      type: 'tuple',
-      components: [
-        {
-          name: 'bigR',
-          type: 'tuple',
-          components: [
-            { name: 'x', type: 'uint256' },
-            { name: 'y', type: 'uint256' }
-          ]
-        },
-        { name: 's', type: 'uint256' },
-        { name: 'recoveryId', type: 'uint8' }
-      ]
-    }
-  ],
-  signatureData
-)
-```
+- For the signature's R point, `x` is typically used as the `r` value in RSV format

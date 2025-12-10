@@ -4,13 +4,18 @@ The Sign Bidirectional flow enables cross-chain transaction execution with verif
 
 For example, a Solana program can execute a transaction on Ethereum and receive the contract return value or success/failure status back on Solana—all verified by the MPC network.
 
-> **Comprehensive Documentation**: For detailed documentation including request ID generation, serialization schemas, response verification, error handling, and security considerations, see the **[Signet Solana Program Rust Docs](https://aspect-build.github.io/signet-solana-program/)**.
+> **Comprehensive Documentation**: For detailed documentation including request ID generation, serialization schemas, response verification, error handling, and security considerations, see the **[Signet Solana Program Rust Docs](https://sig-net.github.io/solana-signet-program/)**.
 
 ## Supported Chains
 
-| Source Chain | Destination Chain | Status    |
-| ------------ | ----------------- | --------- |
-| **Solana**   | **Ethereum**      | Supported |
+| Source Chain    | Destination Chain | Status      |
+| --------------- | ----------------- | ----------- |
+| **Solana**      | **Ethereum**      | Supported   |
+| **Solana**      | **Bitcoin**       | In Progress |
+| **Polkadot**    | **Ethereum**      | In Progress |
+| **Polkadot**    | **Bitcoin**       | In Progress |
+| **Hyperliquid** | **Ethereum**      | Planned     |
+| **Hyperliquid** | **Bitcoin**       | Planned     |
 
 ## Overview
 
@@ -33,7 +38,7 @@ User                   Source Chain              MPC               Destination C
   │                         │                        │                        │
   │ Broadcast ──────────────┼────────────────────────┼───────────────────────►│
   │                         │                        │◄──── Observe tx ───────┤
-  │                         │◄─ respond_bidirectional() ◄─────────────────────┤
+  │                         │◄─ respond_bidirectional()                       │
   │ Poll response           │                        │                        │
   │◄─ RespondBidirectionalEvent                      │                        │
   │                         │                        │                        │
@@ -44,11 +49,11 @@ User                   Source Chain              MPC               Destination C
 1. **Sign Request**: User calls `sign_bidirectional` with a serialized unsigned transaction for the destination chain
 2. **Signature Delivery**: MPC signs the transaction and returns the signature via `respond()`
 3. **User Broadcast**: User assembles and broadcasts the signed transaction to the destination chain
-4. **Observation**: MPC light client observes the destination chain and detects confirmation
+4. **Observation**: MPC Indexer (using a light client) observes the destination chain and detects confirmation
 5. **Output Extraction**: MPC extracts execution result (contract return value or transfer success)
-6. **Response Callback**: MPC calls `respond_bidirectional` with the result and a cryptographic proof
+6. **Response Callback**: MPC calls `respond_bidirectional` with the result and a cryptographic proof. The `RespondBidirectional` event is indexed and sent to processing on the source chain contract
 
 ## Related Documentation
 
-- [Signet Solana Program Rust Docs](https://aspect-build.github.io/signet-solana-program/) - Complete reference (instructions, events, types, security)
+- [Signet Solana Program Rust Docs](https://sig-net.github.io/solana-signet-program/) - Complete reference (instructions, events, types, security)
 - [Chain Signatures Contract](/primitives/chain-contract-interface) - Contract interface
