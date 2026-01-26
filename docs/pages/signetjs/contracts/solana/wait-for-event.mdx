@@ -1,0 +1,75 @@
+## waitForEvent
+
+Waits for a specific event matching a given request ID by combining a WebSocket listener (real-time) with polling backfill (resilience). Use this when invoking the `sign` instruction on the contract without using this class's `sign` method (e.g. for cross-contract invocations or bidirectional flows).
+
+### Usage
+
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
+const solanaChainSigContract = chainSigContract
+
+const requestId = '0x...'
+const txSignature = 'signatureOfTheSignRequestTransaction'
+// ---cut---
+import { PublicKey } from '@solana/web3.js'
+
+const controller = new AbortController()
+
+const signature = await solanaChainSigContract.waitForEvent({
+  eventName: 'signatureRespondedEvent',
+  requestId,
+  signer: new PublicKey('ResponderPublicKeyHere'),
+  afterSignature: txSignature,
+  timeoutMs: 60_000,
+  signal: controller.signal,
+})
+```
+
+### Waiting for a Bidirectional Response
+
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
+const solanaChainSigContract = chainSigContract
+
+const requestId = '0x...'
+const txSignature = 'signatureOfTheSignRequestTransaction'
+// ---cut---
+import { PublicKey } from '@solana/web3.js'
+
+const controller = new AbortController()
+
+const result = await solanaChainSigContract.waitForEvent({
+  eventName: 'respondBidirectionalEvent',
+  requestId,
+  signer: new PublicKey('ResponderPublicKeyHere'),
+  afterSignature: txSignature,
+  timeoutMs: 60_000,
+  signal: controller.signal,
+})
+
+// result.serializedOutput - Buffer with the destination chain execution result
+// result.signature - raw Signature { bigR, s, recoveryId }
+```
+
+### Parameters
+
+| Parameter            | Type                         | Description                                                        |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| `eventName`          | `ChainSignaturesEventName`   | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`) |
+| `requestId`          | `string`                     | Unique identifier for the signature request                        |
+| `signer`             | `PublicKey`                  | Address to monitor for transactions (e.g. responder address)       |
+| `afterSignature?`    | `string`                     | Transaction signature to start polling from                        |
+| `timeoutMs?`         | `number`                     | Timeout in milliseconds (default: 60000)                           |
+| `backfillIntervalMs?`| `number`                     | Interval between backfill polls in milliseconds (default: 5000)    |
+| `backfillLimit?`     | `number`                     | Max transactions to fetch per backfill poll (default: 50)          |
+| `signal?`            | `AbortSignal`                | Abort signal for cancellation                                      |
+
+### Returns
+
+The return type depends on the `eventName`:
+
+| Event Name                    | Return Type                          | Description                                                        |
+| ----------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `signatureRespondedEvent`     | `Promise<RSVSignature>`              | The signature in RSV format                                        |
+| `signatureErrorEvent`         | `Promise<SignatureErrorData>`        | Error details from the signing request                             |
+| `respondBidirectionalEvent`   | `Promise<RespondBidirectionalData>`  | Serialized output and raw signature from the bidirectional response |
