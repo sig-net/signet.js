@@ -1,6 +1,6 @@
 {
   "name": "signet.js",
-  "version": "0.0.12-beta.17",
+  "version": "0.3.0",
   "description": "A TypeScript library for handling multi-chain transactions and signatures using Signet MPC",
   "type": "module",
   "exports": {
@@ -37,7 +37,9 @@
     "docs:dev": "vocs dev",
     "docs:build": "vocs build",
     "docs:preview": "vocs preview",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "lint": "eslint 'src/**/*.ts'",
+    "typecheck": "tsc --noEmit"
   },
   "author": "Sig Network",
   "license": "MIT",

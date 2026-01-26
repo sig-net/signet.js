@@ -226,8 +226,8 @@ export default defineConfig({
                   link: '/signetjs/contracts/solana/get-public-key',
                 },
                 {
-                  text: 'pollForRequestId',
-                  link: '/signetjs/contracts/solana/poll-for-request-id',
+                  text: 'waitForEvent',
+                  link: '/signetjs/contracts/solana/wait-for-event',
                 },
                 { text: 'sign', link: '/signetjs/contracts/solana/sign' },
               ],

@@ -1,5 +1,8 @@
 import * as anchor from '@coral-xyz/anchor'
-import { type Connection } from '@solana/web3.js'
+import {
+  type Connection,
+  type ParsedTransactionWithMeta,
+} from '@solana/web3.js'
 
 import type { ChainSignaturesEvent } from './types/events'
 
@@ -11,43 +14,48 @@ const EMIT_CPI_INSTRUCTION_DISCRIMINATOR = Buffer.from([
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class CpiEventParser {
   /**
-   * Parse CPI events from a transaction (emit_cpi! pattern)
+   * Parse CPI events from an already-fetched transaction (emit_cpi! pattern).
    */
-  static async parseCpiEvents<T extends anchor.Idl>(
+  static parseCpiEventsFromTransaction<T extends anchor.Idl>(
+    tx: ParsedTransactionWithMeta | null,
+    targetProgramId: string,
+    program: anchor.Program<T>
+  ): ChainSignaturesEvent[] {
+    const events: ChainSignaturesEvent[] = []
+    if (!tx?.meta?.innerInstructions) return events
+
+    for (const innerIxSet of tx.meta.innerInstructions) {
+      for (const instruction of innerIxSet.instructions) {
+        if (!('programId' in instruction) || !('data' in instruction)) continue
+        if (instruction.programId.toString() !== targetProgramId) continue
+
+        const parsedEvent = this.parseInstruction(instruction.data, program)
+        if (parsedEvent) events.push(parsedEvent)
+      }
+    }
+
+    return events
+  }
+
+  /**
+   * Fetch a transaction by signature and parse its CPI events.
+   * Used by the subscription path where only the signature is available.
+   */
+  static async fetchAndParseCpiEvents<T extends anchor.Idl>(
     connection: Connection,
     signature: string,
     targetProgramId: string,
     program: anchor.Program<T>
   ): Promise<ChainSignaturesEvent[]> {
-    const events: ChainSignaturesEvent[] = []
-
     try {
       const tx = await connection.getParsedTransaction(signature, {
         commitment: 'confirmed',
         maxSupportedTransactionVersion: 0,
       })
-
-      if (!tx?.meta?.innerInstructions) return events
-
-      for (const innerIxSet of tx.meta.innerInstructions) {
-        for (const instruction of innerIxSet.instructions) {
-          if (!('programId' in instruction) || !('data' in instruction)) {
-            continue
-          }
-
-          if (instruction.programId.toString() !== targetProgramId) {
-            continue
-          }
-
-          const parsedEvent = this.parseInstruction(instruction.data, program)
-          if (parsedEvent) {
-            events.push(parsedEvent)
-          }
-        }
-      }
-    } catch {}
-
-    return events
+      return this.parseCpiEventsFromTransaction(tx, targetProgramId, program)
+    } catch {
+      return []
+    }
   }
 
   /**
@@ -113,7 +121,7 @@ export class CpiEventParser {
         if (logs.err) return
 
         void (async () => {
-          const events = await this.parseCpiEvents(
+          const events = await this.fetchAndParseCpiEvents(
             connection,
             logs.signature,
             program.programId.toString(),
