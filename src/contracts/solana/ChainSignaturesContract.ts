@@ -26,11 +26,7 @@ import type { SignArgs } from '@contracts/ChainSignatureContract'
 import type { NajPublicKey, RSVSignature, UncompressedPubKeySEC1 } from '@types'
 import { cryptography } from '@utils'
 
-import type {
-  RetryOptions,
-  SignOptions,
-  SignatureErrorData,
-} from '../evm/types'
+import type { SignOptions, SignatureErrorData } from '../evm/types'
 
 import { CpiEventParser } from './CpiEventParser'
 import {
@@ -43,7 +39,10 @@ import IDL from './types/chain_signatures_project.json'
 import type {
   SignatureErrorEvent,
   SignatureRespondedEvent,
+  RespondBidirectionalEvent,
   ChainSignaturesEventName,
+  EventResult,
+  RespondBidirectionalData,
 } from './types/events'
 import { generateRequestIdSolana } from './utils'
 
@@ -203,8 +202,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   /**
    * Sends a transaction to the program to request a signature, then
-   * polls for the signature result. If the signature is not found within the retry
-   * parameters, it will throw an error.
+   * races a WebSocket listener against polling backfill to find the result.
+   * If the signature is not found within the timeout, it will throw an error.
    */
   async sign(
     args: SignArgs,
@@ -218,6 +217,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const params = options?.sign?.params ?? ''
     const delay = options?.retry?.delay ?? 5000
     const retryCount = options?.retry?.retryCount ?? 12
+    const timeoutMs = delay * retryCount
 
     const missingSigners = options?.remainingAccounts
       ?.filter((acc) => acc.isSigner)
@@ -255,28 +255,37 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       options?.remainingSigners
     )
 
+    const controller = new AbortController()
+    const successPromise = this.waitForEvent({
+      eventName: 'signatureRespondedEvent',
+      requestId,
+      signer: this.programId,
+      afterSignature: hash,
+      timeoutMs,
+      backfillIntervalMs: delay,
+      signal: controller.signal,
+    })
+    const errorPromise = this.waitForEvent({
+      eventName: 'signatureErrorEvent',
+      requestId,
+      signer: this.programId,
+      afterSignature: hash,
+      timeoutMs,
+      backfillIntervalMs: delay,
+      signal: controller.signal,
+    }).then((err) => {
+      throw new SignatureContractError(err.error, requestId, { hash })
+    })
+
+    // Prevent unhandled rejection warnings from the losing racer
+    successPromise.catch(() => {})
+    errorPromise.catch(() => {})
+
     try {
-      const pollResult = await this.pollForRequestId({
-        requestId,
-        payload: args.payload,
-        path: args.path,
-        afterSignature: hash,
-        options: {
-          delay,
-          retryCount,
-        },
-      })
-
-      if (!pollResult) {
-        throw new SignatureNotFoundError(requestId, { hash })
-      }
-
-      if ('error' in pollResult) {
-        throw new SignatureContractError(pollResult.error, requestId, { hash })
-      }
+      const result = await Promise.race([successPromise, errorPromise])
 
       const isValid = await verifyRecoveredAddress(
-        pollResult,
+        result,
         args.payload,
         this.requesterAddress,
         args.path,
@@ -294,7 +303,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         )
       }
 
-      return pollResult
+      return result
     } catch (error) {
       if (
         error instanceof SignatureNotFoundError ||
@@ -308,6 +317,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
           error instanceof Error ? error : undefined
         )
       }
+    } finally {
+      controller.abort()
     }
   }
 
@@ -361,136 +372,280 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }
 
   /**
-   * Polls for signature or error events matching the given requestId starting from the solana transaction with signature afterSignature.
-   * Returns a signature, error data, or undefined if nothing is found.
+   * Waits for a specific event matching the given requestId by combining
+   * a WebSocket listener (real-time) with polling backfill (resilience).
    */
-  async pollForRequestId({
-    requestId,
-    payload: _payload,
-    path: _path,
-    afterSignature,
-    options,
-  }: {
+  async waitForEvent<E extends ChainSignaturesEventName>(options: {
+    eventName: E
     requestId: string
-    payload: number[]
-    path: string
-    afterSignature: string
-    options?: RetryOptions
-  }): Promise<RSVSignature | SignatureErrorData | undefined> {
-    const delay = options?.delay ?? 5000
-    const retryCount = options?.retryCount ?? 12
+    signer: PublicKey
+    afterSignature?: string
+    timeoutMs?: number
+    backfillIntervalMs?: number
+    backfillLimit?: number
+    signal?: AbortSignal
+  }): Promise<EventResult<E>> {
+    const {
+      eventName,
+      requestId,
+      signer,
+      afterSignature,
+      timeoutMs = 60_000,
+      backfillIntervalMs = 5_000,
+      backfillLimit = 50,
+      signal,
+    } = options
 
-    let lastCheckedSignature = afterSignature
+    return await new Promise<EventResult<E>>((resolve, reject) => {
+      let settled = false
+      const seenSignatures = new Set<string>()
+      let lastCheckedSignature = afterSignature
+      const cleanupFns: Array<() => void> = []
 
-    for (let i = 0; i < retryCount; i++) {
-      try {
-        // Get all transactions since last check
-        const signatures = await this.connection.getSignaturesForAddress(
-          this.programId,
-          {
-            until: lastCheckedSignature,
-            limit: 50,
-          },
-          'confirmed'
-        )
-
-        if (signatures.length > 0) {
-          lastCheckedSignature = signatures[signatures.length - 1].signature
+      const cleanup = (): void => {
+        for (const fn of cleanupFns) {
+          try {
+            fn()
+          } catch {}
         }
+      }
 
-        for (const sig of signatures) {
-          const tx = await this.connection.getParsedTransaction(sig.signature, {
-            commitment: 'confirmed',
-            maxSupportedTransactionVersion: 0,
+      const settle = (action: () => void): void => {
+        if (settled) return
+        settled = true
+        cleanup()
+        action()
+      }
+
+      const processEvent = (
+        name: string,
+        data:
+          | SignatureRespondedEvent
+          | SignatureErrorEvent
+          | RespondBidirectionalEvent,
+        txSignature?: string
+      ): boolean => {
+        if (settled) return false
+        if (txSignature && seenSignatures.has(txSignature)) return false
+        if (txSignature) seenSignatures.add(txSignature)
+        if (name !== eventName) return false
+
+        const result = this.mapEventForName<E>(eventName, data, requestId)
+        if (result !== undefined) {
+          settle(() => {
+            resolve(result)
           })
+          return true
+        }
+        return false
+      }
 
-          if (tx?.meta?.logMessages) {
-            const result = await this.parseLogsForEvents(
-              tx.meta.logMessages,
-              requestId,
-              sig.signature
+      // AbortSignal listener
+      if (signal) {
+        if (signal.aborted) {
+          settle(() => {
+            reject(signal.reason ?? new Error('Aborted'))
+          })
+          return
+        }
+        const onAbort = (): void => {
+          settle(() => {
+            reject(signal.reason ?? new Error('Aborted'))
+          })
+        }
+        signal.addEventListener('abort', onAbort, { once: true })
+        cleanupFns.push(() => {
+          signal.removeEventListener('abort', onAbort)
+        })
+      }
+
+      // Timeout
+      const timeoutId = setTimeout(() => {
+        settle(() => {
+          reject(new SignatureNotFoundError(requestId))
+        })
+      }, timeoutMs)
+      cleanupFns.push(() => {
+        clearTimeout(timeoutId)
+      })
+
+      // WebSocket subscription
+      const parser = new EventParser(this.program.programId, this.program.coder)
+      const subId = this.connection.onLogs(
+        signer,
+        (logs, _context) => {
+          if (settled) return
+          if (logs.err) return
+
+          for (const evt of parser.parseLogs(logs.logs)) {
+            if (!evt) continue
+            if (
+              processEvent(
+                evt.name,
+                evt.data as
+                  | SignatureRespondedEvent
+                  | SignatureErrorEvent
+                  | RespondBidirectionalEvent,
+                logs.signature
+              )
             )
+              return
+          }
 
-            if (result) {
-              return result
+          void CpiEventParser.fetchAndParseCpiEvents(
+            this.connection,
+            logs.signature,
+            this.programId.toString(),
+            this.program
+          ).then((cpiEvents) => {
+            for (const event of cpiEvents) {
+              if (processEvent(event.name, event.data, logs.signature)) return
+            }
+          })
+        },
+        'confirmed'
+      )
+      cleanupFns.push(() => {
+        void this.connection.removeOnLogsListener(subId)
+      })
+
+      // Backfill polling
+      const runBackfill = async (): Promise<void> => {
+        if (settled) return
+        try {
+          const signatures = await this.connection.getSignaturesForAddress(
+            signer,
+            {
+              until: lastCheckedSignature,
+              limit: backfillLimit,
+            },
+            'confirmed'
+          )
+
+          if (signatures.length > 0) {
+            lastCheckedSignature = signatures[0].signature
+          }
+
+          for (const sig of signatures) {
+            if (settled) return
+            if (seenSignatures.has(sig.signature)) continue
+
+            const tx = await this.connection.getParsedTransaction(
+              sig.signature,
+              {
+                commitment: 'confirmed',
+                maxSupportedTransactionVersion: 0,
+              }
+            )
+            if (!tx) continue
+
+            const cpiEvents = CpiEventParser.parseCpiEventsFromTransaction(
+              tx,
+              this.programId.toString(),
+              this.program
+            )
+            for (const event of cpiEvents) {
+              if (processEvent(event.name, event.data, sig.signature)) return
+            }
+
+            const logs = tx.meta?.logMessages
+            if (logs) {
+              for (const evt of parser.parseLogs(logs)) {
+                if (!evt) continue
+                if (
+                  processEvent(
+                    evt.name,
+                    evt.data as
+                      | SignatureRespondedEvent
+                      | SignatureErrorEvent
+                      | RespondBidirectionalEvent,
+                    sig.signature
+                  )
+                )
+                  return
+              }
             }
           }
+        } catch {
+          // Backfill errors are non-fatal; next interval will retry
         }
-      } catch (error) {
-        console.error('Error checking for events:', error)
       }
 
-      if (i < retryCount - 1) {
-        console.log(`Retrying get signature: ${i + 1}/${retryCount}`)
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
+      void runBackfill()
 
-    return undefined
+      const intervalId = setInterval(() => {
+        void runBackfill()
+      }, backfillIntervalMs)
+      cleanupFns.push(() => {
+        clearInterval(intervalId)
+      })
+    })
   }
 
-  /**
-   * Parses transaction logs for signature or error events.
-   */
-  private async parseLogsForEvents(
-    logs: string[],
-    requestId: string,
-    signature: string
-  ): Promise<RSVSignature | SignatureErrorData | undefined> {
-    const cpiEvents = await CpiEventParser.parseCpiEvents(
-      this.connection,
-      signature,
-      this.programId.toString(),
-      this.program
-    )
-    for (const event of cpiEvents) {
-      const mapped = this.mapEventToResult(
-        event.name,
-        event.name === 'signatureRespondedEvent' ? event.data : event.data,
-        requestId
-      )
-      if (mapped) return mapped
-    }
-
-    // 2) Parse regular Anchor events from logs (emit!)
-    const parser = new EventParser(this.program.programId, this.program.coder)
-    for (const evt of parser.parseLogs(logs)) {
-      if (!evt) continue
-      const mapped = this.mapEventToResult(
-        evt.name as ChainSignaturesEventName,
-        evt.name === 'signatureRespondedEvent'
-          ? (evt.data as SignatureRespondedEvent)
-          : (evt.data as SignatureErrorEvent),
-        requestId
-      )
-      if (mapped) return mapped
-    }
-
-    return undefined
-  }
-
-  private mapEventToResult(
-    name: ChainSignaturesEventName,
-    data: SignatureRespondedEvent | SignatureErrorEvent,
+  private mapRespondToResult(
+    data: SignatureRespondedEvent,
     requestId: string
-  ): RSVSignature | SignatureErrorData | undefined {
+  ): RSVSignature | undefined {
     const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
-    if (name === 'signatureRespondedEvent' && eventRequestIdHex === requestId) {
-      const d = data as SignatureRespondedEvent
-      return {
-        r: Buffer.from(d.signature.bigR.x).toString('hex'),
-        s: Buffer.from(d.signature.s).toString('hex'),
-        v: d.signature.recoveryId + 27,
-      }
+    if (eventRequestIdHex !== requestId) return undefined
+    return {
+      r: Buffer.from(data.signature.bigR.x).toString('hex'),
+      s: Buffer.from(data.signature.s).toString('hex'),
+      v: data.signature.recoveryId + 27,
     }
-    if (name === 'signatureErrorEvent' && eventRequestIdHex === requestId) {
-      const d = data as SignatureErrorEvent
-      return {
-        requestId: eventRequestIdHex,
-        error: d.error,
-      }
+  }
+
+  private mapRespondErrorToResult(
+    data: SignatureErrorEvent,
+    requestId: string
+  ): SignatureErrorData | undefined {
+    const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
+    if (eventRequestIdHex !== requestId) return undefined
+    return {
+      requestId: eventRequestIdHex,
+      error: data.error,
     }
-    return undefined
+  }
+
+  private mapRespondBidirectionalToResult(
+    data: RespondBidirectionalEvent,
+    requestId: string
+  ): RespondBidirectionalData | undefined {
+    const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
+    if (eventRequestIdHex !== requestId) return undefined
+    return {
+      serializedOutput: data.serializedOutput,
+      signature: data.signature,
+    }
+  }
+
+  private mapEventForName<E extends ChainSignaturesEventName>(
+    eventName: E,
+    data:
+      | SignatureRespondedEvent
+      | SignatureErrorEvent
+      | RespondBidirectionalEvent,
+    requestId: string
+  ): EventResult<E> | undefined {
+    switch (eventName) {
+      case 'signatureRespondedEvent':
+        return this.mapRespondToResult(
+          data as SignatureRespondedEvent,
+          requestId
+        ) as EventResult<E> | undefined
+      case 'signatureErrorEvent':
+        return this.mapRespondErrorToResult(
+          data as SignatureErrorEvent,
+          requestId
+        ) as EventResult<E> | undefined
+      case 'respondBidirectionalEvent':
+        return this.mapRespondBidirectionalToResult(
+          data as RespondBidirectionalEvent,
+          requestId
+        ) as EventResult<E> | undefined
+      default:
+        return undefined
+    }
   }
 
   /**
@@ -514,82 +669,5 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       address: this.requesterAddress,
       chainId: KDF_CHAIN_IDS.SOLANA,
     })
-  }
-
-  /**
-   * Subscribes to program events using Anchor's EventParser for regular events,
-   * and CPI parsing for emit_cpi!-emitted events. Returns an unsubscribe fn.
-   */
-  async subscribeToEvents(handlers: {
-    onSignatureResponded?: (
-      event: SignatureRespondedEvent,
-      slot: number
-    ) => Promise<void> | void
-    onSignatureError?: (
-      event: SignatureErrorEvent,
-      slot: number
-    ) => Promise<void> | void
-  }): Promise<() => Promise<void>> {
-    const commitment: 'processed' | 'confirmed' | 'finalized' = 'confirmed'
-    // Subscribe to CPI events (emit_cpi!)
-    const cpiHandlers = new Map<
-      ChainSignaturesEventName,
-      (
-        event: SignatureRespondedEvent | SignatureErrorEvent,
-        slot: number
-      ) => Promise<void>
-    >()
-    if (handlers.onSignatureResponded) {
-      const onSignatureResponded = handlers.onSignatureResponded
-      cpiHandlers.set('signatureRespondedEvent', async (e, s) => {
-        await onSignatureResponded(e as SignatureRespondedEvent, s)
-      })
-    }
-    if (handlers.onSignatureError) {
-      const onSignatureError = handlers.onSignatureError
-      cpiHandlers.set('signatureErrorEvent', async (e, s) => {
-        await onSignatureError(e as SignatureErrorEvent, s)
-      })
-    }
-    const cpiSubId = CpiEventParser.subscribeToCpiEvents(
-      this.connection,
-      this.program,
-      cpiHandlers
-    )
-
-    const parser = new EventParser(this.program.programId, this.program.coder)
-    const subId = this.connection.onLogs(
-      this.program.programId,
-      (logs, context) => {
-        if (logs.err) return
-        for (const evt of parser.parseLogs(logs.logs)) {
-          if (!evt) continue
-          if (evt.name === 'signatureRespondedEvent') {
-            const onSignatureResponded = handlers.onSignatureResponded
-            if (onSignatureResponded) {
-              void onSignatureResponded(
-                evt.data as SignatureRespondedEvent,
-                context.slot
-              )
-            }
-          }
-          if (evt.name === 'signatureErrorEvent') {
-            const onSignatureError = handlers.onSignatureError
-            if (onSignatureError) {
-              void onSignatureError(
-                evt.data as SignatureErrorEvent,
-                context.slot
-              )
-            }
-          }
-        }
-      },
-      commitment
-    )
-
-    return async () => {
-      await this.connection.removeOnLogsListener(subId)
-      await this.connection.removeOnLogsListener(cpiSubId)
-    }
   }
 }
