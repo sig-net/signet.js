@@ -89,7 +89,7 @@ export function deriveChildPublicKey(
   predecessorId: string,
   path: string = '',
   chainId: string,
-  keyVersion: number
+  _keyVersion: number
 ): UncompressedPubKeySEC1 {
   const ec = new EC('secp256k1')
   const derivationPath = `${EPSILON_DERIVATION_PREFIX_V2}:${chainId}:${predecessorId}:${path}`

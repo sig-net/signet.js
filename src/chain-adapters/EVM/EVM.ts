@@ -71,7 +71,7 @@ export class EVM extends ChainAdapter<
       address: transaction.from,
     })
 
-    const { from, ...rest } = transaction
+    const { from: _from, ...rest } = transaction
 
     return {
       ...fees,

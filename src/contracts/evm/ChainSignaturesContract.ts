@@ -35,7 +35,7 @@ import type {
   SignRequest,
   SignatureErrorData,
 } from './types'
-import { getRequestId } from './utils'
+import { getRequestIdRespond } from './utils'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -358,7 +358,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     if (!this.publicClient.chain?.id) {
       throw new Error('Public client chain required to compute requestId')
     }
-    return getRequestId({
+    return getRequestIdRespond({
       payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,

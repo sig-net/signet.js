@@ -44,7 +44,7 @@ import type {
   EventResult,
   RespondBidirectionalData,
 } from './types/events'
-import { generateRequestIdSolana } from './utils'
+import { getRequestIdRespond } from './utils'
 
 export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly provider: AnchorProvider
@@ -659,7 +659,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       params: '',
     }
   ): string {
-    return generateRequestIdSolana({
+    return getRequestIdRespond({
       payload: args.payload,
       path: args.path,
       keyVersion: args.key_version,

@@ -11,8 +11,10 @@ export type EVMUnsignedTransaction = TransactionRequest & {
   chainId: number
 }
 
-export interface EVMTransactionRequest
-  extends Omit<EVMUnsignedTransaction, 'chainId' | 'type'> {
+export interface EVMTransactionRequest extends Omit<
+  EVMUnsignedTransaction,
+  'chainId' | 'type'
+> {
   from: Address
 }
 
