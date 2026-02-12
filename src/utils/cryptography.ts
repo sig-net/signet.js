@@ -5,7 +5,7 @@ import { keccak256, recoverAddress, createPublicClient, http } from 'viem'
 import { KDF_CHAIN_IDS } from '@constants'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
 import {
-  type NajPublicKey,
+  type RootPublicKey,
   type MPCSignature,
   type RSVSignature,
   type UncompressedPubKeySEC1,
@@ -59,16 +59,34 @@ export const compressPubKey = (
 }
 
 /**
- * Converts a NAJ public key to an uncompressed SEC1 public key.
+ * Normalizes any supported public key format to an uncompressed SEC1 public key.
  *
- * @param najPublicKey - The NAJ public key to convert (e.g. secp 256k1:3Ww8iFjqTHufye5aRGUvrQqETegR4gVUcW8FX5xzscaN9ENhpkffojsxJwi6N1RbbHMTxYa9UyKeqK3fsMuwxjR5)
- * @returns The uncompressed SEC1 public key (e.g. 04 || x || y)
+ * Supported formats:
+ * - NAJ format: `secp256k1:base58...`
+ * - Uncompressed SEC1: `04` prefix + 128 hex chars (64 bytes)
+ * - Compressed SEC1: `02` or `03` prefix + 64 hex chars (32 bytes)
  */
-export const najToUncompressedPubKeySEC1 = (
-  najPublicKey: NajPublicKey
+export const normalizeToUncompressedPubKey = (
+  key: RootPublicKey
 ): UncompressedPubKeySEC1 => {
-  const decodedKey = base58.decode(najPublicKey.split(':')[1])
-  return `04${Buffer.from(decodedKey).toString('hex')}`
+  if (key.startsWith('secp256k1:')) {
+    const decodedKey = base58.decode(key.split(':')[1])
+    return `04${Buffer.from(decodedKey).toString('hex')}`
+  }
+
+  if (key.startsWith('04') && key.length === 130) {
+    return key as UncompressedPubKeySEC1
+  }
+
+  if ((key.startsWith('02') || key.startsWith('03')) && key.length === 66) {
+    const ec = new EC('secp256k1')
+    const pubKeyPoint = ec.keyFromPublic(key, 'hex').getPublic(false, 'hex')
+    return `04${pubKeyPoint.slice(2)}` as UncompressedPubKeySEC1
+  }
+
+  throw new Error(
+    `Unsupported public key format. Expected NAJ (secp256k1:base58...), uncompressed (04 + 128 hex), or compressed (02/03 + 64 hex) key. Received: ${key.slice(0, 20)}...`
+  )
 }
 
 const EPSILON_DERIVATION_PREFIX_V2 = 'sig.network v2.0.0 epsilon derivation'

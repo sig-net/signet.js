@@ -14,23 +14,6 @@ export class SignatureNotFoundError extends Error {
   }
 }
 
-export class SignatureContractError extends Error {
-  public readonly requestId?: string
-  public readonly hash?: string
-  public readonly originalError?: { hash: string }
-
-  constructor(
-    message: string,
-    requestId?: string,
-    metadata?: { hash?: string }
-  ) {
-    super(message)
-    this.name = 'SignatureContractError'
-    this.requestId = requestId
-    this.hash = metadata?.hash
-  }
-}
-
 export class SigningError extends Error {
   public readonly requestId: string
   public readonly hash?: string
