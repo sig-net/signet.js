@@ -11,7 +11,6 @@ const EMIT_CPI_INSTRUCTION_DISCRIMINATOR = Buffer.from([
   0xe4, 0x45, 0xa5, 0x2e, 0x51, 0xcb, 0x9a, 0x1d,
 ])
 
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class CpiEventParser {
   /**
    * Parse CPI events from an already-fetched transaction (emit_cpi! pattern).

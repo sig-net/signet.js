@@ -5,10 +5,10 @@
     "types": ["@types/node"]
   },
   "include": [
-    ".eslintrc.cjs",
+    "eslint.config.mjs",
     "src/**/*.ts",
     "tests/**/*.ts",
     "vitest.config.ts",
-    "tsup.config.ts"
+    "tsdown.config.ts"
   ]
 }

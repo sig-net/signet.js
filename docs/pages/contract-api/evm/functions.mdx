@@ -14,8 +14,8 @@ function sign(SignRequest memory _request) external payable
 
 ### Parameters
 
-| Parameter  | Type                                       | Description                     |
-| ---------- | ------------------------------------------ | ------------------------------- |
+| Parameter  | Type                                                 | Description              |
+| ---------- | ---------------------------------------------------- | ------------------------ |
 | `_request` | [`SignRequest`](/contract-api/evm/types#signrequest) | Signature request struct |
 
 ### Requirements
@@ -36,8 +36,8 @@ function respond(Response[] calldata _responses) external
 
 ### Parameters
 
-| Parameter    | Type                                           | Description                     |
-| ------------ | ---------------------------------------------- | ------------------------------- |
+| Parameter    | Type                                             | Description                  |
+| ------------ | ------------------------------------------------ | ---------------------------- |
 | `_responses` | [`Response[]`](/contract-api/evm/types#response) | Array of signature responses |
 
 ### Emits
@@ -54,6 +54,6 @@ function getSignatureDeposit() external view returns (uint256)
 
 ### Returns
 
-| Type      | Description                      |
-| --------- | -------------------------------- |
+| Type      | Description                    |
+| --------- | ------------------------------ |
 | `uint256` | Required deposit amount in wei |

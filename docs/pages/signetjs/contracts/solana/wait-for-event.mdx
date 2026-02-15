@@ -53,23 +53,23 @@ const result = await solanaChainSigContract.waitForEvent({
 
 ### Parameters
 
-| Parameter            | Type                         | Description                                                        |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------ |
-| `eventName`          | `ChainSignaturesEventName`   | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`) |
-| `requestId`          | `string`                     | Unique identifier for the signature request                        |
-| `signer`             | `PublicKey`                  | Address to monitor for transactions (e.g. responder address)       |
-| `afterSignature?`    | `string`                     | Transaction signature to start polling from                        |
-| `timeoutMs?`         | `number`                     | Timeout in milliseconds (default: 60000)                           |
-| `backfillIntervalMs?`| `number`                     | Interval between backfill polls in milliseconds (default: 5000)    |
-| `backfillLimit?`     | `number`                     | Max transactions to fetch per backfill poll (default: 50)          |
-| `signal?`            | `AbortSignal`                | Abort signal for cancellation                                      |
+| Parameter             | Type                       | Description                                                                                                  |
+| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `eventName`           | `ChainSignaturesEventName` | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`) |
+| `requestId`           | `string`                   | Unique identifier for the signature request                                                                  |
+| `signer`              | `PublicKey`                | Address to monitor for transactions (e.g. responder address)                                                 |
+| `afterSignature?`     | `string`                   | Transaction signature to start polling from                                                                  |
+| `timeoutMs?`          | `number`                   | Timeout in milliseconds (default: 60000)                                                                     |
+| `backfillIntervalMs?` | `number`                   | Interval between backfill polls in milliseconds (default: 5000)                                              |
+| `backfillLimit?`      | `number`                   | Max transactions to fetch per backfill poll (default: 50)                                                    |
+| `signal?`             | `AbortSignal`              | Abort signal for cancellation                                                                                |
 
 ### Returns
 
 The return type depends on the `eventName`:
 
-| Event Name                    | Return Type                          | Description                                                        |
-| ----------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `signatureRespondedEvent`     | `Promise<RSVSignature>`              | The signature in RSV format                                        |
-| `signatureErrorEvent`         | `Promise<SignatureErrorData>`        | Error details from the signing request                             |
-| `respondBidirectionalEvent`   | `Promise<RespondBidirectionalData>`  | Serialized output and raw signature from the bidirectional response |
+| Event Name                  | Return Type                         | Description                                                         |
+| --------------------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| `signatureRespondedEvent`   | `Promise<RSVSignature>`             | The signature in RSV format                                         |
+| `signatureErrorEvent`       | `Promise<SignatureErrorData>`       | Error details from the signing request                              |
+| `respondBidirectionalEvent` | `Promise<RespondBidirectionalData>` | Serialized output and raw signature from the bidirectional response |

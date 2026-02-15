@@ -1,5 +1,5 @@
 import {
-  najToUncompressedPubKeySEC1,
+  normalizeToUncompressedPubKey,
   verifyRecoveredAddress,
 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
@@ -16,7 +16,7 @@ import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
 import type { SignArgs } from '@contracts/ChainSignatureContract'
 import type {
-  NajPublicKey,
+  RootPublicKey,
   RSVSignature,
   SigNetEvmMpcSignature,
   UncompressedPubKeySEC1,
@@ -35,7 +35,7 @@ import type {
   SignRequest,
   SignatureErrorData,
 } from './types'
-import { getRequestId } from './utils'
+import { getRequestIdRespond } from './utils'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -49,7 +49,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly publicClient: PublicClient
   private readonly walletClient: WalletClient
   private readonly contractAddress: Hex
-  private readonly rootPublicKey: NajPublicKey
+  private readonly rootPublicKey: UncompressedPubKeySEC1
 
   /**
    * Creates a new instance of the ChainSignatureContract for EVM chains.
@@ -64,7 +64,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     publicClient: PublicClient
     walletClient: WalletClient
     contractAddress: Hex
-    rootPublicKey?: NajPublicKey
+    rootPublicKey?: RootPublicKey
   }) {
     super()
     this.publicClient = args.publicClient
@@ -81,7 +81,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       )
     }
 
-    this.rootPublicKey = rootPublicKey
+    this.rootPublicKey = normalizeToUncompressedPubKey(rootPublicKey)
   }
 
   async getCurrentSignatureDeposit(): Promise<BN> {
@@ -111,7 +111,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }
 
   async getPublicKey(): Promise<UncompressedPubKeySEC1> {
-    return najToUncompressedPubKeySEC1(this.rootPublicKey)
+    return this.rootPublicKey
   }
 
   async getLatestKeyVersion(): Promise<number> {
@@ -358,7 +358,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     if (!this.publicClient.chain?.id) {
       throw new Error('Public client chain required to compute requestId')
     }
-    return getRequestId({
+    return getRequestIdRespond({
       payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,
