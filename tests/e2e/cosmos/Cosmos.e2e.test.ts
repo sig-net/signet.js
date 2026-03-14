@@ -84,7 +84,7 @@ describe('Cosmos E2E broadcast (local node via Sepolia MPC)', () => {
       funderAccount.address,
       mpcAddress,
       [{ denom: 'uatom', amount: '1000000' }],
-      { amount: [{ denom: 'uatom', amount: '500' }], gas: '200000' }
+      { amount: [{ denom: 'uatom', amount: '2000' }], gas: '200000' }
     )
   }, 30_000)
 
