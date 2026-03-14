@@ -89,7 +89,7 @@ export const normalizeToUncompressedPubKey = (
   )
 }
 
-const EPSILON_DERIVATION_PREFIX_V2 = 'sig.network v2.0.0 epsilon derivation'
+const EPSILON_DERIVATION_PREFIX = 'sig.network v2.0.0 epsilon derivation'
 
 /**
  * Derives a child public key from a parent public key using the Sig.Network epsilon derivation scheme.
@@ -99,7 +99,7 @@ const EPSILON_DERIVATION_PREFIX_V2 = 'sig.network v2.0.0 epsilon derivation'
  * @param predecessorId - The predecessor ID is the address of the account calling the signer contract (e.g EOA or Contract Address)
  * @param path - Optional derivation path suffix (defaults to empty string)
  * @param chainId - CAIP-2 chain identifier used for derivation
- * @param keyVersion - Key version controlling which derivation prefix to use (legacy v1 for 0, CAIP-2 v2 otherwise)
+ * @param keyVersion - Key version (must be >= 1 for v2 derivation)
  * @returns The derived child public key in uncompressed SEC1 format (04 || x || y)
  */
 export function deriveChildPublicKey(
@@ -107,21 +107,25 @@ export function deriveChildPublicKey(
   predecessorId: string,
   path: string = '',
   chainId: string,
-  _keyVersion: number
+  keyVersion: number
 ): UncompressedPubKeySEC1 {
-  const ec = new EC('secp256k1')
-  const derivationPath = `${EPSILON_DERIVATION_PREFIX_V2}:${chainId}:${predecessorId}:${path}`
-
-  let scalarHex = ''
-
-  if (chainId === KDF_CHAIN_IDS.ETHEREUM) {
-    scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
-  } else if (chainId === KDF_CHAIN_IDS.SOLANA) {
-    scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
-  } else {
+  if (
+    chainId !== KDF_CHAIN_IDS.ETHEREUM &&
+    chainId !== KDF_CHAIN_IDS.SOLANA
+  ) {
     throw new Error('Invalid chain ID')
   }
 
+  if (keyVersion < 1) {
+    throw new Error(
+      'key_version 0 (legacy v1 derivation) is not supported. Use key_version >= 1.'
+    )
+  }
+
+  const derivationPath = `${EPSILON_DERIVATION_PREFIX}:${chainId}:${predecessorId}:${path}`
+  const scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
+
+  const ec = new EC('secp256k1')
   const x = rootUncompressedPubKeySEC1.substring(2, 66)
   const y = rootUncompressedPubKeySEC1.substring(66)
 
@@ -175,7 +179,7 @@ export async function verifyRecoveredAddress(
       signature: {
         r: `0x${signature.r}`,
         s: `0x${signature.s}`,
-        yParity: signature.v,
+        yParity: signature.v - 27,
       },
     })
 

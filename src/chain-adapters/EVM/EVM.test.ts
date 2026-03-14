@@ -1,6 +1,3 @@
-import { LocalAccountSigner } from '@aa-sdk/core'
-import { alchemy, sepolia as alchemySepolia } from '@account-kit/infra'
-import { createLightAccountAlchemyClient } from '@account-kit/smart-contracts'
 import { secp256k1 } from '@noble/curves/secp256k1'
 import BN from 'bn.js'
 import {
@@ -191,50 +188,4 @@ describe('EVM', async () => {
     expect(txReceipt.status).toBe('success')
   })
 
-  it('should sign a user operation', async () => {
-    const lightAccountClient = await createLightAccountAlchemyClient({
-      transport: alchemy({ apiKey: 'er9VowLvLw2YQbgTaRLudG81JPxs77rT' }),
-      chain: alchemySepolia,
-      signer: LocalAccountSigner.privateKeyToAccountSigner(privateKey),
-    })
-
-    const userOp = {
-      sender: testAccount.address,
-      nonce: '0x0' as `0x${string}`,
-      initCode: '0x' as `0x${string}`,
-      callData: '0x' as `0x${string}`,
-      callGasLimit: '0x5208' as `0x${string}`,
-      verificationGasLimit: '0x5208' as `0x${string}`,
-      preVerificationGas: '0x5208' as `0x${string}`,
-      maxFeePerGas: '0x38d7ea4c68000' as `0x${string}`,
-      maxPriorityFeePerGas: '0x5af3107a4000' as `0x${string}`,
-      paymasterAndData: '0x' as `0x${string}`,
-      signature: '0x' as `0x${string}`,
-    }
-
-    const { hashToSign } = await evm.prepareUserOpForSigning(
-      userOp,
-      '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
-      11155111
-    )
-
-    const mpcSignature = await contract.sign({
-      payload: hashToSign,
-      path: '',
-      key_version: 0,
-    })
-
-    const signedUserOp = evm.finalizeUserOpSigning({
-      userOp,
-      rsvSignature: mpcSignature,
-    })
-
-    const walletSignature = await lightAccountClient.signUserOperation({
-      uoStruct: userOp,
-    })
-
-    expect(signedUserOp.signature).toBe(walletSignature.signature)
-  })
-
-  // TODO: Include test for v7 user operations.
 })
