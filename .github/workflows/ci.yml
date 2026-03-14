@@ -8,27 +8,31 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
       - run: pnpm install
       - run: pnpm format --check
+      - run: pnpm lint
+      - run: pnpm typecheck
       - run: pnpm build
 
   test-evm:
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -40,11 +44,12 @@ jobs:
   test-btc:
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -61,11 +66,12 @@ jobs:
   test-cosmos:
     needs: check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -92,3 +98,6 @@ jobs:
           exit 1
       - name: Run Cosmos tests
         run: pnpm test:cosmos
+      - name: Dump Cosmos logs on failure
+        if: failure()
+        run: docker logs cosmos-node

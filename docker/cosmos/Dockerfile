@@ -12,11 +12,11 @@ RUN gaiad init test-node --chain-id $CHAIN_ID \
   && gaiad genesis add-genesis-account $TEST_ADDRESS 100000000000uatom \
   && gaiad genesis gentx validator 100000000uatom --keyring-backend=test --chain-id $CHAIN_ID \
   && gaiad genesis collect-gentxs \
-  && sed -i 's/timeout_commit = "5s"/timeout_commit = "1s"/g' ~/.gaia/config/config.toml \
   && sed -i 's/timeout_propose = "3s"/timeout_propose = "1s"/g' ~/.gaia/config/config.toml \
   && sed -i 's/minimum-gas-prices = ""/minimum-gas-prices = "0uatom"/g' ~/.gaia/config/app.toml \
   && sed -i 's/127.0.0.1:26657/0.0.0.0:26657/g' ~/.gaia/config/config.toml
 
 EXPOSE 26657 1317
 
+ENTRYPOINT []
 CMD ["gaiad", "start", "--api.enable=true", "--api.address=tcp://0.0.0.0:1317"]
