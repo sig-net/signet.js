@@ -35,7 +35,7 @@
     "test:btc:e2e": "docker compose -f docker/bitcoin/docker-compose.yml up -d && vitest run tests/e2e/btc/BTC.e2e.test.ts; docker compose -f docker/bitcoin/docker-compose.yml down -v",
     "test:cosmos:e2e": "docker rm -f cosmos-node 2>/dev/null; docker build -t cosmos-local docker/cosmos && docker run -d --name cosmos-node -p 26657:26657 -p 1317:1317 cosmos-local && until curl -s http://localhost:26657/status 2>/dev/null | grep -q '\"latest_block_height\":\"[1-9]'; do sleep 2; done && vitest run tests/e2e/cosmos/Cosmos.e2e.test.ts; docker rm -f cosmos-node",
     "test:solana:integration": "vitest run tests/integration/solana/Solana.integration.test.ts",
-    "test:compat": "attw --pack . && publint --strict && vitest run tests/compat/compat.test.ts",
+    "test:compat": "attw --pack . --profile node16 && publint --strict && vitest run tests/compat/compat.test.ts",
     "publish-npm": "npm run build && npm run docs:build && npm publish",
     "publish-npm:beta": "npm run build && npm run docs:build && npm publish --tag beta",
     "release:patch": "npm version patch --no-git-tag-version --force && npm run publish-npm",

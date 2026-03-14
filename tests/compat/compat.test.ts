@@ -1,87 +1,86 @@
 import { execSync } from 'child_process'
-import { mkdtempSync, writeFileSync, rmSync, readdirSync } from 'fs'
+import { mkdtempSync, writeFileSync, rmSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 
 const pkgDir = join(__dirname, '..', '..')
 
-describe('CJS/ESM compatibility', () => {
-  describe('Layer 1: attw (type resolution)', () => {
-    it('passes all module resolution modes', () => {
-      const result = execSync('pnpm exec attw --pack .', {
-        cwd: pkgDir,
-        encoding: 'utf-8',
-      })
-      expect(result).toContain('No problems found')
-    })
-  })
+describe('CJS/ESM runtime compatibility', () => {
+  let tmp: string
+  let tarball: string
 
-  describe('Layer 2: publint (package.json & format)', () => {
-    it('passes strict lint', () => {
-      execSync('pnpm exec publint --strict', {
-        cwd: pkgDir,
-        encoding: 'utf-8',
-      })
-    })
-  })
+  beforeAll(() => {
+    const packOut = execSync('pnpm pack --pack-destination /tmp', {
+      cwd: pkgDir,
+      encoding: 'utf-8',
+    }).trim()
+    tarball = packOut.split('\n').pop()!
 
-  describe('Layer 3: Runtime smoke tests', () => {
-    let tmp: string
-    let tarball: string
+    tmp = mkdtempSync(join(tmpdir(), 'signet-compat-'))
+    execSync('npm init -y', { cwd: tmp, stdio: 'ignore' })
+    execSync(`npm install ${tarball}`, { cwd: tmp, stdio: 'ignore' })
 
-    beforeAll(async () => {
-      execSync('pnpm pack', { cwd: pkgDir, stdio: 'ignore' })
-      const tgz = readdirSync(pkgDir).find((f) => f.endsWith('.tgz'))
-      if (!tgz) throw new Error('pnpm pack did not produce a .tgz file')
-      tarball = tgz
-      tmp = mkdtempSync(join(tmpdir(), 'signet-compat-'))
-      execSync('npm init -y', { cwd: tmp, stdio: 'ignore' })
-      execSync(`npm install ${join(pkgDir, tarball)}`, {
-        cwd: tmp,
-        stdio: 'ignore',
-      })
-    }, 60_000)
-
-    afterAll(() => {
+    return () => {
       rmSync(tmp, { recursive: true, force: true })
-      rmSync(join(pkgDir, tarball), { force: true })
-    })
+      rmSync(tarball, { force: true })
+    }
+  }, 60_000)
 
-    it('can be required via CJS', () => {
-      const script = join(tmp, 'test-cjs.cjs')
-      writeFileSync(
-        script,
-        `
-const pkg = require('signet.js');
+  it('can be required via CJS', () => {
+    const script = join(tmp, 'test-cjs.cjs')
+    writeFileSync(
+      script,
+      `
 const assert = require('assert');
-assert(pkg.chainAdapters, 'missing chainAdapters');
-assert(pkg.constants, 'missing constants');
-assert(pkg.utils, 'missing utils');
-assert(pkg.contracts, 'missing contracts');
+const pkg = require('signet.js');
+
+assert(typeof pkg.chainAdapters.ChainAdapter === 'function', 'chainAdapters.ChainAdapter should be a function');
+assert(typeof pkg.constants.ENVS === 'object', 'constants.ENVS should be an object');
+assert(typeof pkg.utils.cryptography === 'object', 'utils.cryptography should be an object');
+assert(typeof pkg.contracts.ChainSignatureContract === 'function', 'contracts.ChainSignatureContract should be a function');
 console.log('CJS OK');
 `
-      )
-      const result = execSync(`node ${script}`, { encoding: 'utf-8' })
-      expect(result.trim()).toBe('CJS OK')
-    })
+    )
+    const result = execSync(`node ${script}`, { encoding: 'utf-8' })
+    expect(result.trim()).toBe('CJS OK')
+  })
 
-    it('can be imported via ESM', () => {
-      const script = join(tmp, 'test-esm.mjs')
-      writeFileSync(
-        script,
-        `
-import * as pkg from 'signet.js';
+  it('can be imported via ESM (namespace)', () => {
+    const script = join(tmp, 'test-esm.mjs')
+    writeFileSync(
+      script,
+      `
 import assert from 'assert';
-assert(pkg.chainAdapters, 'missing chainAdapters');
-assert(pkg.constants, 'missing constants');
-assert(pkg.utils, 'missing utils');
-assert(pkg.contracts, 'missing contracts');
+import * as pkg from 'signet.js';
+
+assert(typeof pkg.chainAdapters.ChainAdapter === 'function', 'chainAdapters.ChainAdapter should be a function');
+assert(typeof pkg.constants.ENVS === 'object', 'constants.ENVS should be an object');
+assert(typeof pkg.utils.cryptography === 'object', 'utils.cryptography should be an object');
+assert(typeof pkg.contracts.ChainSignatureContract === 'function', 'contracts.ChainSignatureContract should be a function');
 console.log('ESM OK');
 `
-      )
-      const result = execSync(`node ${script}`, { encoding: 'utf-8' })
-      expect(result.trim()).toBe('ESM OK')
-    })
+    )
+    const result = execSync(`node ${script}`, { encoding: 'utf-8' })
+    expect(result.trim()).toBe('ESM OK')
+  })
+
+  it('can be imported via ESM (named imports)', () => {
+    const script = join(tmp, 'test-esm-named.mjs')
+    writeFileSync(
+      script,
+      `
+import assert from 'assert';
+import { chainAdapters, constants, utils, contracts } from 'signet.js';
+
+assert(typeof chainAdapters.ChainAdapter === 'function', 'chainAdapters.ChainAdapter should be a function');
+assert(typeof constants.ENVS === 'object', 'constants.ENVS should be an object');
+assert(typeof utils.cryptography === 'object', 'utils.cryptography should be an object');
+assert(typeof contracts.ChainSignatureContract === 'function', 'contracts.ChainSignatureContract should be a function');
+console.log('ESM Named OK');
+`
+    )
+    const result = execSync(`node ${script}`, { encoding: 'utf-8' })
+    expect(result.trim()).toBe('ESM Named OK')
   })
 })
