@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test-and-format:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,14 +17,78 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install
+      - run: pnpm install
+      - run: pnpm format --check
+      - run: pnpm build
 
-      - name: Check formatting
-        run: pnpm format --check
-
-      - name: Run build
-        run: pnpm build
-
-      - name: Run tests
+  test-evm:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Run EVM tests
         run: pnpm test:ci
+
+  test-btc:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Start Nigiri
+        uses: vulpemventures/nigiri-github-action@7fc63cec40cbfc113589a9ade24ab21c9107ad39 # v1
+        with:
+          use_liquid: false
+          use_ln: false
+      - name: Run Bitcoin tests
+        run: pnpm test:btc
+
+  test-cosmos:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Start Cosmos node
+        run: |
+          docker build -t cosmos-local docker/cosmos
+          docker run -d --name cosmos-node \
+            -p 26657:26657 -p 1317:1317 \
+            cosmos-local
+      - name: Wait for Cosmos node
+        run: |
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:26657/status > /dev/null 2>&1; then
+              echo "Cosmos node is ready"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          echo "Cosmos node failed to start"
+          docker logs cosmos-node
+          exit 1
+      - name: Run Cosmos tests
+        run: pnpm test:cosmos
