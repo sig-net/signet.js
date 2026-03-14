@@ -1,4 +1,4 @@
-import { secp256k1 } from '@noble/curves/secp256k1'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { ripemd160, sha256 } from '@cosmjs/crypto'
 import BN from 'bn.js'
 import { bech32 } from 'bech32'
@@ -80,17 +80,29 @@ describe('Cosmos', () => {
     expect(hashesToSign).toHaveLength(1)
     expect(hashesToSign[0]).toHaveLength(32)
 
-    const { r, s, recovery } = secp256k1.sign(
-      new Uint8Array(hashesToSign[0]),
-      privKeyBytes
-    )
+    const msgBytes = new Uint8Array(hashesToSign[0])
+    const sigBytes = secp256k1.sign(msgBytes, privKeyBytes, {
+      prehash: false,
+    })
+    const sig = secp256k1.Signature.fromBytes(sigBytes)
+    const pubKey = secp256k1.getPublicKey(privKeyBytes, false)
+    let recovery = 0
+    for (let rec = 0; rec < 2; rec++) {
+      try {
+        const pt = sig.addRecoveryBit(rec).recoverPublicKey(msgBytes)
+        if (Buffer.from(pt.toBytes(false)).equals(Buffer.from(pubKey))) {
+          recovery = rec
+          break
+        }
+      } catch {}
+    }
 
     const signedTx = cosmos.finalizeTransactionSigning({
       transaction,
       rsvSignatures: [
         {
-          r: r.toString(16).padStart(64, '0'),
-          s: s.toString(16).padStart(64, '0'),
+          r: sig.r.toString(16).padStart(64, '0'),
+          s: sig.s.toString(16).padStart(64, '0'),
           v: recovery + 27,
         },
       ],

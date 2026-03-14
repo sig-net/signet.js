@@ -1,4 +1,4 @@
-import { secp256k1 } from '@noble/curves/secp256k1'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
 import * as bitcoin from 'bitcoinjs-lib'
 import BN from 'bn.js'
 import { describe, expect, it, beforeAll } from 'vitest'
@@ -13,10 +13,14 @@ const NIGIRI_URL = process.env.NIGIRI_URL ?? 'http://localhost:3000'
 
 async function waitForUTXOs(
   address: string,
-  maxRetries = 10
+  maxRetries = 15
 ): Promise<Array<{ txid: string; vout: number; value: number }>> {
   for (let i = 0; i < maxRetries; i++) {
     const response = await fetch(`${NIGIRI_URL}/address/${address}/utxo`)
+    if (!response.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      continue
+    }
     const utxos = (await response.json()) as Array<{
       txid: string
       vout: number
@@ -78,13 +82,25 @@ describe('Bitcoin', () => {
   })
 
   const mockSign = async (payload: number[]) => {
-    const { r, s, recovery } = secp256k1.sign(
-      new Uint8Array(payload),
-      privKeyBytes
-    )
+    const msgBytes = new Uint8Array(payload)
+    const sigBytes = secp256k1.sign(msgBytes, privKeyBytes, {
+      prehash: false,
+    })
+    const sig = secp256k1.Signature.fromBytes(sigBytes)
+    const pubKey = secp256k1.getPublicKey(privKeyBytes, false)
+    let recovery = 0
+    for (let rec = 0; rec < 2; rec++) {
+      try {
+        const pt = sig.addRecoveryBit(rec).recoverPublicKey(msgBytes)
+        if (Buffer.from(pt.toBytes(false)).equals(Buffer.from(pubKey))) {
+          recovery = rec
+          break
+        }
+      } catch {}
+    }
     return {
-      r: r.toString(16).padStart(64, '0'),
-      s: s.toString(16).padStart(64, '0'),
+      r: sig.r.toString(16).padStart(64, '0'),
+      s: sig.s.toString(16).padStart(64, '0'),
       v: recovery + 27,
     }
   }
@@ -93,7 +109,7 @@ describe('Bitcoin', () => {
     const response = await fetch(`${NIGIRI_URL}/faucet`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, amount: 0.001 }),
+      body: JSON.stringify({ address }),
     })
     if (!response.ok) {
       throw new Error(`Faucet failed: ${await response.text()}`)

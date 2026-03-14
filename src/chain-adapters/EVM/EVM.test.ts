@@ -1,4 +1,4 @@
-import { secp256k1 } from '@noble/curves/secp256k1'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
 import BN from 'bn.js'
 import {
   createPublicClient,
@@ -34,19 +34,35 @@ describe('EVM', async () => {
     transport: http(rpcUrl),
   })
 
+  const mockSign = (payload: number[], privKey: Uint8Array) => {
+    const sigBytes = secp256k1.sign(new Uint8Array(payload), privKey, {
+      prehash: false,
+    })
+    const sig = secp256k1.Signature.fromBytes(sigBytes)
+    const pubKey = secp256k1.getPublicKey(privKey, false)
+    let recovery = 0
+    for (let rec = 0; rec < 2; rec++) {
+      try {
+        const pt = sig.addRecoveryBit(rec).recoverPublicKey(new Uint8Array(payload))
+        if (Buffer.from(pt.toBytes(false)).equals(Buffer.from(pubKey))) {
+          recovery = rec
+          break
+        }
+      } catch {}
+    }
+    return {
+      r: sig.r.toString(16).padStart(64, '0'),
+      s: sig.s.toString(16).padStart(64, '0'),
+      v: recovery + 27,
+    }
+  }
+
+  const privKeyBytes = new Uint8Array(
+    Buffer.from(privateKey.slice(2), 'hex')
+  )
+
   const contract: ChainSignatureContract = {
-    sign: async ({ payload }) => {
-      const messageBytes = new Uint8Array(payload)
-      const privKeyBytes = new Uint8Array(
-        Buffer.from(privateKey.slice(2), 'hex')
-      )
-      const { r, s, recovery } = secp256k1.sign(messageBytes, privKeyBytes)
-      return {
-        r: r.toString(16).padStart(64, '0'),
-        s: s.toString(16).padStart(64, '0'),
-        v: recovery + 27,
-      }
-    },
+    sign: async ({ payload }) => mockSign(payload, privKeyBytes),
     getDerivedPublicKey: async ({ keyVersion }) => {
       return '04' as UncompressedPubKeySEC1
     },

@@ -1,6 +1,5 @@
 import type {
   Address,
-  Hex,
   TransactionRequest,
   TypedDataDefinition,
   SignableMessage,

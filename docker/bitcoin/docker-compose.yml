@@ -1,0 +1,72 @@
+services:
+  bitcoin:
+    image: bitcoin/bitcoin:30
+    container_name: nigiri-bitcoin
+    restart: on-failure
+    stop_grace_period: 30s
+    command:
+      - -regtest=1
+      - -server=1
+      - -listen=1
+      - -rpcuser=admin1
+      - -rpcpassword=123
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -fallbackfee=0.00001
+    ports:
+      - 18443:18443
+    volumes:
+      - bitcoin-data:/home/bitcoin/.bitcoin
+
+  electrs:
+    image: ghcr.io/vulpemventures/electrs:latest
+    container_name: nigiri-electrs
+    entrypoint:
+      - /build/electrs
+    command:
+      - -vvvv
+      - --network
+      - regtest
+      - --daemon-dir
+      - /config
+      - --daemon-rpc-addr
+      - bitcoin:18443
+      - --cookie
+      - admin1:123
+      - --http-addr
+      - 0.0.0.0:30000
+      - --electrum-rpc-addr
+      - 0.0.0.0:50000
+      - --cors
+      - "*"
+      - --jsonrpc-import
+    depends_on:
+      - bitcoin
+    ports:
+      - 30000:30000
+    volumes:
+      - bitcoin-data:/config
+    restart: unless-stopped
+
+  chopsticks:
+    image: ghcr.io/vulpemventures/nigiri-chopsticks:latest
+    container_name: nigiri-chopsticks
+    command:
+      - --use-faucet
+      - --use-mining
+      - --use-logger
+      - --rpc-addr
+      - bitcoin:18443
+      - --electrs-addr
+      - electrs:30000
+      - --addr
+      - 0.0.0.0:3000
+    depends_on:
+      - bitcoin
+      - electrs
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+
+volumes:
+  bitcoin-data:
