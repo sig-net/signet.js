@@ -1,7 +1,7 @@
 // [!region import]
 import { Connection, Keypair } from '@solana/web3.js'
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor'
-import { contracts, RSVSignature } from 'signet.js'
+import { contracts, constants } from 'signet.js'
 // [!endregion import]
 
 // [!region create-connection]
@@ -25,7 +25,7 @@ const requester = Keypair.generate()
 // [!region initialize-contract]
 const chainSigContract = new contracts.solana.ChainSignatureContract({
   provider,
-  programId: 'ChainSignatureProgramIdHere',
+  programId: constants.CONTRACT_ADDRESSES.SOLANA.TESTNET_DEV,
   config: {
     requesterAddress: requester.publicKey.toString(),
   },

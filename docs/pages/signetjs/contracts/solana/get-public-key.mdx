@@ -1,8 +1,8 @@
-## getPublicKey
+# getPublicKey
 
-Retrieves the root public key from the program.
+Returns the root public key. This key is either provided during construction via `config.rootPublicKey` or resolved from the built-in constants table based on the program ID.
 
-### Usage
+## Usage
 
 ```ts twoslash
 // [!include ~/snippets/code/solana/fee-delegation.ts]
@@ -11,7 +11,7 @@ const solanaChainSigContract = chainSigContract
 const publicKey = await solanaChainSigContract.getPublicKey()
 ```
 
-### Returns
+## Returns
 
 | Type                              | Description                                 |
 | --------------------------------- | ------------------------------------------- |

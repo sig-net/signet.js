@@ -27,6 +27,9 @@ describe('Cosmos', () => {
 
   const contract = createDummyContract()
 
+  // chainId must match the gaiad Docker container config (docker/cosmos/Dockerfile).
+  // If these diverge, signing fails with a cryptic signature verification error
+  // because the signed bytes include the chain ID.
   const cosmos = new chainAdapters.cosmos.Cosmos({
     contract,
     chainId: 'cosmoshub-4',
@@ -69,5 +72,34 @@ describe('Cosmos', () => {
 
     const { balance: destBalance } = await cosmos.getBalance(destAddress)
     expect(destBalance).toBe(1000n)
+  }, 30_000)
+
+  it('should reject broadcast of a transaction signed with the wrong key', async () => {
+    const wrongKeyBytes = fromHex(DEST_PRIVATE_KEY)
+
+    const { hashesToSign, transaction } =
+      await cosmos.prepareTransactionForSigning({
+        address,
+        publicKey: compressedPubKeyHex,
+        messages: [
+          {
+            typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+            value: {
+              fromAddress: address,
+              toAddress: destAddress,
+              amount: [{ denom: 'uatom', amount: '1000' }],
+            },
+          },
+        ],
+      })
+
+    const wrongSignature = mockSign(hashesToSign[0], wrongKeyBytes)
+
+    const signedTx = cosmos.finalizeTransactionSigning({
+      transaction,
+      rsvSignatures: [wrongSignature],
+    })
+
+    await expect(cosmos.broadcastTx(signedTx)).rejects.toThrow()
   }, 30_000)
 })

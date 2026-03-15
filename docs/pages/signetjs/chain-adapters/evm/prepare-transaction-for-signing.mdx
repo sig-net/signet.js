@@ -9,8 +9,8 @@ The `prepareTransactionForSigning` method prepares an EVM transaction for MPC si
 // ---cut---
 const { transaction, hashesToSign } =
   await evmChain.prepareTransactionForSigning({
+    from: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199' as `0x${string}`,
     to: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-    from: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
     value: 1n, // 1 wei
     data: '0x', // Empty data for a simple ETH transfer
   })

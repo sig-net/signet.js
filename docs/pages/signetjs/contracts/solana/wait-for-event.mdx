@@ -1,8 +1,8 @@
-## waitForEvent
+# waitForEvent
 
 Waits for a specific event matching a given request ID by combining a WebSocket listener (real-time) with polling backfill (resilience). Use this when invoking the `sign` instruction on the contract without using this class's `sign` method (e.g. for cross-contract invocations or bidirectional flows).
 
-### Usage
+## Usage
 
 ```ts twoslash
 // [!include ~/snippets/code/solana/fee-delegation.ts]
@@ -25,7 +25,7 @@ const signature = await solanaChainSigContract.waitForEvent({
 })
 ```
 
-### Waiting for a Bidirectional Response
+## Waiting for a Bidirectional Response
 
 ```ts twoslash
 // [!include ~/snippets/code/solana/fee-delegation.ts]
@@ -51,7 +51,7 @@ const result = await solanaChainSigContract.waitForEvent({
 // result.signature - raw Signature { bigR, s, recoveryId }
 ```
 
-### Parameters
+## Parameters
 
 | Parameter             | Type                       | Description                                                                                                  |
 | --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -60,11 +60,12 @@ const result = await solanaChainSigContract.waitForEvent({
 | `signer`              | `PublicKey`                | Address to monitor for transactions (e.g. responder address)                                                 |
 | `afterSignature?`     | `string`                   | Transaction signature to start polling from                                                                  |
 | `timeoutMs?`          | `number`                   | Timeout in milliseconds (default: 60000)                                                                     |
-| `backfillIntervalMs?` | `number`                   | Interval between backfill polls in milliseconds (default: 5000)                                              |
+| `backfillIntervalMs?` | `number`                   | Interval between backfill polls in milliseconds (default: 30000)                                             |
 | `backfillLimit?`      | `number`                   | Max transactions to fetch per backfill poll (default: 50)                                                    |
+| `healthCheckIntervalMs?` | `number`                | Interval in milliseconds for WebSocket health checks. Triggers reconnection and fast backfill if the connection is lost. (default: 10000) |
 | `signal?`             | `AbortSignal`              | Abort signal for cancellation                                                                                |
 
-### Returns
+## Returns
 
 The return type depends on the `eventName`:
 

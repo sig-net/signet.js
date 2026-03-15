@@ -6,6 +6,7 @@ import { sepolia } from 'viem/chains'
 import { constants, contracts } from '../../src'
 import type { RSVSignature } from '../../src'
 
+export const HARDHAT_RPC_URL = 'http://127.0.0.1:8545'
 export const NIGIRI_URL = 'http://localhost:3000'
 export const COSMOS_RPC_URL = 'http://localhost:26657'
 export const COSMOS_REST_URL = 'http://localhost:1317'
@@ -62,6 +63,11 @@ export function createSepoliaMpcContract() {
   return { account, mpcContract }
 }
 
+// Placeholder contract that satisfies the ChainSignatureContract interface but is
+// never actually called. Unit tests mock signing locally via mockSign(), so no
+// contract interaction occurs. If an adapter ever tried to call sign() or
+// getDerivedPublicKey() on this, it would fail with a connection error — that's
+// intentional, as it would surface an unexpected dependency on the contract.
 export function createDummyContract() {
   return new contracts.evm.ChainSignatureContract({
     publicClient: createPublicClient({ transport: http('http://localhost') }),

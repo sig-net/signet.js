@@ -59,6 +59,7 @@ const contract = new contracts.solana.ChainSignatureContract({
 | `args.provider`                 | `AnchorProvider`               | Anchor provider instance for interacting with Solana                                                                        |
 | `args.programId`                | `string \| PublicKey`          | The program ID of the deployed ChainSignatures program                                                                      |
 | `args.config?`                  | `object`                       | Optional configuration object                                                                                               |
-| `args.config.rootPublicKey?`    | `NajPublicKey`                 | Optional root public key; derived from program ID if not provided                                                           |
+| `args.config.rootPublicKey?`    | `RootPublicKey`                | Optional root public key; derived from program ID if not provided                                                           |
 | `args.config.requesterAddress?` | `string`                       | Optional requester wallet address. If not provided, defaults to the wallet address. Fee payer is always the wallet address. |
+| `args.config.disableRetryOnRateLimit?` | `boolean`                      | If true, disables @solana/web3.js automatic retry on 429 responses.                                                         |
 | `args.config.idl?`              | `ChainSignaturesProject & Idl` | Optional custom IDL. If not provided, the default ChainSignatures IDL will be used                                          |

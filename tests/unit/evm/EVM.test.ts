@@ -146,4 +146,10 @@ describe('EVM', async () => {
     })
     expect(destBalance).toBe(parseEther('1'))
   })
+
+  it('should reject broadcast of invalid transaction hex', async () => {
+    await expect(
+      evm.broadcastTx('0xdeadbeef' as `0x${string}`)
+    ).rejects.toThrow()
+  })
 })
