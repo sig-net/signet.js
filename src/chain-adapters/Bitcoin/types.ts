@@ -11,7 +11,7 @@ export interface BTCInput {
   txid: string
   vout: number
   value: number
-  scriptPubKey: Buffer
+  scriptPubKey: Uint8Array
 }
 
 export type BTCOutput =
@@ -19,7 +19,7 @@ export type BTCOutput =
       value: number
     }
   | { address: string; value: number }
-  | { script: Buffer; value: number }
+  | { script: Uint8Array; value: number }
 
 export type BTCTransactionRequest = {
   publicKey: string

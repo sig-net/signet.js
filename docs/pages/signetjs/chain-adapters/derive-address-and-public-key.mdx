@@ -28,7 +28,13 @@ const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
 
 ## Returns
 
-| Property    | Type     | Description                                              |
-| ----------- | -------- | -------------------------------------------------------- |
-| `address`   | `string` | The derived address                                      |
-| `publicKey` | `string` | The corresponding public key in SEC1 uncompressed format |
+| Property    | Type     | Description                                                                  |
+| ----------- | -------- | ---------------------------------------------------------------------------- |
+| `address`   | `string` | The derived address                                                          |
+| `publicKey` | `string` | The derived public key (compressed for Bitcoin/Cosmos, uncompressed for EVM) |
+
+## Working Examples
+
+- [EVM E2E](https://github.com/sig-net/signet.js/blob/main/tests/e2e/evm/EVM.e2e.test.ts) — derive EVM address from MPC key
+- [Bitcoin E2E](https://github.com/sig-net/signet.js/blob/main/tests/e2e/btc/BTC.e2e.test.ts) — derive P2WPKH address from MPC key
+- [Cosmos E2E](https://github.com/sig-net/signet.js/blob/main/tests/e2e/cosmos/Cosmos.e2e.test.ts) — derive bech32 address from MPC key

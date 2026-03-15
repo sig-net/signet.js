@@ -112,6 +112,13 @@ The adapter abstracts away the complexity of different Bitcoin API providers, al
 
 For detailed implementation and configuration options, see the [RPC Adapter](/signetjs/chain-adapters/bitcoin/btc-rpc-adapter) documentation.
 
+## Working Examples
+
+See the test suite for complete, runnable examples:
+
+- [Unit tests](https://github.com/sig-net/signet.js/blob/main/tests/unit/btc/Bitcoin.test.ts) — single and multi-input transactions with mocked signing
+- [E2E tests](https://github.com/sig-net/signet.js/blob/main/tests/e2e/btc/BTC.e2e.test.ts) — MPC signing on Sepolia, broadcast on regtest
+
 ## Types
 
 The following types are used on the Bitcoin chain:

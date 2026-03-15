@@ -38,7 +38,8 @@ const publicClient = createPublicClient({
 })
 
 // Assume you already instantiated your ChainSignatures EVM contract wrapper
-const contract = new contracts.evm.ChainSignaturesContract({
+const contract = new contracts.evm.ChainSignatureContract({
+  publicClient,
   contractAddress: '0xYourContractAddress' as `0x${string}`,
   walletClient: /* your WalletClient */ undefined as any,
 })
@@ -52,7 +53,8 @@ const evmChain = new chainAdapters.evm.EVM({
 const predecessorId = '0xYourEOAOrContract'
 const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
   predecessorId,
-  'any_string'
+  'any_string',
+  1
 )
 
 // Check balance
@@ -70,7 +72,7 @@ const { transaction, hashesToSign } =
 const rsvSignature = await contract.sign({
   payload: hashesToSign[0],
   path: 'any_string',
-  key_version: 0,
+  key_version: 1,
 })
 
 // Finalize and broadcast

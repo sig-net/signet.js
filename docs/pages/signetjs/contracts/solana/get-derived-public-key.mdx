@@ -1,8 +1,8 @@
-## getDerivedPublicKey
+# getDerivedPublicKey
 
 Derives a public key based on a predecessor address and a derivation path.
 
-### Usage
+## Usage
 
 ```ts twoslash
 // [!include ~/snippets/code/solana/fee-delegation.ts]
@@ -15,7 +15,7 @@ const publicKey = await solanaChainSigContract.getDerivedPublicKey({
 })
 ```
 
-### Parameters
+## Parameters
 
 | Parameter          | Type     | Description                           |
 | ------------------ | -------- | ------------------------------------- |
@@ -24,7 +24,7 @@ const publicKey = await solanaChainSigContract.getDerivedPublicKey({
 | `args.predecessor` | `string` | Address requesting the signature      |
 | `args.keyVersion`  | `number` | The version of the MPC key to use     |
 
-### Returns
+## Returns
 
 | Type                              | Description                                    |
 | --------------------------------- | ---------------------------------------------- |

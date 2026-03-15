@@ -4,6 +4,7 @@ import {
   EventParser,
   type Idl,
 } from '@coral-xyz/anchor'
+import { hex } from '@scure/base'
 import {
   type AccountMeta,
   Connection,
@@ -18,12 +19,15 @@ import {
   verifyRecoveredAddress,
 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
-import BN from 'bn.js'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
 import type { SignArgs } from '@contracts/ChainSignatureContract'
-import type { RootPublicKey, RSVSignature, UncompressedPubKeySEC1 } from '@types'
+import type {
+  RootPublicKey,
+  RSVSignature,
+  UncompressedPubKeySEC1,
+} from '@types'
 import { cryptography } from '@utils'
 
 import type { SignOptions, SignatureErrorData } from '../evm/types'
@@ -101,31 +105,26 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     this.rootPublicKey = normalizeToUncompressedPubKey(rootPublicKey)
 
     if (args.config?.disableRetryOnRateLimit !== undefined) {
-      this._connection = new Connection(
-        this.provider.connection.rpcEndpoint,
-        {
-          commitment: this.provider.connection.commitment,
-          disableRetryOnRateLimit: args.config.disableRetryOnRateLimit,
-          fetch: async (input, init) => {
-            const res = await globalThis.fetch(input, init)
-            if (res.status === 429) {
-              let method = 'unknown'
-              try {
-                const body = JSON.parse(init?.body as string)
-                method = Array.isArray(body)
-                  ? body
-                      .map((r: { method: string }) => r.method)
-                      .join(', ')
-                  : body.method ?? 'unknown'
-              } catch {}
-              console.warn(
-                `\n[429 TRACE] RPC method: ${method}\n${new Error().stack}`
-              )
-            }
-            return res
-          },
-        }
-      )
+      this._connection = new Connection(this.provider.connection.rpcEndpoint, {
+        commitment: this.provider.connection.commitment,
+        disableRetryOnRateLimit: args.config.disableRetryOnRateLimit,
+        fetch: async (input, init) => {
+          const res = await globalThis.fetch(input, init)
+          if (res.status === 429) {
+            let method = 'unknown'
+            try {
+              const body = JSON.parse(init?.body as string)
+              method = Array.isArray(body)
+                ? body.map((r: { method: string }) => r.method).join(', ')
+                : (body.method ?? 'unknown')
+            } catch {}
+            console.warn(
+              `\n[429 TRACE] RPC method: ${method}\n${new Error().stack}`
+            )
+          }
+          return res
+        },
+      })
     } else {
       this._connection = this.provider.connection
     }
@@ -138,19 +137,20 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     return this._connection
   }
 
-  async getCurrentSignatureDeposit(): Promise<BN> {
+  async getCurrentSignatureDeposit(): Promise<bigint> {
     try {
       const programStatePDA = await this.getProgramStatePDA()
 
       const programState =
         await this.program.account.programState.fetch(programStatePDA)
 
-      return new BN(programState.signatureDeposit.toString())
+      return BigInt(programState.signatureDeposit.toString())
     } catch (error) {
       throw new Error(
         `Failed to get signature deposit: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
+        { cause: error }
       )
     }
   }
@@ -160,7 +160,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   async getProgramStatePDA(): Promise<PublicKey> {
     const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('program-state')],
+      [new TextEncoder().encode('program-state')],
       this.programId
     )
     return pda
@@ -195,7 +195,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const fixedRemainingAccounts: AccountMeta[] = [
       {
         pubkey: PublicKey.findProgramAddressSync(
-          [Buffer.from('__event_authority')],
+          [new TextEncoder().encode('__event_authority')],
           this.program.programId
         )[0],
         isWritable: false,
@@ -331,8 +331,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     transaction: Transaction,
     signers?: Signer[]
   ): Promise<string> {
-    const { blockhash } =
-      await this.connection.getLatestBlockhash('confirmed')
+    const { blockhash } = await this.connection.getLatestBlockhash('confirmed')
     transaction.recentBlockhash = blockhash
 
     transaction = await this.provider.wallet.signTransaction(transaction)
@@ -354,8 +353,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     const timeout = 30000 // 30 seconds, same as default sendAndConfirm
 
     while (Date.now() - startTime < timeout) {
-      const status =
-        await this.connection.getSignatureStatus(signature)
+      const status = await this.connection.getSignatureStatus(signature)
 
       if (status.value?.err) {
         throw new Error(
@@ -479,7 +477,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       // Backfill polling
       const runBackfill = async (): Promise<void> => {
         if (settled) return
-        const parser = new EventParser(this.program.programId, this.program.coder)
+        const parser = new EventParser(
+          this.program.programId,
+          this.program.coder
+        )
         try {
           const signatures = await this.connection.getSignaturesForAddress(
             signer,
@@ -544,7 +545,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       let currentSubId: number | undefined
 
       const subscribeToLogs = (): void => {
-        const parser = new EventParser(this.program.programId, this.program.coder)
+        const parser = new EventParser(
+          this.program.programId,
+          this.program.coder
+        )
         currentSubId = this.connection.onLogs(
           signer,
           (logs, _context) => {
@@ -650,11 +654,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     data: SignatureRespondedEvent,
     requestId: string
   ): RSVSignature | undefined {
-    const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
+    const eventRequestIdHex = '0x' + hex.encode(new Uint8Array(data.requestId))
     if (eventRequestIdHex !== requestId) return undefined
     return {
-      r: Buffer.from(data.signature.bigR.x).toString('hex'),
-      s: Buffer.from(data.signature.s).toString('hex'),
+      r: hex.encode(new Uint8Array(data.signature.bigR.x)),
+      s: hex.encode(new Uint8Array(data.signature.s)),
       v: data.signature.recoveryId + 27,
     }
   }
@@ -663,7 +667,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     data: SignatureErrorEvent,
     requestId: string
   ): SignatureErrorData | undefined {
-    const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
+    const eventRequestIdHex = '0x' + hex.encode(new Uint8Array(data.requestId))
     if (eventRequestIdHex !== requestId) return undefined
     return {
       requestId: eventRequestIdHex,
@@ -675,7 +679,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     data: RespondBidirectionalEvent,
     requestId: string
   ): RespondBidirectionalData | undefined {
-    const eventRequestIdHex = '0x' + Buffer.from(data.requestId).toString('hex')
+    const eventRequestIdHex = '0x' + hex.encode(new Uint8Array(data.requestId))
     if (eventRequestIdHex !== requestId) return undefined
     return {
       serializedOutput: data.serializedOutput,

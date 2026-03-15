@@ -13,11 +13,6 @@ import {
   type Address,
   type Hash,
   concatHex,
-  encodeAbiParameters,
-  hexToBigInt,
-  concat,
-  pad,
-  isAddress,
 } from 'viem'
 
 import { ChainAdapter } from '@chain-adapters/ChainAdapter'
@@ -26,8 +21,6 @@ import type {
   EVMUnsignedTransaction,
   EVMMessage,
   EVMTypedData,
-  UserOperationV6,
-  UserOperationV7,
 } from '@chain-adapters/EVM/types'
 import { fetchEVMFeeProperties } from '@chain-adapters/EVM/utils'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -122,7 +115,7 @@ export class EVM extends ChainAdapter<
       ? uncompressedPubKey.slice(2)
       : uncompressedPubKey
 
-    const hash = keccak256(Buffer.from(publicKeyNoPrefix, 'hex'))
+    const hash = keccak256(`0x${publicKeyNoPrefix}` as Hex)
     const address = getAddress(`0x${hash.slice(-40)}`)
 
     return {
@@ -184,93 +177,6 @@ export class EVM extends ChainAdapter<
     }
   }
 
-  /**
-   * This implementation is a common step for Biconomy and Alchemy.
-   * Key differences between implementations:
-   * - Signature format: Biconomy omits 0x00 prefix when concatenating, Alchemy includes it
-   * - Version support: Biconomy only supports v6, Alchemy supports both v6 and v7
-   * - Validation: Biconomy uses modules for signature validation, Alchemy uses built-in validation
-   */
-  async prepareUserOpForSigning(
-    userOp: UserOperationV7 | UserOperationV6,
-    entryPointAddress?: Address,
-    chainIdArgs?: number
-  ): Promise<{
-    userOp: UserOperationV7 | UserOperationV6
-    hashToSign: HashToSign
-  }> {
-    const chainId = chainIdArgs ?? (await this.client.getChainId())
-    const entryPoint =
-      entryPointAddress || '0x0000000071727De22E5E9d8BAf0edAc6f37da032'
-
-    const encoded = encodeAbiParameters(
-      [{ type: 'bytes32' }, { type: 'address' }, { type: 'uint256' }],
-      [
-        keccak256(
-          encodeAbiParameters(
-            [
-              { type: 'address' },
-              { type: 'uint256' },
-              { type: 'bytes32' },
-              { type: 'bytes32' },
-              { type: 'bytes32' },
-              { type: 'uint256' },
-              { type: 'bytes32' },
-              { type: 'bytes32' },
-            ],
-            [
-              userOp.sender,
-              hexToBigInt(userOp.nonce),
-              keccak256(
-                'factory' in userOp &&
-                  'factoryData' in userOp &&
-                  userOp.factory &&
-                  userOp.factoryData
-                  ? concat([userOp.factory, userOp.factoryData])
-                  : 'initCode' in userOp
-                    ? userOp.initCode
-                    : '0x'
-              ),
-              keccak256(userOp.callData),
-              concat([
-                pad(userOp.verificationGasLimit, { size: 16 }),
-                pad(userOp.callGasLimit, { size: 16 }),
-              ]),
-              hexToBigInt(userOp.preVerificationGas),
-              concat([
-                pad(userOp.maxPriorityFeePerGas, { size: 16 }),
-                pad(userOp.maxFeePerGas, { size: 16 }),
-              ]),
-              keccak256(
-                'paymaster' in userOp &&
-                  userOp.paymaster &&
-                  isAddress(userOp.paymaster)
-                  ? concat([
-                      userOp.paymaster,
-                      pad(userOp.paymasterVerificationGasLimit, { size: 16 }),
-                      pad(userOp.paymasterPostOpGasLimit, { size: 16 }),
-                      userOp.paymasterData,
-                    ])
-                  : 'paymasterAndData' in userOp
-                    ? userOp.paymasterAndData
-                    : '0x'
-              ),
-            ]
-          )
-        ),
-        entryPoint,
-        BigInt(chainId),
-      ]
-    )
-
-    const userOpHash = keccak256(encoded)
-
-    return {
-      userOp,
-      hashToSign: Array.from(toBytes(hashMessage({ raw: userOpHash }))),
-    }
-  }
-
   finalizeTransactionSigning({
     transaction,
     rsvSignatures,
@@ -299,29 +205,6 @@ export class EVM extends ChainAdapter<
     return this.assembleSignature(rsvSignature)
   }
 
-  finalizeUserOpSigning({
-    userOp,
-    rsvSignature,
-  }: {
-    userOp: UserOperationV7 | UserOperationV6
-    rsvSignature: RSVSignature
-  }): UserOperationV7 | UserOperationV6 {
-    const { r, s, yParity } = this.transformRSVSignature(rsvSignature)
-    if (yParity === undefined) {
-      throw new Error('Missing yParity')
-    }
-
-    return {
-      ...userOp,
-      signature: concatHex([
-        '0x00', // Alchemy specific implementation. Biconomy doesn't include the 0x00 prefix.
-        r,
-        s,
-        numberToHex(Number(yParity + 27), { size: 1 }),
-      ]),
-    }
-  }
-
   async broadcastTx(txSerialized: `0x${string}`): Promise<Hash> {
     try {
       return await this.client.sendRawTransaction({
@@ -329,7 +212,7 @@ export class EVM extends ChainAdapter<
       })
     } catch (error) {
       console.error('Transaction broadcast failed:', error)
-      throw new Error('Failed to broadcast transaction.')
+      throw new Error('Failed to broadcast transaction.', { cause: error })
     }
   }
 }

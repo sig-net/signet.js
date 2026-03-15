@@ -1,5 +1,5 @@
-import { base58 } from '@scure/base'
-import elliptic from 'elliptic'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
+import { base58, hex } from '@scure/base'
 import { keccak256, recoverAddress, createPublicClient, http } from 'viem'
 
 import { KDF_CHAIN_IDS } from '@constants'
@@ -12,7 +12,6 @@ import {
 } from '@types'
 
 import { chainAdapters } from '..'
-const { ec: EC } = elliptic
 
 export const toRSV = (signature: MPCSignature): RSVSignature => {
   if (
@@ -71,7 +70,7 @@ export const normalizeToUncompressedPubKey = (
 ): UncompressedPubKeySEC1 => {
   if (key.startsWith('secp256k1:')) {
     const decodedKey = base58.decode(key.split(':')[1])
-    return `04${Buffer.from(decodedKey).toString('hex')}`
+    return `04${hex.encode(decodedKey)}`
   }
 
   if (key.startsWith('04') && key.length === 130) {
@@ -79,9 +78,8 @@ export const normalizeToUncompressedPubKey = (
   }
 
   if ((key.startsWith('02') || key.startsWith('03')) && key.length === 66) {
-    const ec = new EC('secp256k1')
-    const pubKeyPoint = ec.keyFromPublic(key, 'hex').getPublic(false, 'hex')
-    return `04${pubKeyPoint.slice(2)}` as UncompressedPubKeySEC1
+    const point = secp256k1.Point.fromHex(key)
+    return point.toHex(false) as UncompressedPubKeySEC1
   }
 
   throw new Error(
@@ -89,7 +87,7 @@ export const normalizeToUncompressedPubKey = (
   )
 }
 
-const EPSILON_DERIVATION_PREFIX_V2 = 'sig.network v2.0.0 epsilon derivation'
+const EPSILON_DERIVATION_PREFIX = 'sig.network v2.0.0 epsilon derivation'
 
 /**
  * Derives a child public key from a parent public key using the Sig.Network epsilon derivation scheme.
@@ -99,7 +97,7 @@ const EPSILON_DERIVATION_PREFIX_V2 = 'sig.network v2.0.0 epsilon derivation'
  * @param predecessorId - The predecessor ID is the address of the account calling the signer contract (e.g EOA or Contract Address)
  * @param path - Optional derivation path suffix (defaults to empty string)
  * @param chainId - CAIP-2 chain identifier used for derivation
- * @param keyVersion - Key version controlling which derivation prefix to use (legacy v1 for 0, CAIP-2 v2 otherwise)
+ * @param keyVersion - Key version (must be >= 1 for v2 derivation)
  * @returns The derived child public key in uncompressed SEC1 format (04 || x || y)
  */
 export function deriveChildPublicKey(
@@ -107,32 +105,26 @@ export function deriveChildPublicKey(
   predecessorId: string,
   path: string = '',
   chainId: string,
-  _keyVersion: number
+  keyVersion: number
 ): UncompressedPubKeySEC1 {
-  const ec = new EC('secp256k1')
-  const derivationPath = `${EPSILON_DERIVATION_PREFIX_V2}:${chainId}:${predecessorId}:${path}`
-
-  let scalarHex = ''
-
-  if (chainId === KDF_CHAIN_IDS.ETHEREUM) {
-    scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
-  } else if (chainId === KDF_CHAIN_IDS.SOLANA) {
-    scalarHex = keccak256(Buffer.from(derivationPath)).slice(2)
-  } else {
+  if (chainId !== KDF_CHAIN_IDS.ETHEREUM && chainId !== KDF_CHAIN_IDS.SOLANA) {
     throw new Error('Invalid chain ID')
   }
 
-  const x = rootUncompressedPubKeySEC1.substring(2, 66)
-  const y = rootUncompressedPubKeySEC1.substring(66)
+  if (keyVersion < 1) {
+    throw new Error(
+      'key_version 0 (legacy v1 derivation) is not supported. Use key_version >= 1.'
+    )
+  }
 
-  const oldPublicKeyPoint = ec.curve.point(x, y)
-  const scalarTimesG = ec.g.mul(scalarHex)
-  const newPublicKeyPoint = oldPublicKeyPoint.add(scalarTimesG)
+  const derivationPath = `${EPSILON_DERIVATION_PREFIX}:${chainId}:${predecessorId}:${path}`
+  const scalarHex = keccak256(new TextEncoder().encode(derivationPath)).slice(2)
 
-  const newX = newPublicKeyPoint.getX().toString('hex').padStart(64, '0')
-  const newY = newPublicKeyPoint.getY().toString('hex').padStart(64, '0')
+  const oldPoint = secp256k1.Point.fromHex(rootUncompressedPubKeySEC1)
+  const scalarTimesG = secp256k1.Point.BASE.multiply(BigInt(`0x${scalarHex}`))
+  const newPoint = oldPoint.add(scalarTimesG)
 
-  return `04${newX}${newY}`
+  return newPoint.toHex(false) as UncompressedPubKeySEC1
 }
 
 /**
@@ -175,7 +167,7 @@ export async function verifyRecoveredAddress(
       signature: {
         r: `0x${signature.r}`,
         s: `0x${signature.s}`,
-        yParity: signature.v,
+        yParity: signature.v - 27,
       },
     })
 

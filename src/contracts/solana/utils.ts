@@ -1,4 +1,5 @@
 import {
+  bytesToHex,
   encodeAbiParameters,
   encodePacked,
   parseAbiParameters,
@@ -60,8 +61,7 @@ export interface SolanaBidirectionalRequestIdArgs {
  * ```
  */
 export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
-  const payloadHex: `0x${string}` = ('0x' +
-    Buffer.from(request.payload as Uint8Array).toString('hex')) as `0x${string}`
+  const payloadHex = bytesToHex(new Uint8Array(request.payload))
 
   const encoded = encodeAbiParameters(
     parseAbiParameters(
@@ -117,7 +117,7 @@ export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
 export function getRequestIdBidirectional(
   request: SolanaBidirectionalRequestIdArgs
 ): string {
-  const payloadHex: `0x${string}` = `0x${Buffer.from(request.payload as Uint8Array).toString('hex')}`
+  const payloadHex = bytesToHex(new Uint8Array(request.payload))
 
   const encoded = encodePacked(
     [

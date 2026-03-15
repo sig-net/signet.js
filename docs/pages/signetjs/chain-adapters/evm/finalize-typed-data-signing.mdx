@@ -10,8 +10,8 @@ The `finalizeTypedDataSigning` method adds a signature to EIP-712 typed data, pr
 import { RSVSignature } from 'signet.js'
 
 const rsvSignature: RSVSignature = {
-  r: '0x123...',
-  s: '0x123...',
+  r: '123...',
+  s: '123...',
   v: 27,
 }
 
@@ -29,6 +29,6 @@ const signature = evmChain.finalizeTypedDataSigning({
 
 ## Returns
 
-| Type     | Description                                  |
-| -------- | -------------------------------------------- |
-| `string` | The signature in hex format (with 0x prefix) |
+| Type                        | Description                                  |
+| --------------------------- | -------------------------------------------- |
+| `Hex` (`` `0x${string}` ``) | The signature in hex format (with 0x prefix) |

@@ -18,8 +18,8 @@ import { RSVSignature } from 'signet.js'
 
 const rsvSignatures: RSVSignature[] = [
   {
-    r: '0x123...',
-    s: '0x123...',
+    r: '123...',
+    s: '123...',
     v: 27,
   },
 ]
@@ -39,6 +39,6 @@ const signedTx = evmChain.finalizeTransactionSigning({
 
 ## Returns
 
-| Type     | Description                                                   |
-| -------- | ------------------------------------------------------------- |
-| `string` | The serialized signed transaction (hex string with 0x prefix) |
+| Type                  | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `` `0x02${string}` `` | The serialized signed transaction (EIP-1559 hex string) |

@@ -18,13 +18,13 @@ const { transaction, hashesToSign } =
 
 ## Parameters
 
-| Parameter            | Type                    | Description                                                                                          |
-| -------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `transactionRequest` | `BTCTransactionRequest` | The transaction request object containing from, to, value, publicKey, and optional feeRate and utxos |
+| Parameter            | Type                    | Description                                                                                               |
+| -------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `transactionRequest` | `BTCTransactionRequest` | The transaction request object containing publicKey and either `{inputs, outputs}` or `{from, to, value}` |
 
 ## Returns
 
 | Property       | Type                     | Description                            |
 | -------------- | ------------------------ | -------------------------------------- |
 | `transaction`  | `BTCUnsignedTransaction` | Object containing the unsigned PSBT    |
-| `hashesToSign` | `string[]`               | Array of hashes that need to be signed |
+| `hashesToSign` | `number[][]`             | Array of hashes that need to be signed |

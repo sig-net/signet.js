@@ -22,6 +22,8 @@ import { chainAdapters } from 'signet.js'
 const cosmos = new chainAdapters.cosmos.Cosmos({
   chainId: 'cosmoshub-4',
   contract: evmChainSigContract,
+  // Optional: override chain-registry endpoints
+  // endpoints: { rpcUrl: 'http://localhost:26657', restUrl: 'http://localhost:1317' },
 })
 
 const path = 'cosmos'
@@ -100,6 +102,13 @@ const juno = new chainAdapters.cosmos.Cosmos({
   contract: evmChainSigContract,
 })
 ```
+
+## Working Examples
+
+See the test suite for complete, runnable examples:
+
+- [Unit tests](https://github.com/sig-net/signet.js/blob/main/tests/unit/cosmos/Cosmos.test.ts) — bank send with mocked signing, including custom `endpoints`
+- [E2E tests](https://github.com/sig-net/signet.js/blob/main/tests/e2e/cosmos/Cosmos.e2e.test.ts) — MPC signing on Sepolia, broadcast on local gaiad
 
 ## Types
 

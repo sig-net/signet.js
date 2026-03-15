@@ -37,7 +37,7 @@ describe('Solana ChainSignatures integration (emit!)', () => {
   it('sign() returns RSV from on-chain emit!', async () => {
     const payload = Array.from(randomBytes(32))
     const path = ''
-    const keyVersion = 0
+    const keyVersion = 1
 
     const rsv = await contract.sign(
       { payload, path, key_version: keyVersion },
