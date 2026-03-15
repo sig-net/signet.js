@@ -128,8 +128,18 @@ describe('Bitcoin', () => {
     const { hashesToSign, transaction } =
       await btc.prepareTransactionForSigning({
         inputs: [
-          { txid: utxo1.txid, vout: utxo1.vout, value: utxo1.value, scriptPubKey },
-          { txid: utxo2.txid, vout: utxo2.vout, value: utxo2.value, scriptPubKey },
+          {
+            txid: utxo1.txid,
+            vout: utxo1.vout,
+            value: utxo1.value,
+            scriptPubKey,
+          },
+          {
+            txid: utxo2.txid,
+            vout: utxo2.vout,
+            value: utxo2.value,
+            scriptPubKey,
+          },
         ],
         outputs: [
           { address: destAddress, value: sendAmount },

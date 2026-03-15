@@ -18,9 +18,7 @@ const SEND_AMOUNT = parseEther('0.001')
 
 describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () => {
   const { account, mpcContract } = createSepoliaMpcContract()
-  const destAddress = privateKeyToAccount(
-    `0x${DEST_PRIVATE_KEY}`
-  ).address
+  const destAddress = privateKeyToAccount(`0x${DEST_PRIVATE_KEY}`).address
 
   const localPublicClient = createPublicClient({
     chain: hardhat,

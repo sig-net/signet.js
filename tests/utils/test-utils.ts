@@ -38,9 +38,7 @@ const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL ?? ''
 const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY ?? ''
 
 export function createSepoliaMpcContract() {
-  const account = privateKeyToAccount(
-    SEPOLIA_PRIVATE_KEY as `0x${string}`
-  )
+  const account = privateKeyToAccount(SEPOLIA_PRIVATE_KEY as `0x${string}`)
 
   const publicClient = createPublicClient({
     chain: sepolia,

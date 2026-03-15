@@ -12,7 +12,11 @@ import { hardhat } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
 
 import { chainAdapters, constants, contracts } from '../../../src'
-import { HARDHAT_RPC_URL, TEST_PRIVATE_KEY, mockSign } from '../../utils/test-utils'
+import {
+  HARDHAT_RPC_URL,
+  TEST_PRIVATE_KEY,
+  mockSign,
+} from '../../utils/test-utils'
 
 describe('EVM', async () => {
   const privateKey = `0x${TEST_PRIVATE_KEY}` as const
