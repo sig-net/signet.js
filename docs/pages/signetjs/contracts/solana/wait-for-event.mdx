@@ -53,17 +53,17 @@ const result = await solanaChainSigContract.waitForEvent({
 
 ## Parameters
 
-| Parameter             | Type                       | Description                                                                                                  |
-| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `eventName`           | `ChainSignaturesEventName` | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`) |
-| `requestId`           | `string`                   | Unique identifier for the signature request                                                                  |
-| `signer`              | `PublicKey`                | Address to monitor for transactions (e.g. responder address)                                                 |
-| `afterSignature?`     | `string`                   | Transaction signature to start polling from                                                                  |
-| `timeoutMs?`          | `number`                   | Timeout in milliseconds (default: 60000)                                                                     |
-| `backfillIntervalMs?` | `number`                   | Interval between backfill polls in milliseconds (default: 30000)                                             |
-| `backfillLimit?`      | `number`                   | Max transactions to fetch per backfill poll (default: 50)                                                    |
-| `healthCheckIntervalMs?` | `number`                | Interval in milliseconds for WebSocket health checks. Triggers reconnection and fast backfill if the connection is lost. (default: 10000) |
-| `signal?`             | `AbortSignal`              | Abort signal for cancellation                                                                                |
+| Parameter                | Type                       | Description                                                                                                                               |
+| ------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `eventName`              | `ChainSignaturesEventName` | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`)                              |
+| `requestId`              | `string`                   | Unique identifier for the signature request                                                                                               |
+| `signer`                 | `PublicKey`                | Address to monitor for transactions (e.g. responder address)                                                                              |
+| `afterSignature?`        | `string`                   | Transaction signature to start polling from                                                                                               |
+| `timeoutMs?`             | `number`                   | Timeout in milliseconds (default: 60000)                                                                                                  |
+| `backfillIntervalMs?`    | `number`                   | Interval between backfill polls in milliseconds (default: 30000)                                                                          |
+| `backfillLimit?`         | `number`                   | Max transactions to fetch per backfill poll (default: 50)                                                                                 |
+| `healthCheckIntervalMs?` | `number`                   | Interval in milliseconds for WebSocket health checks. Triggers reconnection and fast backfill if the connection is lost. (default: 10000) |
+| `signal?`                | `AbortSignal`              | Abort signal for cancellation                                                                                                             |
 
 ## Returns
 
