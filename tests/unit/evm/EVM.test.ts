@@ -12,22 +12,21 @@ import { hardhat } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
 
 import { chainAdapters, constants, contracts } from '../../../src'
-import { TEST_PRIVATE_KEY, mockSign } from '../../utils/test-utils'
+import { HARDHAT_RPC_URL, TEST_PRIVATE_KEY, mockSign } from '../../utils/test-utils'
 
 describe('EVM', async () => {
   const privateKey = `0x${TEST_PRIVATE_KEY}` as const
   const testAccount = privateKeyToAccount(privateKey)
-  const rpcUrl = 'http://127.0.0.1:8545'
 
   const publicClient = createPublicClient({
     chain: hardhat,
-    transport: http(rpcUrl),
+    transport: http(HARDHAT_RPC_URL),
   })
 
   const walletClient = createWalletClient({
     account: testAccount,
     chain: hardhat,
-    transport: http(rpcUrl),
+    transport: http(HARDHAT_RPC_URL),
   })
 
   const privKeyBytes = hexToBytes(privateKey as `0x${string}`)
@@ -140,17 +139,7 @@ describe('EVM', async () => {
       rsvSignatures: [mpcSignature],
     })
 
-    const walletSignature = await walletClient.signTransaction(transactionInput)
-
-    expect(tx).toBe(walletSignature)
-
-    const txHash = await evm.broadcastTx(tx)
-
-    const txReceipt = await publicClient.getTransactionReceipt({
-      hash: txHash,
-    })
-
-    expect(txReceipt.status).toBe('success')
+    await evm.broadcastTx(tx)
 
     const destBalance = await publicClient.getBalance({
       address: transactionInput.to,

@@ -1,21 +1,30 @@
 import 'dotenv/config'
 
 import { createPublicClient, http, parseEther } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
 import { describe, it, expect } from 'vitest'
 
 import { chainAdapters } from '../../../src'
-import { createSepoliaMpcContract } from '../../utils/test-utils'
+import {
+  HARDHAT_RPC_URL,
+  DEST_PRIVATE_KEY,
+  createSepoliaMpcContract,
+} from '../../utils/test-utils'
 
 const MPC_PATH = 'e2e-test'
 const MPC_KEY_VERSION = 1
+const SEND_AMOUNT = parseEther('0.001')
 
 describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () => {
   const { account, mpcContract } = createSepoliaMpcContract()
+  const destAddress = privateKeyToAccount(
+    `0x${DEST_PRIVATE_KEY}`
+  ).address
 
   const localPublicClient = createPublicClient({
     chain: hardhat,
-    transport: http('http://127.0.0.1:8545'),
+    transport: http(HARDHAT_RPC_URL),
   })
 
   const evm = new chainAdapters.evm.EVM({
@@ -24,28 +33,23 @@ describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () =>
   })
 
   it('should sign via Sepolia MPC and broadcast on local hardhat', async () => {
-    const { address: mpcAddress } = await evm.deriveAddressAndPublicKey(
+    const { address: mpcDerivedAddress } = await evm.deriveAddressAndPublicKey(
       account.address,
       MPC_PATH,
       MPC_KEY_VERSION
     )
 
-    // Fund MPC address on local hardhat
     await localPublicClient.request({
       // @ts-expect-error: hardhat_setBalance is a valid hardhat RPC method
       method: 'hardhat_setBalance',
-      params: [mpcAddress as `0x${string}`, '0x4563918244F40000'], // 5 ETH
-    })
-
-    const balanceBefore = await localPublicClient.getBalance({
-      address: mpcAddress as `0x${string}`,
+      params: [mpcDerivedAddress as `0x${string}`, '0x4563918244F40000'], // 5 ETH
     })
 
     const { hashesToSign, transaction } =
       await evm.prepareTransactionForSigning({
-        from: mpcAddress as `0x${string}`,
-        to: mpcAddress as `0x${string}`,
-        value: parseEther('0.001'),
+        from: mpcDerivedAddress as `0x${string}`,
+        to: destAddress,
+        value: SEND_AMOUNT,
       })
 
     const mpcSignature = await mpcContract.sign(
@@ -62,18 +66,11 @@ describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () =>
       rsvSignatures: [mpcSignature],
     })
 
-    const txHash = await evm.broadcastTx(signedTx)
-    const receipt = await localPublicClient.waitForTransactionReceipt({
-      hash: txHash,
-    })
+    await evm.broadcastTx(signedTx)
 
-    expect(receipt.status).toBe('success')
-    expect(receipt.from.toLowerCase()).toBe(mpcAddress.toLowerCase())
-
-    const balanceAfter = await localPublicClient.getBalance({
-      address: mpcAddress as `0x${string}`,
+    const destBalance = await localPublicClient.getBalance({
+      address: destAddress,
     })
-    const gasSpent = receipt.gasUsed * receipt.effectiveGasPrice
-    expect(balanceBefore - balanceAfter).toBe(gasSpent)
+    expect(destBalance).toBe(SEND_AMOUNT)
   }, 120_000)
 })

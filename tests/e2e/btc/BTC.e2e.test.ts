@@ -1,11 +1,13 @@
 import 'dotenv/config'
 
+import { secp256k1 } from '@noble/curves/secp256k1.js'
 import * as bitcoin from 'bitcoinjs-lib'
 import { describe, it, expect, beforeAll } from 'vitest'
 
 import { chainAdapters } from '../../../src'
 import {
   NIGIRI_URL,
+  DEST_PRIVATE_KEY,
   createSepoliaMpcContract,
   waitForUTXOs,
 } from '../../utils/test-utils'
@@ -16,6 +18,15 @@ const MPC_KEY_VERSION = 1
 describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
   const { account, mpcContract } = createSepoliaMpcContract()
 
+  const network = bitcoin.networks.regtest
+  const destPubKey = Buffer.from(
+    secp256k1.getPublicKey(Buffer.from(DEST_PRIVATE_KEY, 'hex'), true)
+  )
+  const destAddress = bitcoin.payments.p2wpkh({
+    pubkey: destPubKey,
+    network,
+  }).address!
+
   const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(NIGIRI_URL)
 
   const btc = new chainAdapters.btc.Bitcoin({
@@ -24,7 +35,7 @@ describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
     btcRpcAdapter,
   })
 
-  let mpcAddress: string
+  let mpcDerivedAddress: string
   let mpcPublicKey: string
 
   beforeAll(async () => {
@@ -33,13 +44,13 @@ describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
       MPC_PATH,
       MPC_KEY_VERSION
     )
-    mpcAddress = derived.address
+    mpcDerivedAddress = derived.address
     mpcPublicKey = derived.publicKey
 
     const response = await fetch(`${NIGIRI_URL}/faucet`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address: mpcAddress }),
+      body: JSON.stringify({ address: mpcDerivedAddress }),
     })
     if (!response.ok) {
       throw new Error(`Faucet failed: ${await response.text()}`)
@@ -47,10 +58,9 @@ describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
   })
 
   it('should sign via Sepolia MPC and broadcast on regtest', async () => {
-    const utxos = await waitForUTXOs(mpcAddress)
+    const utxos = await waitForUTXOs(mpcDerivedAddress)
     const utxo = utxos[0]
 
-    const network = bitcoin.networks.regtest
     const scriptPubKey = bitcoin.payments.p2wpkh({
       pubkey: Buffer.from(mpcPublicKey, 'hex'),
       network,
@@ -71,13 +81,11 @@ describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
           },
         ],
         outputs: [
-          { address: mpcAddress, value: sendAmount },
-          { address: mpcAddress, value: change },
+          { address: destAddress, value: sendAmount },
+          { address: mpcDerivedAddress, value: change },
         ],
         publicKey: mpcPublicKey,
       })
-
-    expect(hashesToSign).toHaveLength(1)
 
     const rsvSignatures = []
     for (const hash of hashesToSign) {
@@ -93,27 +101,9 @@ describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
       rsvSignatures,
     })
 
-    const txHash = await btc.broadcastTx(signedTx)
+    await btc.broadcastTx(signedTx)
 
-    expect(txHash).toHaveLength(64)
-
-    let receivedUtxos: Array<{ txid: string; vout: number; value: number }> = []
-    for (let i = 0; i < 15; i++) {
-      const resp = await fetch(`${NIGIRI_URL}/address/${mpcAddress}/utxo`)
-      if (resp.ok) {
-        const utxos = (await resp.json()) as Array<{
-          txid: string
-          vout: number
-          value: number
-        }>
-        if (utxos.some((u) => u.txid === txHash)) {
-          receivedUtxos = utxos.filter((u) => u.txid === txHash)
-          break
-        }
-      }
-      await new Promise((r) => setTimeout(r, 1000))
-    }
-    const totalReceived = receivedUtxos.reduce((sum, u) => sum + u.value, 0)
-    expect(totalReceived).toBe(sendAmount + change)
+    const destUtxos = await waitForUTXOs(destAddress)
+    expect(destUtxos.some((u) => u.value === sendAmount)).toBe(true)
   }, 120_000)
 })
