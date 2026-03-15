@@ -36,3 +36,8 @@ const contract = new contracts.evm.ChainSignatureContract({
 | `args.walletClient`    | `WalletClient`  | A Viem WalletClient instance for sending transactions                           |
 | `args.contractAddress` | `Hex`           | The address of the deployed ChainSignatures contract                            |
 | `args.rootPublicKey?`  | `RootPublicKey` | Optional root public key. If not provided, it will be derived from the contract |
+
+## Working Examples
+
+- [Unit tests](https://github.com/sig-net/signet.js/blob/main/tests/unit/evm/EVM.test.ts) — contract setup with hardhat
+- [E2E tests](https://github.com/sig-net/signet.js/blob/main/tests/e2e/evm/EVM.e2e.test.ts) — contract setup with Sepolia

@@ -63,3 +63,7 @@ const contract = new contracts.solana.ChainSignatureContract({
 | `args.config.requesterAddress?`        | `string`                       | Optional requester wallet address. If not provided, defaults to the wallet address. Fee payer is always the wallet address. |
 | `args.config.disableRetryOnRateLimit?` | `boolean`                      | If true, disables @solana/web3.js automatic retry on 429 responses.                                                         |
 | `args.config.idl?`                     | `ChainSignaturesProject & Idl` | Optional custom IDL. If not provided, the default ChainSignatures IDL will be used                                          |
+
+## Working Examples
+
+- [Integration tests](https://github.com/sig-net/signet.js/blob/main/tests/integration/solana/Solana.integration.test.ts) — contract setup and signing on devnet

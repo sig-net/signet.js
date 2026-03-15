@@ -100,3 +100,10 @@ const bscChain = new chainAdapters.evm.EVM({
   contract: evmChainSigContract,
 })
 ```
+
+## Working Examples
+
+See the test suite for complete, runnable examples:
+
+- [Unit tests](https://github.com/sig-net/signet.js/blob/main/tests/unit/evm/EVM.test.ts) — message signing, typed data signing, and transaction signing
+- [E2E tests](https://github.com/sig-net/signet.js/blob/main/tests/e2e/evm/EVM.e2e.test.ts) — MPC signing on Sepolia, broadcast on local hardhat

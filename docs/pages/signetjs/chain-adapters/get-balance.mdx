@@ -24,3 +24,8 @@ const { balance, decimals } = await evmChain.getBalance(
 | ---------- | -------- | ------------------------------------------------------------------- |
 | `balance`  | `bigint` | The balance in the chain's base units (wei for Ethereum)            |
 | `decimals` | `number` | The number of decimals used to format the balance (18 for Ethereum) |
+
+## Working Examples
+
+- [Cosmos](https://github.com/sig-net/signet.js/blob/main/tests/unit/cosmos/Cosmos.test.ts) — check balance after a bank send
+- [EVM E2E](https://github.com/sig-net/signet.js/blob/main/tests/e2e/evm/EVM.e2e.test.ts) — verify destination balance after transfer
