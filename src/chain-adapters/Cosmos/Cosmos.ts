@@ -1,6 +1,12 @@
 import { encodeSecp256k1Pubkey } from '@cosmjs/amino'
 import { ripemd160, sha256 } from '@cosmjs/crypto'
-import { toBase64, fromBase64, fromHex } from '@cosmjs/encoding'
+import {
+  toBase64,
+  fromBase64,
+  fromHex,
+  toHex,
+  toBech32,
+} from '@cosmjs/encoding'
 import {
   Registry,
   makeSignBytes,
@@ -10,9 +16,8 @@ import {
   type TxBodyEncodeObject,
 } from '@cosmjs/proto-signing'
 import { GasPrice, StargateClient, calculateFee } from '@cosmjs/stargate'
-import { bech32 } from 'bech32'
-import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing.js'
-import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx.js'
+import { SignMode } from 'cosmjs-types/cosmos/tx/signing/v1beta1/signing'
+import { TxRaw } from 'cosmjs-types/cosmos/tx/v1beta1/tx'
 
 import { ChainAdapter } from '@chain-adapters/ChainAdapter'
 import type {
@@ -110,7 +115,7 @@ export class Cosmos extends ChainAdapter<
       }
     } catch (error) {
       console.error('Failed to fetch Cosmos balance:', error)
-      throw new Error('Failed to fetch Cosmos balance')
+      throw new Error('Failed to fetch Cosmos balance', { cause: error })
     }
   }
 
@@ -136,7 +141,7 @@ export class Cosmos extends ChainAdapter<
     const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
     const pubKeySha256 = sha256(fromHex(derivedKey))
     const ripemd160Hash = ripemd160(pubKeySha256)
-    const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))
+    const address = toBech32(prefix, ripemd160Hash)
 
     return { address, publicKey: derivedKey }
   }
@@ -236,7 +241,7 @@ export class Cosmos extends ChainAdapter<
     )
 
     const txBytes = TxRaw.encode(transaction).finish()
-    return Buffer.from(txBytes).toString('hex')
+    return toHex(txBytes)
   }
 
   async broadcastTx(txSerialized: string): Promise<string> {
@@ -248,13 +253,15 @@ export class Cosmos extends ChainAdapter<
       const broadcastResponse = await client.broadcastTx(txBytes)
 
       if (broadcastResponse.code !== 0) {
-        throw new Error(`Broadcast error: ${broadcastResponse.rawLog}`)
+        throw new Error(
+          `Broadcast error: ${broadcastResponse.rawLog ?? 'unknown error (check events)'}`
+        )
       }
 
       return broadcastResponse.transactionHash
     } catch (error) {
       console.error('Transaction broadcast failed:', error)
-      throw new Error('Failed to broadcast transaction.')
+      throw new Error('Failed to broadcast transaction.', { cause: error })
     }
   }
 }

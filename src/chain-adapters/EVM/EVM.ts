@@ -115,7 +115,7 @@ export class EVM extends ChainAdapter<
       ? uncompressedPubKey.slice(2)
       : uncompressedPubKey
 
-    const hash = keccak256(Buffer.from(publicKeyNoPrefix, 'hex'))
+    const hash = keccak256(`0x${publicKeyNoPrefix}` as Hex)
     const address = getAddress(`0x${hash.slice(-40)}`)
 
     return {
@@ -212,7 +212,7 @@ export class EVM extends ChainAdapter<
       })
     } catch (error) {
       console.error('Transaction broadcast failed:', error)
-      throw new Error('Failed to broadcast transaction.')
+      throw new Error('Failed to broadcast transaction.', { cause: error })
     }
   }
 }

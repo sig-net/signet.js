@@ -1,52 +1,21 @@
 import 'dotenv/config'
 
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  parseEther,
-} from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { createPublicClient, http, parseEther } from 'viem'
 import { hardhat } from 'viem/chains'
-import { sepolia } from 'viem/chains'
 import { describe, it, expect } from 'vitest'
 
-import { chainAdapters, constants, contracts } from '../../../src'
+import { chainAdapters } from '../../../src'
+import { createSepoliaMpcContract } from '../../utils/test-utils'
 
-const SEPOLIA_RPC_URL =
-  process.env.SEPOLIA_RPC_URL ??
-  `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY ?? ''}`
-const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY ?? ''
-const LOCAL_RPC_URL = 'http://127.0.0.1:8545'
 const MPC_PATH = 'e2e-test'
 const MPC_KEY_VERSION = 1
 
 describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () => {
-  const account = privateKeyToAccount(SEPOLIA_PRIVATE_KEY as `0x${string}`)
+  const { account, mpcContract } = createSepoliaMpcContract()
 
-  // Sepolia clients — used for MPC contract interactions
-  const sepoliaPublicClient = createPublicClient({
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
-  })
-
-  const sepoliaWalletClient = createWalletClient({
-    account,
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
-  })
-
-  const mpcContract = new contracts.evm.ChainSignatureContract({
-    publicClient: sepoliaPublicClient,
-    walletClient: sepoliaWalletClient,
-    contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
-      .TESTNET as `0x${string}`,
-  })
-
-  // Local hardhat client — used for tx preparation and broadcast
   const localPublicClient = createPublicClient({
     chain: hardhat,
-    transport: http(LOCAL_RPC_URL),
+    transport: http('http://127.0.0.1:8545'),
   })
 
   const evm = new chainAdapters.evm.EVM({
@@ -68,6 +37,10 @@ describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () =>
       params: [mpcAddress as `0x${string}`, '0x4563918244F40000'], // 5 ETH
     })
 
+    const balanceBefore = await localPublicClient.getBalance({
+      address: mpcAddress as `0x${string}`,
+    })
+
     const { hashesToSign, transaction } =
       await evm.prepareTransactionForSigning({
         from: mpcAddress as `0x${string}`,
@@ -76,7 +49,11 @@ describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () =>
       })
 
     const mpcSignature = await mpcContract.sign(
-      { payload: hashesToSign[0], path: MPC_PATH, key_version: MPC_KEY_VERSION },
+      {
+        payload: hashesToSign[0],
+        path: MPC_PATH,
+        key_version: MPC_KEY_VERSION,
+      },
       { sign: {}, retry: { delay: 5_000, retryCount: 12 } }
     )
 
@@ -92,5 +69,11 @@ describe('EVM E2E broadcast (MPC on Sepolia, broadcast on local hardhat)', () =>
 
     expect(receipt.status).toBe('success')
     expect(receipt.from.toLowerCase()).toBe(mpcAddress.toLowerCase())
+
+    const balanceAfter = await localPublicClient.getBalance({
+      address: mpcAddress as `0x${string}`,
+    })
+    const gasSpent = receipt.gasUsed * receipt.effectiveGasPrice
+    expect(balanceBefore - balanceAfter).toBe(gasSpent)
   }, 120_000)
 })

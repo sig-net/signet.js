@@ -38,7 +38,7 @@ services:
       - --electrum-rpc-addr
       - 0.0.0.0:50000
       - --cors
-      - "*"
+      - '*'
       - --jsonrpc-import
     depends_on:
       - bitcoin

@@ -1,5 +1,3 @@
-import type BN from 'bn.js'
-
 import type { RSVSignature, UncompressedPubKeySEC1 } from '@types'
 
 export interface SignArgs {
@@ -23,7 +21,7 @@ export abstract class BaseChainSignatureContract {
    *
    * @returns Promise resolving to the required deposit amount as a BigNumber
    */
-  abstract getCurrentSignatureDeposit(): Promise<BN>
+  abstract getCurrentSignatureDeposit(): Promise<bigint>
 
   /**
    * Derives a child public key using a\ derivation path and predecessor.

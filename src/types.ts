@@ -26,4 +26,7 @@ export interface SigNetEvmMpcSignature {
 
 export type MPCSignature = SigNetEvmMpcSignature
 
-export type RootPublicKey = NajPublicKey | UncompressedPubKeySEC1 | CompressedPubKeySEC1
+export type RootPublicKey =
+  | NajPublicKey
+  | UncompressedPubKeySEC1
+  | CompressedPubKeySEC1

@@ -77,13 +77,13 @@ export class Bitcoin extends ChainAdapter<
 
     data.vout.forEach((vout) => {
       const scriptPubKey = Buffer.from(vout.scriptpubkey, 'hex')
-      tx.addOutput(scriptPubKey, Number(vout.value))
+      tx.addOutput(scriptPubKey, BigInt(vout.value))
     })
 
     return tx
   }
 
-  private static transformRSVSignature(signature: RSVSignature): Buffer {
+  private static transformRSVSignature(signature: RSVSignature): Uint8Array {
     const r = signature.r.padStart(64, '0')
     const s = signature.s.padStart(64, '0')
 
@@ -133,7 +133,7 @@ export class Bitcoin extends ChainAdapter<
           index: input.vout,
           witnessUtxo: {
             script: input.scriptPubKey,
-            value: input.value,
+            value: BigInt(input.value),
           },
         })
       })
@@ -143,17 +143,17 @@ export class Bitcoin extends ChainAdapter<
       if ('address' in out) {
         psbt.addOutput({
           address: out.address,
-          value: out.value,
+          value: BigInt(out.value),
         })
       } else if ('script' in out) {
         psbt.addOutput({
           script: out.script,
-          value: out.value,
+          value: BigInt(out.value),
         })
       } else if (transactionRequest.from !== undefined) {
         // Include change address from coinselect
         psbt.addOutput({
-          value: Number(out.value),
+          value: BigInt(out.value),
           address: transactionRequest.from,
         })
       }
@@ -238,10 +238,10 @@ export class Bitcoin extends ChainAdapter<
 
     const mockKeyPair = (index: number): bitcoin.Signer => ({
       publicKey: publicKeyBuffer,
-      sign: (hash: Buffer): Buffer => {
+      sign: (hash: Uint8Array): Uint8Array => {
         hashesToSign[index] = Array.from(hash)
         // Return dummy signature to satisfy the interface
-        return Buffer.alloc(64)
+        return new Uint8Array(64)
       },
     })
 

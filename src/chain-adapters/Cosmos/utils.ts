@@ -1,18 +1,18 @@
-import { chains, assets } from 'chain-registry'
+import { chains, assetLists } from 'chain-registry'
 
 import { type ChainInfo } from '@chain-adapters/Cosmos/types'
 
 export const fetchChainInfo = async (chainId: string): Promise<ChainInfo> => {
-  const chainInfo = chains.find((chain) => chain.chain_id === chainId)
+  const chainInfo = chains.find((chain) => chain.chainId === chainId)
   if (!chainInfo) {
     throw new Error(`Chain info not found for chainId: ${chainId}`)
   }
 
-  const { bech32_prefix: prefix, chain_id: expectedChainId } = chainInfo
-  const denom = chainInfo.staking?.staking_tokens?.[0]?.denom
+  const { bech32Prefix: prefix, chainId: expectedChainId } = chainInfo
+  const denom = chainInfo.staking?.stakingTokens?.[0]?.denom
   const rpcUrl = chainInfo.apis?.rpc?.[0]?.address
   const restUrl = chainInfo.apis?.rest?.[0]?.address
-  const gasPrice = chainInfo.fees?.fee_tokens?.[0]?.average_gas_price
+  const gasPrice = chainInfo.fees?.feeTokens?.[0]?.averageGasPrice
 
   if (
     !prefix ||
@@ -23,21 +23,21 @@ export const fetchChainInfo = async (chainId: string): Promise<ChainInfo> => {
     gasPrice === undefined
   ) {
     throw new Error(
-      `Missing required chain information for ${chainInfo.chain_name}`
+      `Missing required chain information for ${chainInfo.chainName}`
     )
   }
 
-  const assetList = assets.find(
-    (asset) => asset.chain_name === chainInfo.chain_name
+  const assetList = assetLists.find(
+    (al) => al.chainName === chainInfo.chainName
   )
   const asset = assetList?.assets.find((asset) => asset.base === denom)
-  const decimals = asset?.denom_units.find(
+  const decimals = asset?.denomUnits.find(
     (unit) => unit.denom === asset.display
   )?.exponent
 
   if (decimals === undefined) {
     throw new Error(
-      `Could not find decimals for ${denom} on chain ${chainInfo.chain_name}`
+      `Could not find decimals for ${denom} on chain ${chainInfo.chainName}`
     )
   }
 

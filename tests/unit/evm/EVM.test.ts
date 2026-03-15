@@ -1,8 +1,7 @@
-import { secp256k1 } from '@noble/curves/secp256k1.js'
-import BN from 'bn.js'
 import {
   createPublicClient,
   createWalletClient,
+  hexToBytes,
   http,
   parseEther,
   recoverMessageAddress,
@@ -12,14 +11,11 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
 
-import type { ChainSignatureContract } from '../../contracts/ChainSignatureContract'
-import type { UncompressedPubKeySEC1 } from '../../types'
-
-import { EVM } from './EVM'
+import { chainAdapters, constants, contracts } from '../../../src'
+import { TEST_PRIVATE_KEY, mockSign } from '../../utils/test-utils'
 
 describe('EVM', async () => {
-  const privateKey =
-    '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+  const privateKey = `0x${TEST_PRIVATE_KEY}` as const
   const testAccount = privateKeyToAccount(privateKey)
   const rpcUrl = 'http://127.0.0.1:8545'
 
@@ -34,64 +30,25 @@ describe('EVM', async () => {
     transport: http(rpcUrl),
   })
 
-  const mockSign = (payload: number[], privKey: Uint8Array) => {
-    const sigBytes = secp256k1.sign(new Uint8Array(payload), privKey, {
-      prehash: false,
-    })
-    const sig = secp256k1.Signature.fromBytes(sigBytes)
-    const pubKey = secp256k1.getPublicKey(privKey, false)
-    let recovery = 0
-    for (let rec = 0; rec < 2; rec++) {
-      try {
-        const pt = sig.addRecoveryBit(rec).recoverPublicKey(new Uint8Array(payload))
-        if (Buffer.from(pt.toBytes(false)).equals(Buffer.from(pubKey))) {
-          recovery = rec
-          break
-        }
-      } catch {}
-    }
-    return {
-      r: sig.r.toString(16).padStart(64, '0'),
-      s: sig.s.toString(16).padStart(64, '0'),
-      v: recovery + 27,
-    }
-  }
+  const privKeyBytes = hexToBytes(privateKey as `0x${string}`)
 
-  const privKeyBytes = new Uint8Array(
-    Buffer.from(privateKey.slice(2), 'hex')
-  )
+  const contract = new contracts.evm.ChainSignatureContract({
+    publicClient,
+    walletClient,
+    contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
+      .TESTNET as `0x${string}`,
+  })
 
-  const contract: ChainSignatureContract = {
-    sign: async ({ payload }) => mockSign(payload, privKeyBytes),
-    getDerivedPublicKey: async ({ keyVersion }) => {
-      return '04' as UncompressedPubKeySEC1
-    },
-    getPublicKey: async () => {
-      const pubKey = secp256k1.getPublicKey(
-        Buffer.from(privateKey.slice(2), 'hex')
-      )
-      return ('04' +
-        Buffer.from(pubKey.slice(1)).toString('hex')) as UncompressedPubKeySEC1
-    },
-    getCurrentSignatureDeposit: async () => new BN(0),
-  }
-
-  const evm = new EVM({
+  const evm = new chainAdapters.evm.EVM({
     contract,
-    publicClient: createPublicClient({
-      transport: http(rpcUrl),
-    }),
+    publicClient,
   })
 
   it('should sign a message', async () => {
     const message = 'Hello, World!'
     const { hashToSign } = await evm.prepareMessageForSigning(message)
 
-    const mpcSignature = await contract.sign({
-      payload: hashToSign,
-      path: '',
-      key_version: 0,
-    })
+    const mpcSignature = mockSign(hashToSign, privKeyBytes)
 
     const signature = evm.finalizeMessageSigning({
       rsvSignature: mpcSignature,
@@ -134,11 +91,7 @@ describe('EVM', async () => {
 
     const { hashToSign } = await evm.prepareTypedDataForSigning(typedData)
 
-    const mpcSignature = await contract.sign({
-      payload: hashToSign,
-      path: '',
-      key_version: 0,
-    })
+    const mpcSignature = mockSign(hashToSign, privKeyBytes)
 
     const signature = evm.finalizeTypedDataSigning({
       rsvSignature: mpcSignature,
@@ -180,11 +133,7 @@ describe('EVM', async () => {
     const { hashesToSign, transaction } =
       await evm.prepareTransactionForSigning(transactionInput)
 
-    const mpcSignature = await contract.sign({
-      payload: hashesToSign[0],
-      path: '',
-      key_version: 0,
-    })
+    const mpcSignature = mockSign(hashesToSign[0], privKeyBytes)
 
     const tx = evm.finalizeTransactionSigning({
       transaction,
@@ -202,6 +151,10 @@ describe('EVM', async () => {
     })
 
     expect(txReceipt.status).toBe('success')
-  })
 
+    const destBalance = await publicClient.getBalance({
+      address: transactionInput.to,
+    })
+    expect(destBalance).toBe(parseEther('1'))
+  })
 })

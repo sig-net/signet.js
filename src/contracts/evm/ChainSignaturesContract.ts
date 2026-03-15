@@ -3,12 +3,12 @@ import {
   verifyRecoveredAddress,
 } from '@utils/cryptography'
 import { getRootPublicKey } from '@utils/publicKey'
-import BN from 'bn.js'
 import {
   withRetry,
   type PublicClient,
   type WalletClient,
   type Hex,
+  bytesToHex,
   encodeFunctionData,
 } from 'viem'
 
@@ -84,14 +84,14 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     this.rootPublicKey = normalizeToUncompressedPubKey(rootPublicKey)
   }
 
-  async getCurrentSignatureDeposit(): Promise<BN> {
+  async getCurrentSignatureDeposit(): Promise<bigint> {
     const deposit = (await this.publicClient.readContract({
       address: this.contractAddress,
       abi,
       functionName: 'getSignatureDeposit',
     })) as bigint
 
-    return new BN(deposit.toString())
+    return deposit
   }
 
   async getDerivedPublicKey(args: {
@@ -302,7 +302,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     value: bigint
   }> {
     const request: SignRequest = {
-      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      payload: bytesToHex(new Uint8Array(args.payload)),
       path: args.path,
       keyVersion: args.key_version,
       algo: options.algo ?? '',
@@ -317,7 +317,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         functionName: 'sign',
         args: [request],
       }),
-      value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
+      value: await this.getCurrentSignatureDeposit(),
     }
   }
 
@@ -337,7 +337,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @example
    * ```typescript
    * const requestId = ChainSignatureContract.getRequestId({
-   *   payload: payload: `0x${Buffer.from(args.payload).toString('hex')}`,,
+   *   payload: bytesToHex(new Uint8Array(args.payload)),
    *   path: '',
    *   keyVersion: 0
    * });
@@ -359,7 +359,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       throw new Error('Public client chain required to compute requestId')
     }
     return getRequestIdRespond({
-      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      payload: bytesToHex(new Uint8Array(args.payload)),
       path: args.path,
       keyVersion: args.key_version,
       algo: options.algo ?? '',

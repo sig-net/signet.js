@@ -5,19 +5,12 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   {
-    ignores: [
-      'dist/**',
-      'node_modules/**',
-      'docs/**',
-      '*.config.*',
-      '**/*.test.ts',
-      '**/*.spec.ts',
-    ],
+    ignores: ['dist/**', 'node_modules/**', 'docs/**', '*.config.*'],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'tests/**/*.ts'],
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: 'module',

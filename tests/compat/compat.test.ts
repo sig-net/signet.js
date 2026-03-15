@@ -1,7 +1,8 @@
 import { execSync } from 'child_process'
 import { mkdtempSync, writeFileSync, rmSync } from 'fs'
-import { join } from 'path'
 import { tmpdir } from 'os'
+import { join } from 'path'
+
 import { describe, it, expect, beforeAll } from 'vitest'
 
 const pkgDir = join(__dirname, '..', '..')

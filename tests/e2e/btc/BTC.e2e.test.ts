@@ -1,67 +1,22 @@
 import 'dotenv/config'
 
 import * as bitcoin from 'bitcoinjs-lib'
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-} from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import { sepolia } from 'viem/chains'
 import { describe, it, expect, beforeAll } from 'vitest'
 
-import { chainAdapters, constants, contracts } from '../../../src'
-import { BTCRpcAdapters } from '../../../src/chain-adapters/Bitcoin/BTCRpcAdapter'
+import { chainAdapters } from '../../../src'
+import {
+  NIGIRI_URL,
+  createSepoliaMpcContract,
+  waitForUTXOs,
+} from '../../utils/test-utils'
 
-const SEPOLIA_RPC_URL =
-  process.env.SEPOLIA_RPC_URL ??
-  `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY ?? ''}`
-const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY ?? ''
-const NIGIRI_URL = process.env.NIGIRI_URL ?? 'http://localhost:3000'
 const MPC_PATH = 'e2e-btc'
 const MPC_KEY_VERSION = 1
 
-async function waitForUTXOs(
-  address: string,
-  maxRetries = 15
-): Promise<Array<{ txid: string; vout: number; value: number }>> {
-  for (let i = 0; i < maxRetries; i++) {
-    const response = await fetch(`${NIGIRI_URL}/address/${address}/utxo`)
-    if (response.ok) {
-      const utxos = (await response.json()) as Array<{
-        txid: string
-        vout: number
-        value: number
-      }>
-      if (utxos.length > 0) return utxos
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-  }
-  throw new Error(`No UTXOs found for ${address} after ${maxRetries} retries`)
-}
-
 describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
-  const account = privateKeyToAccount(SEPOLIA_PRIVATE_KEY as `0x${string}`)
+  const { account, mpcContract } = createSepoliaMpcContract()
 
-  const publicClient = createPublicClient({
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
-  })
-
-  const walletClient = createWalletClient({
-    account,
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
-  })
-
-  const mpcContract = new contracts.evm.ChainSignatureContract({
-    publicClient,
-    walletClient,
-    contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
-      .TESTNET as `0x${string}`,
-  })
-
-  const btcRpcAdapter = new BTCRpcAdapters.Mempool(NIGIRI_URL)
+  const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(NIGIRI_URL)
 
   const btc = new chainAdapters.btc.Bitcoin({
     network: 'regtest',
@@ -140,7 +95,25 @@ describe('BTC E2E broadcast (regtest via Sepolia MPC)', () => {
 
     const txHash = await btc.broadcastTx(signedTx)
 
-    expect(txHash).toBeDefined()
     expect(txHash).toHaveLength(64)
+
+    let receivedUtxos: Array<{ txid: string; vout: number; value: number }> = []
+    for (let i = 0; i < 15; i++) {
+      const resp = await fetch(`${NIGIRI_URL}/address/${mpcAddress}/utxo`)
+      if (resp.ok) {
+        const utxos = (await resp.json()) as Array<{
+          txid: string
+          vout: number
+          value: number
+        }>
+        if (utxos.some((u) => u.txid === txHash)) {
+          receivedUtxos = utxos.filter((u) => u.txid === txHash)
+          break
+        }
+      }
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+    const totalReceived = receivedUtxos.reduce((sum, u) => sum + u.value, 0)
+    expect(totalReceived).toBe(sendAmount + change)
   }, 120_000)
 })

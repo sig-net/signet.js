@@ -1,52 +1,26 @@
 import 'dotenv/config'
 
+import { fromHex } from '@cosmjs/encoding'
 import { DirectSecp256k1Wallet } from '@cosmjs/proto-signing'
 import { SigningStargateClient } from '@cosmjs/stargate'
-import { fromHex } from '@cosmjs/encoding'
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-} from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import { sepolia } from 'viem/chains'
 import { describe, it, expect, beforeAll } from 'vitest'
 
-import { chainAdapters, constants, contracts } from '../../../src'
+import { chainAdapters } from '../../../src'
+import {
+  COSMOS_RPC_URL,
+  COSMOS_REST_URL,
+  TEST_PRIVATE_KEY,
+  createSepoliaMpcContract,
+} from '../../utils/test-utils'
 
-const SEPOLIA_RPC_URL =
-  process.env.SEPOLIA_RPC_URL ??
-  `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY ?? ''}`
-const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY ?? ''
-const COSMOS_RPC_URL = process.env.COSMOS_RPC_URL ?? 'http://localhost:26657'
-const COSMOS_REST_URL = process.env.COSMOS_REST_URL ?? 'http://localhost:1317'
 const MPC_PATH = 'e2e-cosmos'
 const MPC_KEY_VERSION = 1
 
 // Pre-funded test account from docker/cosmos/Dockerfile
-const FUNDER_PRIVATE_KEY =
-  '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+const FUNDER_PRIVATE_KEY = TEST_PRIVATE_KEY
 
 describe('Cosmos E2E broadcast (local node via Sepolia MPC)', () => {
-  const account = privateKeyToAccount(SEPOLIA_PRIVATE_KEY as `0x${string}`)
-
-  const publicClient = createPublicClient({
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
-  })
-
-  const walletClient = createWalletClient({
-    account,
-    chain: sepolia,
-    transport: http(SEPOLIA_RPC_URL),
-  })
-
-  const mpcContract = new contracts.evm.ChainSignatureContract({
-    publicClient,
-    walletClient,
-    contractAddress: constants.CONTRACT_ADDRESSES.ETHEREUM
-      .TESTNET as `0x${string}`,
-  })
+  const { account, mpcContract } = createSepoliaMpcContract()
 
   const cosmos = new chainAdapters.cosmos.Cosmos({
     contract: mpcContract,
@@ -111,7 +85,11 @@ describe('Cosmos E2E broadcast (local node via Sepolia MPC)', () => {
     expect(hashesToSign).toHaveLength(1)
 
     const mpcSignature = await mpcContract.sign(
-      { payload: hashesToSign[0], path: MPC_PATH, key_version: MPC_KEY_VERSION },
+      {
+        payload: hashesToSign[0],
+        path: MPC_PATH,
+        key_version: MPC_KEY_VERSION,
+      },
       { sign: {}, retry: { delay: 5_000, retryCount: 12 } }
     )
 
@@ -122,7 +100,9 @@ describe('Cosmos E2E broadcast (local node via Sepolia MPC)', () => {
 
     const txHash = await cosmos.broadcastTx(signedTx)
 
-    expect(txHash).toBeDefined()
     expect(txHash).toHaveLength(64)
+
+    const { balance: balanceAfter } = await cosmos.getBalance(mpcAddress)
+    expect(balanceAfter).toBeLessThan(balance)
   }, 120_000)
 })

@@ -9,10 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm build                     # tsdown → dist/ (ESM + CJS + declarations)
 pnpm watch                     # tsdown --watch
 
-# Quality checks (run before completing any task)
+# Quality — run `pnpm check` and `pnpm test` before reporting a task as complete
+pnpm check                     # typecheck + lint + format check (read-only)
+pnpm fix                       # auto-fix lint + format issues
 pnpm typecheck                 # tsc --noEmit
-pnpm lint                      # eslint src/**/*.ts
-pnpm format --check            # prettier check
+pnpm lint                      # eslint src/**/*.ts tests/**/*.ts
+pnpm format                    # prettier --write .
 
 # Run a single test file directly (when infra is already running)
 pnpm vitest run path/to/test.ts
