@@ -98,12 +98,22 @@ Two implementations of `ChainSignatureContract` — the MPC signing interface:
 
 ### Constants (`src/constants.ts`)
 
-Contract addresses and root public keys per environment (`TESTNET_DEV`, `TESTNET`, `MAINNET`) and chain (`ETHEREUM`, `SOLANA`). KDF chain IDs distinguish chains during key derivation.
+Contract addresses and root public keys per environment (`TESTNET_DEV`, `TESTNET`, `MAINNET`) and chain (`ETHEREUM`, `SOLANA`). KDF chain IDs distinguish chains during key derivation (`eip155:1`, `solana:5eykt...`, `canton:global`). Canton only has a KDF chain ID — no contract addresses or root public keys (signing uses Daml templates, not on-chain contracts).
 
 ## Docker Infrastructure
 
 - `docker/bitcoin/docker-compose.yml` — 3-service regtest stack: bitcoind (:18443) + electrs (:30000) + chopsticks (:3000, Mempool-compatible API with faucet)
 - `docker/cosmos/Dockerfile` — gaiad v22 node, chain-id `cosmoshub-4`, pre-funds test address `cosmos15wgtkntdf26hqan77g0kdsldcxjddypxughytg` (derived from private key `1234567890abcdef...`) with 100B uatom
+
+## Releasing
+
+Every publish must have a corresponding GitHub release with a git tag:
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+gh release create vX.Y.Z --generate-notes   # auto-generates notes, tweak if needed
+```
 
 ## CI
 
