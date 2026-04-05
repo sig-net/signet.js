@@ -34,6 +34,7 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
 export const KDF_CHAIN_IDS = {
   [CHAINS.ETHEREUM]: 'eip155:1',
   [CHAINS.SOLANA]: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  CANTON: 'canton:global',
 } as const
 
 /**
