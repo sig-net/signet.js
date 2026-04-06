@@ -107,7 +107,8 @@ export function deriveChildPublicKey(
   chainId: string,
   keyVersion: number
 ): UncompressedPubKeySEC1 {
-  if (chainId !== KDF_CHAIN_IDS.ETHEREUM && chainId !== KDF_CHAIN_IDS.SOLANA) {
+  const validChainIds: string[] = Object.values(KDF_CHAIN_IDS)
+  if (!validChainIds.includes(chainId)) {
     throw new Error('Invalid chain ID')
   }
 
