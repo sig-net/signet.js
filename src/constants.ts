@@ -9,6 +9,7 @@ export const ENVS = {
 export const CHAINS = {
   ETHEREUM: 'ETHEREUM',
   SOLANA: 'SOLANA',
+  CANTON: 'CANTON',
 } as const
 
 /**
@@ -34,7 +35,7 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
 export const KDF_CHAIN_IDS = {
   [CHAINS.ETHEREUM]: 'eip155:1',
   [CHAINS.SOLANA]: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-  CANTON: 'canton:global',
+  [CHAINS.CANTON]: 'canton:global',
 } as const
 
 /**
@@ -59,5 +60,10 @@ export const CONTRACT_ADDRESSES: Record<
     [ENVS.TESTNET_DEV]: 'SigDuEPNeDjh3oJv7MUraPN7zaTFomS6ZWfpXwjUg4B',
     [ENVS.TESTNET]: 'SigTVbfRK9LsXWpSv9KgpabrQcFKr5hDdUwMhYsXyKg',
     [ENVS.MAINNET]: 'SigMcRMjKfnC7RDG5q4yUMZM1s5KJ9oYTPP4NmJRDRw',
+  },
+  [CHAINS.CANTON]: {
+    [ENVS.TESTNET_DEV]: '',
+    [ENVS.TESTNET]: '',
+    [ENVS.MAINNET]: '',
   },
 }
