@@ -1,19 +1,11 @@
-import '@nomicfoundation/hardhat-toolbox'
+import { defineConfig } from 'hardhat/config'
 
-const config = {
-  solidity: '0.8.24',
+export default defineConfig({
   networks: {
     hardhat: {
-      mining: {
-        auto: true,
-        interval: 1000,
-      },
-    },
-    localhost: {
-      url: 'http://127.0.0.1:8545',
+      type: 'edr-simulated',
+      chainType: 'l1',
       chainId: 31337,
     },
   },
-}
-
-export default config
+})
