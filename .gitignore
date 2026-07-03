@@ -10,3 +10,5 @@ dist/
 .DS_Store
 
 vocs.config.ts.timestamp-*
+.vocs/
+docs/pages.gen.ts
