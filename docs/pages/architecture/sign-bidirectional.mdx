@@ -6,16 +6,16 @@ This page is the canonical, chain-agnostic description of the flow. Everything h
 
 ## Supported Chains
 
-| Source Chain    | Destination Chain | Status      |
-| --------------- | ----------------- | ----------- |
-| **Solana**      | **Ethereum**      | Supported   |
-| **Canton**      | **Ethereum**      | Supported   |
-| **EVM chains**  | **Ethereum**      | In Progress |
-| **Solana**      | **Bitcoin**       | In Progress |
-| **Polkadot**    | **Ethereum**      | In Progress |
-| **Polkadot**    | **Bitcoin**       | In Progress |
-| **Hyperliquid** | **Ethereum**      | Planned     |
-| **Hyperliquid** | **Bitcoin**       | Planned     |
+A chain can participate as a **source chain** (where the request is made and the result is verified), as a **destination chain** (where the signed transaction executes), or both. Any supported source chain can drive transactions on any supported destination chain.
+
+| Chain           | As source chain | As destination chain |
+| --------------- | --------------- | -------------------- |
+| **Solana**      | Supported       | —                    |
+| **EVM chains**  | Supported       | Supported            |
+| **Canton**      | Supported       | —                    |
+| **Hydration**   | Supported       | —                    |
+| **Bitcoin**     | —               | In Progress          |
+| **Hyperliquid** | Planned         | —                    |
 
 ## Overview
 
