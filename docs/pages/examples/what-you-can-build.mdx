@@ -1,0 +1,31 @@
+# What You Can Build
+
+Short sketches of applications Sig Network makes possible. Each one composes the same two primitives: **`sign`** (the MPC signs any transaction for a key your app controls — fire-and-forget) and **`sign_bidirectional`** (the MPC additionally reports the verified execution result back to your chain). The two full walkthroughs — [Holding Ethereum Assets from Solana](/examples/cross-chain-deposit) and [Staking on Ethereum from Solana](/examples/solana-stake-ethereum) — show the mechanics; everything below is the same machinery pointed at different problems.
+
+## Multichain smart account
+
+A multisig or smart account deployed on Ethereum holds assets everywhere at once: its address is the KDF `sender`, so it deterministically owns accounts on Base, Bitcoin, Cosmos — any chain with an address scheme. The account's normal approval flow (N-of-M signatures, timelocks, spending limits) gates every `sign` request, and signet.js chain adapters build and broadcast the per-chain transactions. One governance surface, one identity, native assets on every chain — no bridging, no wrapping.
+
+## Cross-chain DEX on Solana
+
+A Solana DEX routes orders through Ethereum liquidity: it builds a Uniswap `exactInputSingle` call, requests `sign_bidirectional`, and when the verified outcome returns with `amountOut`, it credits the trader on Solana. The same desk stakes idle ETH via Lido, deposits into ERC-4626 yield vaults, or unwinds positions — each is just another Ethereum transaction the program initiates and (when its own accounting depends on it) verifies on Solana.
+
+## Institutional settlement from Canton
+
+A Canton application — where parties, privacy, and compliance live on-ledger — custodies and settles assets on public chains. The live [Canton ERC-20 vault](https://github.com/sig-net/canton/blob/main/daml-packages/signet-vault-v1/README.md) does exactly this today: Daml contracts hold the entitlements, the MPC executes on Ethereum, and every execution report is verified inside a Daml choice before balances move.
+
+## DAO treasury across chains
+
+A DAO on its home chain manages a treasury of native assets on many chains: proposals resolve into `sign` requests (transfers, LP positions, stakes) executed from MPC-derived accounts. Where the DAO's bookkeeping must reflect the result — say, recording the exact proceeds of a liquidation — the request is made bidirectional and the outcome verified before the books update.
+
+## Recurring payments and payroll
+
+A single contract pays contributors in the asset and chain each of them prefers: USDC on Base, native BTC, ATOM — each payout is a `sign` request from the payer's derived account on that chain. The paying contract enforces schedule and limits; the MPC signs exactly the transactions it authorizes.
+
+## Chain abstraction for wallets
+
+A wallet gives users one recovery setup and one balance view while accounts on every chain are MPC-derived from a single identity. Signing UX stays chain-native (the wallet builds real per-chain transactions via signet.js adapters), but key management, recovery, and policy live in one place — programmable on-chain, not in a seed phrase.
+
+---
+
+If it can be expressed as "an account on chain A wants a transaction executed on chain B — and maybe needs proof of what happened," it fits. Start from the [Sign Bidirectional Flow](/architecture/sign-bidirectional) for the verified variant, or the [staking example](/examples/solana-stake-ethereum) for the fire-and-forget variant.
