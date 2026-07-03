@@ -46,7 +46,7 @@ User                   Source Chain              MPC               Destination C
   │                         │                        │                        │
 ```
 
-The entry point is named per the source chain's conventions (`sign_bidirectional` on Solana, `signBidirectional` on EVM, the `Signer.RequestSignature` choice on Canton), but the lifecycle is identical everywhere.
+The entry point and event names follow each source chain's conventions (`sign_bidirectional` on Solana, `signBidirectional` on EVM — whose events drop the `Event` suffix, e.g. `SignatureResponded` — and the `Signer.RequestSignature` choice on Canton), but the lifecycle is identical everywhere.
 
 ## Flow Steps
 
@@ -58,7 +58,7 @@ The entry point is named per the source chain's conventions (`sign_bidirectional
 
 ### Phase 2: Signature Delivery
 
-1. The MPC threshold-signs the transaction hash with the requester's derived child key
+1. The MPC threshold-signs the transaction hash with the child key derived from the request's `sender` and `path` (`sender` is the requester on Solana/EVM, the operator-set hash on Canton)
 2. It stores the expected transaction in its backlog for destination-chain observation
 3. It calls `respond`, emitting `SignatureRespondedEvent`
 4. The user polls for `SignatureRespondedEvent` to obtain the signature
@@ -78,7 +78,7 @@ The entry point is named per the source chain's conventions (`sign_bidirectional
 ### Phase 5: Output Extraction
 
 1. For contract calls: the MPC extracts the call's return value
-2. For simple transfers: an empty success indicator
+2. For plain transfers (no return data to extract): a schema-shaped default success value (e.g. `bool` → `true`)
 3. The output is parsed using the request's `output_deserialization_schema`
 
 ### Phase 6: Respond Bidirectional
