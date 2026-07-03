@@ -67,6 +67,10 @@ export default defineConfig({
       text: 'Examples',
       items: [
         {
+          text: 'Depositing assets on a foreign chain',
+          link: '/examples/cross-chain-deposit',
+        },
+        {
           text: 'Signing an arbitrary hash using EVM chain signatures',
           link: '/examples/arbitrary-hash',
         },
