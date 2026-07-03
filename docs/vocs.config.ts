@@ -67,7 +67,7 @@ export default defineConfig({
       text: 'Examples',
       items: [
         {
-          text: 'Depositing assets on a foreign chain',
+          text: 'Holding Ethereum assets from Solana',
           link: '/examples/cross-chain-deposit',
         },
         {
