@@ -1,8 +1,6 @@
 # Sign Bidirectional Flow
 
-The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a source chain contract to execute a transaction on a destination chain and receive the execution result back on-chain with cryptographic proof.
-
-For example, a Solana program (or a Canton Daml contract) can execute a transaction on Ethereum and receive the contract return value or success/failure status back on the source chain—all verified by the MPC network.
+The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a source chain contract to execute a transaction on a destination chain and receive the execution result — the contract return value or success/failure status — back on-chain with cryptographic proof, all verified by the MPC network.
 
 This page is the canonical, chain-agnostic description of the flow. Everything here applies to every source chain; the exact contract/template API, request-id byte encoding, and verification code are chain-specific and documented per chain — see [Per-Chain Documentation](#per-chain-documentation).
 
@@ -46,7 +44,7 @@ User                   Source Chain              MPC               Destination C
   │                         │                        │                        │
 ```
 
-The entry point and event names follow each source chain's conventions (`sign_bidirectional` on Solana, `signBidirectional` on EVM — whose events drop the `Event` suffix, e.g. `SignatureResponded` — and the `Signer.RequestSignature` choice on Canton), but the lifecycle is identical everywhere.
+The diagram uses generic names; entry-point and event names follow each source chain's conventions (see the per-chain docs), but the lifecycle is identical everywhere.
 
 ## Flow Steps
 
@@ -58,7 +56,7 @@ The entry point and event names follow each source chain's conventions (`sign_bi
 
 ### Phase 2: Signature Delivery
 
-1. The MPC threshold-signs the transaction hash with the child key derived from the request's `sender` and `path` (`sender` is the requester on Solana/EVM, the operator-set hash on Canton)
+1. The MPC threshold-signs the transaction hash with the child key derived from the request's `sender` and `path` (what `sender` is bound to is defined per source chain)
 2. It stores the expected transaction in its backlog for destination-chain observation
 3. It calls `respond`, emitting `SignatureRespondedEvent`
 4. The user polls for `SignatureRespondedEvent` to obtain the signature
@@ -99,7 +97,7 @@ request_id = keccak256(
 )
 ```
 
-The ID is computed identically by the source chain contract, the MPC, and clients — but the exact byte encoding is chain-specific (packed encoding on Solana and EVM; EIP-712-style word encoding over structured transaction params on Canton). See the per-chain docs for the exact formula on each chain.
+The ID is computed identically by the source chain contract, the MPC, and clients — but the exact byte encoding is chain-specific. See the per-chain docs for the formula on each chain.
 
 ## Serialization Schemas
 
@@ -110,7 +108,7 @@ Cross-chain data encoding uses two schemas, both supplied by the requester:
 | `output_deserialization_schema` | Destination → MPC | Parse execution result from destination chain   |
 | `respond_serialization_schema`  | MPC → Source      | Serialize response for source chain consumption |
 
-The response serialization format follows the source chain's conventions (Borsh for Solana, ABI for EVM and Canton).
+The response serialization format is fixed per source chain — see the per-chain docs.
 
 ## Error Handling
 
@@ -133,17 +131,11 @@ epsilon = derive_epsilon(key_version, kdf_chain_id, sender, path)
 child_pubkey = root_pubkey + epsilon × G
 ```
 
-`kdf_chain_id` namespaces derivation per source chain (e.g. `eip155:1`, `solana:5eykt...`, `canton:global` — see `KDF_CHAIN_IDS` in signet.js). The reference implementation is [`deriveChildPublicKey`](https://github.com/sig-net/signet.js/blob/main/src/utils/cryptography.ts) in signet.js; root public keys per environment are published as `ROOT_PUBLIC_KEYS` (see [Contract Addresses](/primitives/contract-addresses)).
+`kdf_chain_id` namespaces derivation per source chain (the `KDF_CHAIN_IDS` constants in signet.js). The reference implementation is [`deriveChildPublicKey`](https://github.com/sig-net/signet.js/blob/main/src/utils/cryptography.ts) in signet.js; root public keys per environment are published as `ROOT_PUBLIC_KEYS` (see [Contract Addresses](/primitives/contract-addresses)).
 
 ## Response Signature Verification
 
-The `respond_bidirectional` payload is signed with a **dedicated response-verification child key**, derived like any other child key but with a fixed, per-source-chain derivation path:
-
-| Source chain | Response derivation path (fixed) |
-| ------------ | -------------------------------- |
-| Solana       | `"solana response key"`          |
-| EVM chains   | `"ethereum response key"`        |
-| Canton       | `"canton response key"`          |
+The `respond_bidirectional` payload is signed with a **dedicated response-verification child key**, derived like any other child key but with a fixed, per-source-chain derivation path (a constant of the form `"<chain> response key"` — the exact value is in each chain's docs).
 
 The signature is computed over:
 
@@ -154,7 +146,7 @@ message_hash = keccak256(request_id || serialized_output)
 To verify a response, a consumer must:
 
 1. Derive the expected response public key from the MPC root (same `sender`, the fixed response path)
-2. Check the response signature over `message_hash` against that key — by recovering the signer (`secp256k1_recover`) and comparing on Solana/EVM, or on-ledger via `secp256k1WithEcdsaOnly` on Canton
+2. Check the response signature over `message_hash` against that key, using the source chain's signature-verification primitive (see the per-chain docs)
 
 Never verify against the root public key or the transaction-signing key — the response key is intentionally distinct so that a transaction signature can never be replayed as an execution proof.
 
