@@ -71,12 +71,12 @@ export default defineConfig({
           link: '/examples/cross-chain-deposit',
         },
         {
-          text: 'Signing an arbitrary hash using EVM chain signatures',
-          link: '/examples/arbitrary-hash',
+          text: 'Staking on Ethereum from Solana',
+          link: '/examples/solana-stake-ethereum',
         },
         {
-          text: `Sponsor a chain signatures transaction on Solana`,
-          link: '/examples/solana-fee-delegation',
+          text: 'What you can build',
+          link: '/examples/what-you-can-build',
         },
       ],
     },

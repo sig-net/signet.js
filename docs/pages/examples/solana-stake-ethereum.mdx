@@ -1,0 +1,62 @@
+# Staking on Ethereum from Solana
+
+A Solana account initiates an ETH stake on Lido — using the plain `sign` method, without the bidirectional flow. This is the fire-and-forget pattern: build the Ethereum transaction, have the MPC sign it, broadcast it, done. Nothing on Solana needs to observe the outcome, because the result (stETH) simply accrues to the MPC-derived Ethereum address you control.
+
+Use this pattern whenever the source chain does not need on-chain proof of what happened on the destination chain. If your Solana program must verify the outcome before updating its own state (crediting balances, minting shares), use the [Sign Bidirectional Flow](/architecture/sign-bidirectional) instead — see [Holding Ethereum Assets from Solana](/examples/cross-chain-deposit).
+
+## Setup
+
+Connect to Solana, initialize the Chain Signatures contract, and create an EVM chain adapter that uses it for signing:
+
+```ts twoslash
+// [!include ~/snippets/code/solana/stake-ethereum.ts:import]
+// ---cut---
+// [!include ~/snippets/code/solana/stake-ethereum.ts:setup]
+```
+
+## Derive the staking address
+
+Your Solana account controls an Ethereum address derived from the MPC root key — this is the address that will hold ETH and receive the stETH. Fund it with the ETH you want to stake (from a prior withdrawal, a deposit, or any transfer):
+
+```ts twoslash
+// [!include ~/snippets/code/solana/stake-ethereum.ts:import]
+// [!include ~/snippets/code/solana/stake-ethereum.ts:setup]
+// ---cut---
+// [!include ~/snippets/code/solana/stake-ethereum.ts:derive-address]
+```
+
+## Build the stake transaction
+
+Build the exact Ethereum transaction to execute: a call to Lido's stETH contract `submit()` with the ETH value attached. The adapter fills in nonce and gas and returns the hash to sign:
+
+```ts twoslash
+// [!include ~/snippets/code/solana/stake-ethereum.ts:import]
+// [!include ~/snippets/code/solana/stake-ethereum.ts:setup]
+// [!include ~/snippets/code/solana/stake-ethereum.ts:derive-address]
+// ---cut---
+// [!include ~/snippets/code/solana/stake-ethereum.ts:build-stake-tx]
+```
+
+## Sign on Solana, broadcast to Ethereum
+
+Request the signature through the Solana Chain Signatures program, assemble the signed transaction, and broadcast it to Ethereum:
+
+```ts twoslash
+// [!include ~/snippets/code/solana/stake-ethereum.ts:import]
+// [!include ~/snippets/code/solana/stake-ethereum.ts:setup]
+// [!include ~/snippets/code/solana/stake-ethereum.ts:derive-address]
+// [!include ~/snippets/code/solana/stake-ethereum.ts:build-stake-tx]
+// ---cut---
+// [!include ~/snippets/code/solana/stake-ethereum.ts:sign-and-broadcast]
+```
+
+That's the whole flow. The stETH balance accrues to `stakingAddress`; when you want to exit, build Lido's withdrawal (or a stETH transfer or swap) the same way and sign it with the same path.
+
+## When to upgrade to bidirectional
+
+The plain `sign` flow trusts nothing and verifies nothing on Solana — which is fine here, because no Solana state depends on the stake succeeding. The moment your program needs to act on the result (credit the staker shares on Solana, refund on failure), switch the request to `sign_bidirectional` and verify the MPC's execution report on-chain, exactly as the [deposit example](/examples/cross-chain-deposit) does.
+
+## Related Documentation
+
+- [Holding Ethereum Assets from Solana](/examples/cross-chain-deposit) — the verified-outcome version of cross-chain execution
+- [Sign Bidirectional Flow](/architecture/sign-bidirectional) — when and how outcomes are verified
