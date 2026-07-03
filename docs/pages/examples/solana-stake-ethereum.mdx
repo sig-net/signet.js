@@ -27,7 +27,7 @@ Your Solana account controls an Ethereum address derived from the MPC root key â
 
 ## Build the stake transaction
 
-Build the exact Ethereum transaction to execute: a call to Lido's stETH contract `submit()` with the ETH value attached. The adapter fills in nonce and gas and returns the hash to sign:
+Build the exact Ethereum transaction to execute: a deposit into Lido's staking contract with the ETH value attached. The adapter fills in nonce and gas and returns the hash to sign:
 
 ```ts twoslash
 // [!include ~/snippets/code/solana/stake-ethereum.ts:import]
