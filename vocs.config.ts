@@ -93,6 +93,10 @@ export default defineConfig({
           text: 'Solana Program (Rust Docs)',
           link: '/contract-api/solana',
         },
+        {
+          text: 'Canton Signer (Daml Docs)',
+          link: '/contract-api/canton',
+        },
       ],
     },
     {
