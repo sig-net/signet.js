@@ -14,7 +14,7 @@ A user wants to deposit 100 USDC (an ERC-20 on Ethereum) into your Solana applic
 
 ### 1. Derive the deposit address
 
-Every `(sender, path)` pair maps to a unique Ethereum key derived from the MPC root key, with your Solana program as the `sender` (see [Address Derivation](/architecture/sign-bidirectional#address-derivation)). Your client derives the addresses off-chain with signet.js `deriveAddressAndPublicKey`: path `"0x<user address>"` gives the user their personal deposit address, and path `"root"` is the vault's own Ethereum treasury address.
+Your Solana program deterministically controls a whole family of Ethereum addresses (see [Address Derivation](/architecture/sign-bidirectional#address-derivation)): each user gets a personal deposit address, and the vault has its own treasury address. Your client derives them off-chain with signet.js — no keys are created or stored anywhere.
 
 ### 2. The user funds it
 
@@ -22,17 +22,17 @@ The user sends 100 USDC to their deposit address on Ethereum with any ordinary w
 
 ### 3. Request the transfer signature on Solana
 
-The user calls the program's `deposit_erc20` instruction. The program builds the exact Ethereum transaction it wants executed — an RLP-encoded EIP-1559 `transfer(vaultAddress, 100e6)` call on the USDC contract, with real nonce and fee parameters — records a single-use pending entry keyed by the request ID, and requests a signature by CPI into `sign_bidirectional`, which emits `SignBidirectionalEvent`.
+The user calls the program's deposit entry point. The program builds the exact Ethereum transaction it wants executed — moving the 100 USDC from the user's deposit address into the vault's treasury address, with real fee parameters — records a single-use pending entry for the request, and asks the MPC network for a signature via `sign_bidirectional`.
 
 ### 4. The MPC signs, the client broadcasts to Ethereum
 
-The MPC threshold-signs the transaction hash and delivers the signature back on Solana (`SignatureRespondedEvent`). The client polls for the event, reassembles the signed EIP-1559 transaction, and broadcasts it to Ethereum — the MPC never broadcasts.
+The MPC network signs the transaction and delivers the signature back on Solana. The client picks it up, assembles the signed transaction, and broadcasts it to Ethereum — the MPC never broadcasts.
 
 ### 5. A verified outcome comes back to Solana
 
-The MPC observes Ethereum, extracts the transfer's return value, and publishes a signed, Borsh-serialized outcome on Solana (`RespondBidirectionalEvent`). The program's `claim_erc20` instruction verifies that signature — `secp256k1_recover` against the response child key derived with the fixed `"solana response key"` path — checks the transfer returned `true` (and carries no `0xdeadbeef` failure prefix), retires the pending entry, and credits the user 100 USDC of vault balance on Solana.
+The MPC observes Ethereum until the transfer confirms, then publishes a signed execution report back on Solana. The program's claim entry point verifies the MPC's signature on that report, confirms the transfer actually succeeded, retires the pending entry, and credits the user 100 USDC of vault balance on Solana.
 
-Withdrawals are the mirror image: optimistically debit the Solana balance, sign a `transfer(recipient, amount)` from the vault's `"root"` key, and refund automatically if the verified outcome reports failure.
+Withdrawals are the mirror image: debit the Solana balance up front, execute a transfer out of the vault's treasury on Ethereum, and refund automatically if the verified report says the transfer failed.
 
 ## See it running
 
@@ -48,8 +48,8 @@ The walkthrough above tracks the Solana implementation; the same vault ships on 
 
 Nothing in the flow is transfer-specific — step 3 signs whatever Ethereum transaction your program builds, and step 5 hands back its verified execution result:
 
-- **Swaps**: the Solana program builds a DEX router call (for example `exactInputSingle` on a Uniswap-style router); the verified outcome carries `amountOut`, which the program can credit or act on — a swap on Ethereum, initiated and settled from Solana.
-- **Yield**: the program builds an ERC-4626 `deposit()` into an Ethereum yield vault; the outcome carries the shares minted. Later, it signs a `redeem()` the same way.
+- **Swaps**: the program submits a trade on a Uniswap-style DEX; the verified outcome reports the exact amount received, which the program credits on Solana — a swap on Ethereum, initiated and settled from Solana.
+- **Yield**: the program deposits into an Ethereum yield vault; the verified outcome reports the shares received. Exiting the position later works the same way.
 - **Anything else**: any transaction an Ethereum account can send, your Solana program can initiate — and, crucially, verify the result of on Solana before updating state.
 
 The pattern is always the same: build the foreign transaction → `sign_bidirectional` → broadcast → act on the MPC-verified outcome.
