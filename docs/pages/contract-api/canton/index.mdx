@@ -1,0 +1,24 @@
+# Canton Signer (Daml Docs)
+
+On Canton, signature requests do not go through a deployed contract at an address. They go through **Daml templates** — the `Signer` from the `signet-signer-v1` package — authorized by Canton parties and disclosed to consumer contracts. MPC responses are delivered as Canton contracts and verified **on-ledger** with `secp256k1WithEcdsaOnly`.
+
+The flow itself is the standard [Sign Bidirectional Flow](/architecture/sign-bidirectional); only the API surface is Canton-specific.
+
+## Documentation
+
+The complete Canton documentation lives in the [sig-net/canton](https://github.com/sig-net/canton) repository:
+
+- **[Repository overview](https://github.com/sig-net/canton#readme)** - Architecture, package layout, deployment, and the DevNet end-to-end test
+- **[signet-signer-v1 README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-signer-v1/README.md)** - Authority model, integrator lifecycle, full template API, failure modes, and the security checklist for integrators
+- **[signet-vault-v1 README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-vault-v1/README.md)** - Worked consumer example: MPC-custodied ERC-20 vault (deposit / claim / withdraw / refund)
+- **[canton-sig TypeScript client](https://github.com/sig-net/canton/tree/main/ts-packages/canton-sig)** - Client library for driving the protocol over the Canton JSON Ledger API
+
+## Key Differences from Other Chains
+
+- **No contract address**: integrators receive the `Signer` as a disclosed-contract envelope from the operator's disclosure endpoint, not by address lookup. See [Contract Addresses](/primitives/contract-addresses) for the per-environment root public keys.
+- **KDF chain ID**: key derivation uses `canton:global` (see `KDF_CHAIN_IDS` in signet.js), with `sender` bound to the hash of the on-ledger operator set.
+- **On-ledger verification**: the response signature over `keccak256(requestId || serializedOutput)` is checked inside the consumer's Daml choice via `secp256k1WithEcdsaOnly`, using the response child key derived with the fixed path `"canton response key"`.
+
+## Source Code
+
+- [sig-net/canton](https://github.com/sig-net/canton)

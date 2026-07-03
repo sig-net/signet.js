@@ -2,15 +2,17 @@
 
 The Sign Bidirectional flow enables cross-chain transaction execution with verified response callbacks. It allows a source chain contract to execute a transaction on a destination chain and receive the execution result back on-chain with cryptographic proof.
 
-For example, a Solana program can execute a transaction on Ethereum and receive the contract return value or success/failure status back on Solana—all verified by the MPC network.
+For example, a Solana program (or a Canton Daml contract) can execute a transaction on Ethereum and receive the contract return value or success/failure status back on the source chain—all verified by the MPC network.
 
-> **Comprehensive Documentation**: For detailed documentation including request ID generation, serialization schemas, response verification, error handling, and security considerations, see the **[Signet Solana Program Rust Docs](https://docs.rs/chain-signatures-solana-program/latest/chain_signatures/)**.
+This page is the canonical, chain-agnostic description of the flow. Everything here applies to every source chain; the exact contract/template API, request-id byte encoding, and verification code are chain-specific and documented per chain — see [Per-Chain Documentation](#per-chain-documentation).
 
 ## Supported Chains
 
 | Source Chain    | Destination Chain | Status      |
 | --------------- | ----------------- | ----------- |
 | **Solana**      | **Ethereum**      | Supported   |
+| **Canton**      | **Ethereum**      | Supported   |
+| **EVM chains**  | **Ethereum**      | In Progress |
 | **Solana**      | **Bitcoin**       | In Progress |
 | **Polkadot**    | **Ethereum**      | In Progress |
 | **Polkadot**    | **Bitcoin**       | In Progress |
@@ -44,16 +46,137 @@ User                   Source Chain              MPC               Destination C
   │                         │                        │                        │
 ```
 
+The entry point is named per the source chain's conventions (`sign_bidirectional` on Solana, `signBidirectional` on EVM, the `Signer.RequestSignature` choice on Canton), but the lifecycle is identical everywhere.
+
 ## Flow Steps
 
-1. **Sign Request**: User calls `sign_bidirectional` with a serialized unsigned transaction for the destination chain
-2. **Signature Delivery**: MPC signs the transaction and returns the signature via `respond()`
-3. **User Broadcast**: User assembles and broadcasts the signed transaction to the destination chain
-4. **Observation**: MPC Indexer (using a light client) observes the destination chain and detects confirmation
-5. **Output Extraction**: MPC extracts execution result (contract return value or transfer success)
-6. **Response Callback**: MPC calls `respond_bidirectional` with the result and a cryptographic proof. The `RespondBidirectional` event is indexed and sent to processing on the source chain contract
+### Phase 1: Sign Request
+
+1. The user calls the source chain's bidirectional entry point with the serialized unsigned destination-chain transaction (plus the two serialization schemas)
+2. The source chain contract emits `SignBidirectionalEvent`
+3. The MPC indexes the event and computes the unique request ID
+
+### Phase 2: Signature Delivery
+
+1. The MPC threshold-signs the transaction hash with the requester's derived child key
+2. It stores the expected transaction in its backlog for destination-chain observation
+3. It calls `respond`, emitting `SignatureRespondedEvent`
+4. The user polls for `SignatureRespondedEvent` to obtain the signature
+
+### Phase 3: User Broadcast
+
+1. The user assembles the signed transaction (serialized data + signature)
+2. The user broadcasts it to the destination chain
+3. **The MPC does NOT broadcast** — this is the user's responsibility
+
+### Phase 4: Destination Chain Observation
+
+1. The MPC observes destination chain blocks (via light client or its own indexer)
+2. It detects the transaction confirmation by hash
+3. It extracts the execution status (success/failure)
+
+### Phase 5: Output Extraction
+
+1. For contract calls: the MPC extracts the call's return value
+2. For simple transfers: an empty success indicator
+3. The output is parsed using the request's `output_deserialization_schema`
+
+### Phase 6: Respond Bidirectional
+
+1. The MPC serializes the output using the request's `respond_serialization_schema`
+2. It signs `keccak256(request_id || serialized_output)` with the response-verification key
+3. It calls `respond_bidirectional` on the source chain
+4. The source chain contract emits `RespondBidirectionalEvent`; the consumer verifies the signature and acts on the result
+
+## Request IDs
+
+Every request has a unique 32-byte ID that correlates all events across the flow. It is a `keccak256` hash over the full request tuple:
+
+```text
+request_id = keccak256(
+    sender || transaction || caip2_id || key_version ||
+    path || algo || dest || params
+)
+```
+
+The ID is computed identically by the source chain contract, the MPC, and clients — but the exact byte encoding is chain-specific (packed encoding on Solana and EVM; EIP-712-style word encoding over structured transaction params on Canton). See the per-chain docs for the exact formula on each chain.
+
+## Serialization Schemas
+
+Cross-chain data encoding uses two schemas, both supplied by the requester:
+
+| Schema                          | Direction         | Purpose                                         |
+| ------------------------------- | ----------------- | ----------------------------------------------- |
+| `output_deserialization_schema` | Destination → MPC | Parse execution result from destination chain   |
+| `respond_serialization_schema`  | MPC → Source      | Serialize response for source chain consumption |
+
+The response serialization format follows the source chain's conventions (Borsh for Solana, ABI for EVM and Canton).
+
+## Error Handling
+
+Failed destination chain transactions (reverts, or transactions permanently invalidated by their nonce being spent by a different transaction) are still answered: the MPC publishes a signed `RespondBidirectionalEvent` whose `serialized_output` starts with a magic error prefix:
+
+```text
+MAGIC_ERROR_PREFIX = 0xdeadbeef
+
+is_error(output) = output starts with 0xdeadbeef
+```
+
+Consumers must check for the prefix before interpreting the output as a successful result.
+
+## Address Derivation
+
+Each `(sender, path)` pair gets its own destination chain key, derived from the MPC root public key with the Signet epsilon KDF:
+
+```text
+epsilon = derive_epsilon(key_version, kdf_chain_id, sender, path)
+child_pubkey = root_pubkey + epsilon × G
+```
+
+`kdf_chain_id` namespaces derivation per source chain (e.g. `eip155:1`, `solana:5eykt...`, `canton:global` — see `KDF_CHAIN_IDS` in signet.js). The reference implementation is [`deriveChildPublicKey`](https://github.com/sig-net/signet.js/blob/main/src/utils/cryptography.ts) in signet.js; root public keys per environment are published as `ROOT_PUBLIC_KEYS` (see [Contract Addresses](/primitives/contract-addresses)).
+
+## Response Signature Verification
+
+The `respond_bidirectional` payload is signed with a **dedicated response-verification child key**, derived like any other child key but with a fixed, per-source-chain derivation path:
+
+| Source chain | Response derivation path (fixed) |
+| ------------ | -------------------------------- |
+| Solana       | `"solana response key"`          |
+| EVM chains   | `"ethereum response key"`        |
+| Canton       | `"canton response key"`          |
+
+The signature is computed over:
+
+```text
+message_hash = keccak256(request_id || serialized_output)
+```
+
+To verify a response, a consumer must:
+
+1. Derive the expected response public key from the MPC root (same `sender`, the fixed response path)
+2. Check the response signature over `message_hash` against that key — by recovering the signer (`secp256k1_recover`) and comparing on Solana/EVM, or on-ledger via `secp256k1WithEcdsaOnly` on Canton
+
+Never verify against the root public key or the transaction-signing key — the response key is intentionally distinct so that a transaction signature can never be replayed as an execution proof.
+
+## Security Properties
+
+1. **Request ID uniqueness**: each request's ID commits to the full request tuple, preventing replay across requests
+2. **Response authenticity**: responses are MPC threshold signatures over `keccak256(request_id || serialized_output)` with a dedicated response key
+3. **Output consistency**: the two schemas ensure the destination-chain result is encoded/decoded identically by all parties
+4. **Key isolation**: every `(sender, path)` pair has an isolated child key; source chains are further isolated by the KDF chain ID
+5. **Consumer-side replay protection**: the signing contracts are stateless event buses — consumers must pair each request with a single-use anchor/nullifier before acting on a response (the per-chain guides show how)
+
+## Per-Chain Documentation
+
+The contract/template API for each source chain lives with its implementation. Start here:
+
+| Source chain | Implementation                                     | Documentation                                                                                                                                                                                                                                                                                               |
+| ------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Solana**   | `signet-solana-program` (Anchor)                   | [Rust docs on docs.rs](https://docs.rs/chain-signatures-solana-program/latest/chain_signatures/) · [GitHub](https://github.com/sig-net/signet-solana-program) · [Contract API page](/contract-api/solana)                                                                                                   |
+| **EVM**      | `signet-evm-program` (`ChainSignatures.sol`)       | [GitHub README](https://github.com/sig-net/signet-evm-program) · [Contract API pages](/contract-api/evm/functions)                                                                                                                                                                                          |
+| **Canton**   | `signet-signer-v1` Daml templates (sig-net/canton) | [Signer README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-signer-v1/README.md) (authority model, integrator lifecycle, API) · [ERC-20 Vault example](https://github.com/sig-net/canton/blob/main/daml-packages/signet-vault-v1/README.md) · [Canton docs page](/contract-api/canton) |
 
 ## Related Documentation
 
-- [Signet Solana Program Rust Docs](https://docs.rs/chain-signatures-solana-program/latest/chain_signatures/) - Complete reference (instructions, events, types, security)
 - [Chain Signatures Contract](/primitives/chain-contract-interface) - Contract interface
+- [Contract Addresses](/primitives/contract-addresses) - Deployed addresses and root public keys
