@@ -5,9 +5,6 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 
 export default defineConfig({
   srcDir: '.',
-  // 'warn' not `true`: twoslash hovers embed viem's site-relative JSDoc links
-  // (e.g. /docs/actions/public/introduction), which are dead on this site.
-  checkDeadlinks: 'warn',
   title: 'Sig Network',
   description:
     'Manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions',
