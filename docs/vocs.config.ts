@@ -1,22 +1,32 @@
-import { defineConfig, type Config } from 'vocs'
+import { fileURLToPath } from 'node:url'
+import { defineConfig, type Config } from 'vocs/config'
+
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 
 export default defineConfig({
+  srcDir: '.',
+  // 'warn' not `true`: twoslash hovers embed viem's site-relative JSDoc links
+  // (e.g. /docs/actions/public/introduction), which are dead on this site.
+  checkDeadlinks: 'warn',
   title: 'Sig Network',
   description:
     'Manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions',
   twoslash: {
-    compilerOptions: {
-      strict: true,
-      paths: {
-        'signet.js': ['./src'],
-        '@chain-adapters': ['./src/chain-adapters/index.ts'],
-        '@contracts': ['./src/contracts/index.ts'],
-        '@utils': ['./src/utils/index.ts'],
-        '@constants': ['./src/constants.ts'],
-        '@types': ['./src/types.ts'],
-        '@chain-adapters/*': ['./src/chain-adapters/*'],
-        '@contracts/*': ['./src/contracts/*'],
-        '@utils/*': ['./src/utils/*'],
+    twoslashOptions: {
+      vfsRoot: repoRoot,
+      compilerOptions: {
+        strict: true,
+        paths: {
+          'signet.js': ['./src'],
+          '@chain-adapters': ['./src/chain-adapters/index.ts'],
+          '@contracts': ['./src/contracts/index.ts'],
+          '@utils': ['./src/utils/index.ts'],
+          '@constants': ['./src/constants.ts'],
+          '@types': ['./src/types.ts'],
+          '@chain-adapters/*': ['./src/chain-adapters/*'],
+          '@contracts/*': ['./src/contracts/*'],
+          '@utils/*': ['./src/utils/*'],
+        },
       },
     },
   },

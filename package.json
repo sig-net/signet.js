@@ -41,9 +41,9 @@
     "release:minor": "npm version minor --no-git-tag-version --force && npm run publish-npm",
     "release:major": "npm version major --no-git-tag-version --force && npm run publish-npm",
     "release:beta": "npm version prerelease --preid=beta --no-git-tag-version --force && npm run publish-npm:beta",
-    "docs:dev": "vocs dev",
-    "docs:build": "vocs build",
-    "docs:preview": "vocs preview",
+    "docs:dev": "cd docs && vocs dev",
+    "docs:build": "cd docs && vocs build",
+    "docs:preview": "cd docs && vocs preview",
     "format": "prettier --write .",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --noEmit",
@@ -85,7 +85,7 @@
     "typescript-eslint": "^8.61.0",
     "vite": "^8.0.16",
     "vitest": "^4.1.9",
-    "vocs": "^2.0.14"
+    "vocs": "^2.3.1"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
