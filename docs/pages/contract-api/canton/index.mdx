@@ -8,10 +8,11 @@ The flow itself is the standard [Sign Bidirectional Flow](/architecture/sign-bid
 
 The complete Canton documentation lives in the [sig-net/canton](https://github.com/sig-net/canton) repository:
 
-- **[Repository overview](https://github.com/sig-net/canton#readme)** - Architecture, package layout, deployment, and the DevNet end-to-end test
-- **[signet-signer-v1 README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-signer-v1/README.md)** - Authority model, integrator lifecycle, full template API, failure modes, and the security checklist for integrators
-- **[signet-vault-v1 README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-vault-v1/README.md)** - Worked consumer example: MPC-custodied ERC-20 vault (deposit / claim / withdraw / refund)
-- **[canton-sig TypeScript client](https://github.com/sig-net/canton/tree/main/ts-packages/canton-sig)** - Client library for driving the protocol over the Canton JSON Ledger API
+- **[Repository overview](https://github.com/sig-net/canton#readme)** - Architecture, package layout, and where to start
+- **[signet-signer-v1 README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-signer-v1/README.md)** - Authority model and integrator lifecycle, with the full template API in [API.md](https://github.com/sig-net/canton/blob/main/daml-packages/signet-signer-v1/API.md) and the integrator checklist in [SECURITY.md](https://github.com/sig-net/canton/blob/main/daml-packages/signet-signer-v1/SECURITY.md)
+- **[signet-vault-v1 README](https://github.com/sig-net/canton/blob/main/daml-packages/signet-vault-v1/README.md)** - The worked example to model your consumer on: MPC-custodied ERC-20 vault (deposit / claim / withdraw / refund), meant to be copied as source
+- **[INTEGRATORS.md](https://github.com/sig-net/canton/blob/main/INTEGRATORS.md)** - Deploying your consumer from your own Canton node: release DARs and package-id rules, vetting, client wiring, DevNet/TestNet go-live
+- **[canton-sig TypeScript client](https://github.com/sig-net/canton/tree/main/ts-packages/canton-sig)** - Client library for driving the protocol over the Canton JSON Ledger API ([npm](https://www.npmjs.com/package/canton-sig))
 
 ## Key Differences from Other Chains
 
