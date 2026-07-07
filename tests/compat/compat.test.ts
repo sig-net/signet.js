@@ -12,11 +12,11 @@ describe('CJS/ESM runtime compatibility', () => {
   let tarball: string
 
   beforeAll(() => {
-    const packOut = execSync('pnpm pack --pack-destination /tmp', {
+    tarball = join(tmpdir(), 'signet-compat-pack.tgz')
+    execSync(`yarn pack --out ${tarball}`, {
       cwd: pkgDir,
-      encoding: 'utf-8',
-    }).trim()
-    tarball = packOut.split('\n').pop()!
+      stdio: 'ignore',
+    })
 
     tmp = mkdtempSync(join(tmpdir(), 'signet-compat-'))
     execSync('npm init -y', { cwd: tmp, stdio: 'ignore' })

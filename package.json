@@ -26,13 +26,13 @@
   "scripts": {
     "build": "tsdown",
     "watch": "tsdown --watch",
-    "test": "pnpm test:evm && pnpm test:btc && pnpm test:cosmos",
-    "test:evm": "pnpm exec hardhat node --config hardhat.config.mts & NODE_PID=$!; sleep 2 && vitest run tests/unit/evm/EVM.test.ts; kill $NODE_PID",
+    "test": "yarn test:evm && yarn test:btc && yarn test:cosmos",
+    "test:evm": "sh -c 'hardhat node --config hardhat.config.mts & NODE_PID=$!; sleep 2 && vitest run tests/unit/evm/EVM.test.ts; kill $NODE_PID'",
     "test:btc": "docker compose -f docker/bitcoin/docker-compose.yml up -d && vitest run tests/unit/btc/Bitcoin.test.ts; docker compose -f docker/bitcoin/docker-compose.yml down -v",
-    "test:cosmos": "docker rm -f cosmos-node 2>/dev/null; docker build -t cosmos-local docker/cosmos && docker run -d --name cosmos-node -p 26657:26657 -p 1317:1317 cosmos-local && until curl -s http://localhost:26657/status 2>/dev/null | grep -q '\"latest_block_height\":\"[1-9]'; do sleep 2; done && vitest run tests/unit/cosmos/Cosmos.test.ts; docker rm -f cosmos-node",
-    "test:evm:e2e": "pnpm exec hardhat node --config hardhat.config.mts & NODE_PID=$!; sleep 2 && vitest run tests/e2e/evm/EVM.e2e.test.ts; kill $NODE_PID",
+    "test:cosmos": "sh -c 'docker rm -f cosmos-node 2>/dev/null; docker build -t cosmos-local docker/cosmos && docker run -d --name cosmos-node -p 26657:26657 -p 1317:1317 cosmos-local && until curl -s http://localhost:26657/status 2>/dev/null | grep -q \"latest_block_height.:.[1-9]\"; do sleep 2; done && vitest run tests/unit/cosmos/Cosmos.test.ts; docker rm -f cosmos-node'",
+    "test:evm:e2e": "sh -c 'hardhat node --config hardhat.config.mts & NODE_PID=$!; sleep 2 && vitest run tests/e2e/evm/EVM.e2e.test.ts; kill $NODE_PID'",
     "test:btc:e2e": "docker compose -f docker/bitcoin/docker-compose.yml up -d && vitest run tests/e2e/btc/BTC.e2e.test.ts; docker compose -f docker/bitcoin/docker-compose.yml down -v",
-    "test:cosmos:e2e": "docker rm -f cosmos-node 2>/dev/null; docker build -t cosmos-local docker/cosmos && docker run -d --name cosmos-node -p 26657:26657 -p 1317:1317 cosmos-local && until curl -s http://localhost:26657/status 2>/dev/null | grep -q '\"latest_block_height\":\"[1-9]'; do sleep 2; done && vitest run tests/e2e/cosmos/Cosmos.e2e.test.ts; docker rm -f cosmos-node",
+    "test:cosmos:e2e": "sh -c 'docker rm -f cosmos-node 2>/dev/null; docker build -t cosmos-local docker/cosmos && docker run -d --name cosmos-node -p 26657:26657 -p 1317:1317 cosmos-local && until curl -s http://localhost:26657/status 2>/dev/null | grep -q \"latest_block_height.:.[1-9]\"; do sleep 2; done && vitest run tests/e2e/cosmos/Cosmos.e2e.test.ts; docker rm -f cosmos-node'",
     "test:solana:integration": "vitest run tests/integration/solana/Solana.integration.test.ts",
     "test:compat": "attw --pack . --profile node16 && publint --strict && vitest run tests/compat/compat.test.ts",
     "publish-npm": "npm run build && npm run docs:build && npm publish",
@@ -47,8 +47,8 @@
     "format": "prettier --write .",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --noEmit",
-    "check": "pnpm typecheck && pnpm lint && prettier --check .",
-    "fix": "pnpm lint --fix && pnpm format"
+    "check": "yarn typecheck && yarn lint && prettier --check .",
+    "fix": "yarn lint --fix && yarn format"
   },
   "author": "Sig Network",
   "license": "MIT",
@@ -85,7 +85,8 @@
     "typescript-eslint": "^8.61.0",
     "vite": "^8.0.16",
     "vitest": "^4.1.9",
-    "vocs": "^2.3.1"
+    "vocs": "^2.3.1",
+    "waku": "^1.0.0-beta.6"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
@@ -103,5 +104,5 @@
     "cosmjs-types": "^0.11.0",
     "viem": "^2.52.2"
   },
-  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
+  "packageManager": "yarn@4.17.0+sha512.c2957de2f9025ab14d63b24d0d8be1f1655810e22c341042c27f7ecd017b180ec12db73d69ac366d71b304ef9f069349ce462de96f04f8f1da317f4f762c95ae"
 }

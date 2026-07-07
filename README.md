@@ -21,8 +21,6 @@ This library provides a unified interface for interacting with different blockch
 npm install signet.js
 # or
 yarn add signet.js
-# or
-pnpm add signet.js
 ```
 
 ## Quick Example (EVM)

@@ -4,20 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+Yarn 4 via corepack (`packageManager` field). Corepack ships with Node ≤ 24; on Node 25+ run `npm i -g corepack` once, then `corepack enable`.
+
 ```bash
 # Build
-pnpm build                     # tsdown → dist/ (ESM + CJS + declarations)
-pnpm watch                     # tsdown --watch
+yarn build                     # tsdown → dist/ (ESM + CJS + declarations)
+yarn watch                     # tsdown --watch
 
-# Quality — run `pnpm check` and `pnpm test` before reporting a task as complete
-pnpm check                     # typecheck + lint + format check (read-only)
-pnpm fix                       # auto-fix lint + format issues
-pnpm typecheck                 # tsc --noEmit
-pnpm lint                      # eslint src/**/*.ts tests/**/*.ts
-pnpm format                    # prettier --write .
+# Quality — run `yarn check` and `yarn test` before reporting a task as complete
+yarn check                     # typecheck + lint + format check (read-only)
+yarn fix                       # auto-fix lint + format issues
+yarn typecheck                 # tsc --noEmit
+yarn lint                      # eslint src/**/*.ts tests/**/*.ts
+yarn format                    # prettier --write .
 
 # Run a single test file directly (when infra is already running)
-pnpm vitest run path/to/test.ts
+yarn vitest run path/to/test.ts
 ```
 
 ## Testing
@@ -27,10 +29,10 @@ Each test script manages its own infrastructure (start → test → cleanup). No
 ### Unit tests (mocked signing, local Docker)
 
 ```bash
-pnpm test              # runs EVM + BTC + Cosmos sequentially
-pnpm test:evm          # starts hardhat on :8545, runs tests, kills hardhat
-pnpm test:btc          # docker compose up (bitcoind+electrs+chopsticks), runs tests, down
-pnpm test:cosmos       # docker build/run gaiad, waits for first block, runs tests, removes container
+yarn test              # runs EVM + BTC + Cosmos sequentially
+yarn test:evm          # starts hardhat on :8545, runs tests, kills hardhat
+yarn test:btc          # docker compose up (bitcoind+electrs+chopsticks), runs tests, down
+yarn test:cosmos       # docker build/run gaiad, waits for first block, runs tests, removes container
 ```
 
 All signing is mocked with local secp256k1 — no env vars or network access needed.
@@ -40,9 +42,9 @@ All signing is mocked with local secp256k1 — no env vars or network access nee
 Requires `SEPOLIA_PRIVATE_KEY` and `SEPOLIA_RPC_URL` in `.env`. On-demand only, not in CI.
 
 ```bash
-pnpm test:evm:e2e      # MPC sign on Sepolia → broadcast on local hardhat
-pnpm test:btc:e2e      # MPC sign on Sepolia → broadcast on local regtest
-pnpm test:cosmos:e2e   # MPC sign on Sepolia → broadcast on local gaiad
+yarn test:evm:e2e      # MPC sign on Sepolia → broadcast on local hardhat
+yarn test:btc:e2e      # MPC sign on Sepolia → broadcast on local regtest
+yarn test:cosmos:e2e   # MPC sign on Sepolia → broadcast on local gaiad
 ```
 
 EVM and BTC E2E tests cannot run in parallel with unit tests (port 8545 / docker conflicts).
@@ -50,8 +52,8 @@ EVM and BTC E2E tests cannot run in parallel with unit tests (port 8545 / docker
 ### Integration tests (real testnets, on-demand)
 
 ```bash
-pnpm test:evm:integration     # sign + verify key derivation on Sepolia
-pnpm test:solana:integration  # sign on Solana devnet (needs SOLANA_PRIVATE_KEY)
+yarn test:evm:integration     # sign + verify key derivation on Sepolia
+yarn test:solana:integration  # sign on Solana devnet (needs SOLANA_PRIVATE_KEY)
 ```
 
 ## Architecture
