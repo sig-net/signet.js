@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yaml
+
+  publish:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'yarn'
+          registry-url: 'https://registry.npmjs.org'
+      # OIDC trusted publishing needs npm >= 11.5.1
+      - run: npm install -g npm@latest
+      - run: yarn install --immutable
+      - name: Verify tag matches package.json version
+        if: github.event_name == 'push'
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+      - run: yarn build
+      - name: Publish to npm (OIDC, provenance auto-generated)
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "${VERSION#*-}" != "$VERSION" ]; then
+            npm publish --tag beta
+          else
+            npm publish
+          fi

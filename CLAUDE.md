@@ -52,7 +52,6 @@ EVM and BTC E2E tests cannot run in parallel with unit tests (port 8545 / docker
 ### Integration tests (real testnets, on-demand)
 
 ```bash
-yarn test:evm:integration     # sign + verify key derivation on Sepolia
 yarn test:solana:integration  # sign on Solana devnet (needs SOLANA_PRIVATE_KEY)
 ```
 
@@ -109,14 +108,22 @@ Contract addresses and root public keys per environment (`TESTNET_DEV`, `TESTNET
 
 ## Releasing
 
-Every publish must have a corresponding GitHub release with a git tag:
+Publishing happens in CI via npm OIDC trusted publishing (no npm tokens; requires the one-time
+trusted-publisher config on npmjs.com: package `signet.js` → GitHub Actions → `sig-net/signet.js`,
+workflow `deploy.yaml`). To release:
 
 ```bash
+yarn release:patch                          # or release:minor / release:major / release:beta — bumps package.json only
+git commit -am "chore: release vX.Y.Z"      # land the bump on main (via PR or push)
 git tag vX.Y.Z
-git push origin vX.Y.Z
+git push origin vX.Y.Z                      # deploy.yaml runs full checks, then publishes to npm
 gh release create vX.Y.Z --generate-notes   # auto-generates notes, tweak if needed
 ```
 
+The deploy workflow fails if the tag doesn't match the package.json version. Prerelease versions
+(`X.Y.Z-beta.N`) are published under the `beta` dist-tag automatically.
+
 ## CI
 
-4 parallel jobs after `check` gate (format, lint, typecheck, build): `test-evm`, `test-btc`, `test-cosmos`. E2E and integration tests are not in CI.
+- `checks.yaml` — on PRs and pushes to main (and called by deploy): 4 parallel jobs after the `check` gate (format, lint, typecheck, build, compat): `test-evm`, `test-btc`, `test-cosmos`. E2E and integration tests are not in CI.
+- `deploy.yaml` — on `vX.Y.Z` tag push: runs the full checks suite, then builds and publishes to npm via OIDC trusted publishing.
