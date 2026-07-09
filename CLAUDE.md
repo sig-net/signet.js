@@ -108,9 +108,13 @@ Contract addresses and root public keys per environment (`TESTNET_DEV`, `TESTNET
 
 ## Releasing
 
-Publishing happens in CI via npm OIDC trusted publishing (no npm tokens; requires the one-time
-trusted-publisher config on npmjs.com: package `signet.js` → GitHub Actions → `sig-net/signet.js`,
-workflow `deploy.yaml`). To release:
+The package is published to npm as the org-scoped `@sig-net/signet.js` (public access, set via
+`publishConfig.access`). Publishing happens in CI via npm OIDC trusted publishing (no npm tokens;
+requires the one-time trusted-publisher config on npmjs.com: package `@sig-net/signet.js` → GitHub
+Actions → `sig-net/signet.js`, workflow `deploy.yaml`). Because the trusted-publisher setting lives
+on the package's settings page, the package must exist first — bootstrap the very first publish with
+a token (or a local `npm publish`), then configure trusted publishing for all subsequent tags. To
+release:
 
 ```bash
 yarn release:patch                          # or release:minor / release:major / release:beta — bumps package.json only

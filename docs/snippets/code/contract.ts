@@ -1,4 +1,4 @@
-import { contracts, constants } from 'signet.js'
+import { contracts, constants } from '@sig-net/signet.js'
 import { createPublicClient, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'

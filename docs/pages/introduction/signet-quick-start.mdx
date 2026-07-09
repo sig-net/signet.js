@@ -3,9 +3,9 @@
 ## Installation
 
 ```bash
-npm install signet.js
+npm install @sig-net/signet.js
 # or
-yarn add signet.js
+yarn add @sig-net/signet.js
 ```
 
 ## Signing a Transaction
@@ -13,7 +13,7 @@ yarn add signet.js
 Here's a basic example using the EVM implementation:
 
 ```ts twoslash
-import { contracts, constants, chainAdapters } from 'signet.js'
+import { contracts, constants, chainAdapters } from '@sig-net/signet.js'
 // [!include ~/snippets/code/evm/env.ts]
 
 const evmChainSigContract = new contracts.evm.ChainSignatureContract({

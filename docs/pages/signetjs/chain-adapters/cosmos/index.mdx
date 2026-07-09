@@ -16,7 +16,7 @@ The Cosmos implementation allows you to:
 Below is a complete example of sending a transaction on a Cosmos chain using Signet.js:
 
 ```ts twoslash
-import { chainAdapters } from 'signet.js'
+import { chainAdapters } from '@sig-net/signet.js'
 // [!include ~/snippets/code/evm/contract.ts]
 
 const cosmos = new chainAdapters.cosmos.Cosmos({
@@ -82,7 +82,7 @@ You can use any Cosmos SDK-based network by providing the appropriate chain ID:
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-import { chainAdapters } from 'signet.js'
+import { chainAdapters } from '@sig-net/signet.js'
 
 // Cosmos Hub
 const cosmosHub = new chainAdapters.cosmos.Cosmos({

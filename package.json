@@ -1,6 +1,6 @@
 {
-  "name": "signet.js",
-  "version": "0.4.2",
+  "name": "@sig-net/signet.js",
+  "version": "0.5.0-rc1",
   "description": "A TypeScript library for handling multi-chain transactions and signatures using Signet MPC",
   "type": "module",
   "exports": {
@@ -50,6 +50,9 @@
   },
   "author": "Sig Network",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/sig-net/signet.js"

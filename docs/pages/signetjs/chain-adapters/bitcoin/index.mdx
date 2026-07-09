@@ -16,7 +16,7 @@ The Bitcoin implementation allows you to:
 Below is a complete example of sending a transaction on the Bitcoin network using Signet.js:
 
 ```ts twoslash
-import { chainAdapters } from 'signet.js'
+import { chainAdapters } from '@sig-net/signet.js'
 // [!include ~/snippets/code/evm/contract.ts]
 
 const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
@@ -70,7 +70,7 @@ You can use different Bitcoin networks by specifying the network parameter:
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-import { chainAdapters } from 'signet.js'
+import { chainAdapters } from '@sig-net/signet.js'
 
 const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
   'https://mempool.space/api'

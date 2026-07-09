@@ -1,7 +1,7 @@
 import { createPublicClient, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
-import { chainAdapters, contracts, constants } from 'signet.js'
+import { chainAdapters, contracts, constants } from '@sig-net/signet.js'
 
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`)
 

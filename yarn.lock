@@ -2612,6 +2612,47 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@sig-net/signet.js@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@sig-net/signet.js@workspace:."
+  dependencies:
+    "@arethetypeswrong/cli": "npm:^0.18.3"
+    "@coral-xyz/anchor": "npm:^0.32.1"
+    "@cosmjs/amino": "npm:^0.39.0"
+    "@cosmjs/crypto": "npm:^0.39.0"
+    "@cosmjs/encoding": "npm:^0.39.0"
+    "@cosmjs/proto-signing": "npm:^0.39.0"
+    "@cosmjs/stargate": "npm:^0.39.0"
+    "@eslint/js": "npm:^10.0.0"
+    "@noble/curves": "npm:^2.2.0"
+    "@scure/base": "npm:^2.2.0"
+    "@solana/web3.js": "npm:^1.98.4"
+    "@types/node": "npm:^25.9.3"
+    "@types/react": "npm:^19.2.17"
+    bitcoinjs-lib: "npm:^7.0.0"
+    chain-registry: "npm:^2.0.217"
+    coinselect: "npm:^3.1.13"
+    cosmjs-types: "npm:^0.11.0"
+    dotenv: "npm:^17.4.2"
+    eslint: "npm:^10.5.0"
+    eslint-config-prettier: "npm:^10.1.8"
+    eslint-plugin-import-x: "npm:^4.16.2"
+    hardhat: "npm:^3.9.0"
+    prettier: "npm:^3.8.4"
+    publint: "npm:^0.3.21"
+    react: "npm:^19.2.7"
+    react-dom: "npm:^19.2.7"
+    tsdown: "npm:^0.22.2"
+    typescript: "npm:^6.0.3"
+    typescript-eslint: "npm:^8.61.0"
+    viem: "npm:^2.52.2"
+    vite: "npm:^8.0.16"
+    vitest: "npm:^4.1.9"
+    vocs: "npm:^2.3.1"
+    waku: "npm:^1.0.0-beta.6"
+  languageName: unknown
+  linkType: soft
+
 "@sindresorhus/is@npm:^4.6.0":
   version: 4.6.0
   resolution: "@sindresorhus/is@npm:4.6.0"
@@ -9397,47 +9438,6 @@ __metadata:
   checksum: 10c0/3def8f8e516fbb34cb6ae415b07ccc5d9c018d85b4b8611e3dc6f8be6d1899f693a4382913c9ed51a06babb5201639d76453ab297d1c54a456544acf5c892e34
   languageName: node
   linkType: hard
-
-"signet.js@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "signet.js@workspace:."
-  dependencies:
-    "@arethetypeswrong/cli": "npm:^0.18.3"
-    "@coral-xyz/anchor": "npm:^0.32.1"
-    "@cosmjs/amino": "npm:^0.39.0"
-    "@cosmjs/crypto": "npm:^0.39.0"
-    "@cosmjs/encoding": "npm:^0.39.0"
-    "@cosmjs/proto-signing": "npm:^0.39.0"
-    "@cosmjs/stargate": "npm:^0.39.0"
-    "@eslint/js": "npm:^10.0.0"
-    "@noble/curves": "npm:^2.2.0"
-    "@scure/base": "npm:^2.2.0"
-    "@solana/web3.js": "npm:^1.98.4"
-    "@types/node": "npm:^25.9.3"
-    "@types/react": "npm:^19.2.17"
-    bitcoinjs-lib: "npm:^7.0.0"
-    chain-registry: "npm:^2.0.217"
-    coinselect: "npm:^3.1.13"
-    cosmjs-types: "npm:^0.11.0"
-    dotenv: "npm:^17.4.2"
-    eslint: "npm:^10.5.0"
-    eslint-config-prettier: "npm:^10.1.8"
-    eslint-plugin-import-x: "npm:^4.16.2"
-    hardhat: "npm:^3.9.0"
-    prettier: "npm:^3.8.4"
-    publint: "npm:^0.3.21"
-    react: "npm:^19.2.7"
-    react-dom: "npm:^19.2.7"
-    tsdown: "npm:^0.22.2"
-    typescript: "npm:^6.0.3"
-    typescript-eslint: "npm:^8.61.0"
-    viem: "npm:^2.52.2"
-    vite: "npm:^8.0.16"
-    vitest: "npm:^4.1.9"
-    vocs: "npm:^2.3.1"
-    waku: "npm:^1.0.0-beta.6"
-  languageName: unknown
-  linkType: soft
 
 "skin-tone@npm:^2.0.0":
   version: 2.0.0
