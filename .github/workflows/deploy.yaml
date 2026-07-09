@@ -43,11 +43,11 @@ jobs:
             exit 1
           fi
       - run: yarn build
-      - name: Publish to npm (OIDC, provenance auto-generated)
+      - name: Publish to npm via yarn
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if [ "${VERSION#*-}" != "$VERSION" ]; then
-            npm publish --tag beta
+            yarn npm publish --tag beta
           else
-            npm publish
+            yarn npm publish
           fi
