@@ -28,9 +28,7 @@ jobs:
           node-version: 24
           cache: 'yarn'
           registry-url: 'https://registry.npmjs.org'
-      # OIDC trusted publishing needs npm >= 11.5.1; Node 24 already bundles a
-      # new-enough npm. Do NOT `npm i -g npm@latest` — the in-place self-upgrade
-      # drops the `sigstore` dep provenance needs (Cannot find module 'sigstore').
+      # Just log the version — upgrading npm here breaks sigstore (provenance).
       - run: npm --version
       - run: yarn install --immutable
       - name: Verify tag matches package.json version
@@ -47,7 +45,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if [ "${VERSION#*-}" != "$VERSION" ]; then
-            yarn npm publish --tag beta
+            yarn npm publish --provenance --tag beta
           else
-            yarn npm publish
+            yarn npm publish --provenance
           fi
