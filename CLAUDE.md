@@ -108,13 +108,10 @@ Contract addresses and root public keys per environment (`TESTNET_DEV`, `TESTNET
 
 ## Releasing
 
-The package is published to npm as the org-scoped `@sig-net/signet.js` (public access, set via
-`publishConfig.access`). Publishing happens in CI via npm OIDC trusted publishing (no npm tokens;
-requires the one-time trusted-publisher config on npmjs.com: package `@sig-net/signet.js` → GitHub
-Actions → `sig-net/signet.js`, workflow `deploy.yaml`). Because the trusted-publisher setting lives
-on the package's settings page, the package must exist first — bootstrap the very first publish with
-a token (or a local `npm publish`), then configure trusted publishing for all subsequent tags. To
-release:
+The package is published to npm as the org-scoped `@sig-net/signet.js` (public access via
+`publishConfig.access`). CI publishes with `yarn npm publish --provenance` using OIDC trusted
+publishing — no npm tokens. The trusted-publisher config (npmjs.com → package settings → GitHub
+Actions → `sig-net/signet.js`, workflow `deploy.yaml`) is already set up. To release:
 
 ```bash
 yarn release:patch                          # or release:minor / release:major / release:beta — bumps package.json only
@@ -130,4 +127,4 @@ The deploy workflow fails if the tag doesn't match the package.json version. Pre
 ## CI
 
 - `checks.yaml` — on PRs and pushes to main (and called by deploy): 4 parallel jobs after the `check` gate (format, lint, typecheck, build, compat): `test-evm`, `test-btc`, `test-cosmos`. E2E and integration tests are not in CI.
-- `deploy.yaml` — on `vX.Y.Z` tag push: runs the full checks suite, then builds and publishes to npm via OIDC trusted publishing.
+- `deploy.yaml` — on `vX.Y.Z` tag push: runs the full checks suite, then builds and publishes to npm with `yarn npm publish --provenance` via OIDC trusted publishing.
