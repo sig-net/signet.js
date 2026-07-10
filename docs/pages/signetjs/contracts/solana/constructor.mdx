@@ -5,7 +5,7 @@ The Solana Chain Signatures Contract provides an implementation of the abstract 
 ## Usage
 
 ```ts twoslash
-import { contracts, constants } from 'signet.js'
+import { contracts, constants } from '@sig-net/signet.js'
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor'
 import { Connection, PublicKey, Keypair } from '@solana/web3.js'
 
@@ -26,7 +26,7 @@ const contract = new contracts.solana.ChainSignatureContract({
 ### With Custom Configuration
 
 ```ts twoslash
-import { contracts, constants } from 'signet.js'
+import { contracts, constants } from '@sig-net/signet.js'
 import { AnchorProvider, Wallet, type Idl } from '@coral-xyz/anchor'
 import { Connection, PublicKey, Keypair } from '@solana/web3.js'
 

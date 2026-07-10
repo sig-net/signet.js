@@ -690,9 +690,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private mapEventForName<E extends ChainSignaturesEventName>(
     eventName: E,
     data:
-      | SignatureRespondedEvent
-      | SignatureErrorEvent
-      | RespondBidirectionalEvent,
+      SignatureRespondedEvent | SignatureErrorEvent | RespondBidirectionalEvent,
     requestId: string
   ): EventResult<E> | undefined {
     switch (eventName) {

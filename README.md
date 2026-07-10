@@ -18,17 +18,15 @@ This library provides a unified interface for interacting with different blockch
 ## Installation
 
 ```bash
-npm install signet.js
+npm install @sig-net/signet.js
 # or
-yarn add signet.js
-# or
-pnpm add signet.js
+yarn add @sig-net/signet.js
 ```
 
 ## Quick Example (EVM)
 
 ```ts twoslash
-import { chainAdapters, contracts } from 'signet.js'
+import { chainAdapters, contracts } from '@sig-net/signet.js'
 import { createPublicClient, http } from 'viem'
 import { mainnet } from 'viem/chains'
 

@@ -17,7 +17,7 @@ The EVM implementation allows you to:
 Below is a complete example of sending a transaction on an EVM chain using Signet.js:
 
 ```ts twoslash
-import { chainAdapters } from 'signet.js'
+import { chainAdapters } from '@sig-net/signet.js'
 // [!include ~/snippets/code/evm/contract.ts]
 
 const evm = new chainAdapters.evm.EVM({
@@ -64,7 +64,7 @@ You can use any EVM-compatible network by providing the appropriate client:
 ```ts twoslash
 // [!include ~/snippets/code/contract.ts]
 // ---cut---
-import { chainAdapters } from 'signet.js'
+import { chainAdapters } from '@sig-net/signet.js'
 import { polygon, bsc, mainnet } from 'viem/chains'
 
 // Ethereum Mainnet

@@ -1,7 +1,7 @@
 // [!region import]
 import { Connection, Keypair } from '@solana/web3.js'
 import { AnchorProvider, Wallet } from '@coral-xyz/anchor'
-import { contracts, chainAdapters, constants } from 'signet.js'
+import { contracts, chainAdapters, constants } from '@sig-net/signet.js'
 import {
   createPublicClient,
   encodeFunctionData,

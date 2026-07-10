@@ -12,11 +12,11 @@ describe('CJS/ESM runtime compatibility', () => {
   let tarball: string
 
   beforeAll(() => {
-    const packOut = execSync('pnpm pack --pack-destination /tmp', {
+    tarball = join(tmpdir(), 'signet-compat-pack.tgz')
+    execSync(`yarn pack --out ${tarball}`, {
       cwd: pkgDir,
-      encoding: 'utf-8',
-    }).trim()
-    tarball = packOut.split('\n').pop()!
+      stdio: 'ignore',
+    })
 
     tmp = mkdtempSync(join(tmpdir(), 'signet-compat-'))
     execSync('npm init -y', { cwd: tmp, stdio: 'ignore' })
@@ -34,7 +34,7 @@ describe('CJS/ESM runtime compatibility', () => {
       script,
       `
 const assert = require('assert');
-const pkg = require('signet.js');
+const pkg = require('@sig-net/signet.js');
 
 assert(typeof pkg.chainAdapters.ChainAdapter === 'function', 'chainAdapters.ChainAdapter should be a function');
 assert(typeof pkg.constants.ENVS === 'object', 'constants.ENVS should be an object');
@@ -53,7 +53,7 @@ console.log('CJS OK');
       script,
       `
 import assert from 'assert';
-import * as pkg from 'signet.js';
+import * as pkg from '@sig-net/signet.js';
 
 assert(typeof pkg.chainAdapters.ChainAdapter === 'function', 'chainAdapters.ChainAdapter should be a function');
 assert(typeof pkg.constants.ENVS === 'object', 'constants.ENVS should be an object');
@@ -72,7 +72,7 @@ console.log('ESM OK');
       script,
       `
 import assert from 'assert';
-import { chainAdapters, constants, utils, contracts } from 'signet.js';
+import { chainAdapters, constants, utils, contracts } from '@sig-net/signet.js';
 
 assert(typeof chainAdapters.ChainAdapter === 'function', 'chainAdapters.ChainAdapter should be a function');
 assert(typeof constants.ENVS === 'object', 'constants.ENVS should be an object');

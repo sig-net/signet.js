@@ -1,9 +1,10 @@
-name: CI
+name: Checks
 
 on:
   push:
     branches: main
   pull_request:
+  workflow_call:
 
 jobs:
   check:
@@ -11,19 +12,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 10
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm format --check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm build
-      - run: pnpm test:compat
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn format --check
+      - run: yarn lint
+      - run: yarn typecheck
+      - run: yarn build
+      - run: yarn test:compat
 
   test-evm:
     needs: check
@@ -31,15 +30,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 10
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm test:evm
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn test:evm
 
   test-btc:
     needs: check
@@ -47,15 +44,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 10
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm test:btc
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn test:btc
 
   test-cosmos:
     needs: check
@@ -63,12 +58,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 10
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm test:cosmos
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - run: yarn test:cosmos

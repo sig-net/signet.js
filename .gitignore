@@ -5,7 +5,8 @@ dist/
 
 .vscode/
 
-.pnpm-store/
+.pnp.*
+.yarn/
 
 .DS_Store
 

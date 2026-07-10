@@ -14,7 +14,7 @@ export default defineConfig({
       compilerOptions: {
         strict: true,
         paths: {
-          'signet.js': ['./src'],
+          '@sig-net/signet.js': ['./src'],
           '@chain-adapters': ['./src/chain-adapters/index.ts'],
           '@contracts': ['./src/contracts/index.ts'],
           '@utils': ['./src/utils/index.ts'],
