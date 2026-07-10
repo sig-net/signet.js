@@ -42,8 +42,11 @@ jobs:
         working-directory: docs
         env:
           DOCS_BASE_PATH: /signet.js/
-        # Skip search embeddings — they need a model download/API and basic
-        # search still works without them.
+        # --no-embeddings skips building the AI/semantic-search vector index.
+        # That's an opt-in feature (config `ai.retriever`) we don't use, so the
+        # flag is effectively a no-op guard: it keeps the build from ever trying
+        # to embed (which would need a provider API key). The standard full-text
+        # search index is always built and is unaffected.
         run: yarn vocs build --no-embeddings
       - name: Disable Jekyll processing
         run: touch docs/dist/public/.nojekyll
