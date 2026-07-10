@@ -1,0 +1,69 @@
+name: Docs
+
+# Build the vocs docs site and publish it to GitHub Pages.
+#
+# Publishes only on version tags (vX.Y.Z) — never on plain pushes to a branch.
+# rc tags like v0.5.1-rc1 also match (they're vX.Y.Z-shaped), so they can be
+# used to test the deploy without cutting a real release; rc tags are excluded
+# from deploy.yaml so they never trigger an npm publish.
+#
+# The site is fully static (renderStrategy: 'full-static' in docs/vocs.config.ts)
+# and is served under /signet.js/ — DOCS_BASE_PATH bakes that base path into the
+# built asset URLs.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+# Allow the deploy job to publish to Pages via OIDC.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deploy at a time; don't cancel an in-progress deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: Build docs
+        working-directory: docs
+        env:
+          DOCS_BASE_PATH: /signet.js/
+        # --no-embeddings skips building the AI/semantic-search vector index.
+        # That's an opt-in feature (config `ai.retriever`) we don't use, so the
+        # flag is effectively a no-op guard: it keeps the build from ever trying
+        # to embed (which would need a provider API key). The standard full-text
+        # search index is always built and is unaffected.
+        run: yarn vocs build --no-embeddings
+      - name: Disable Jekyll processing
+        run: touch docs/dist/public/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
