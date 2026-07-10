@@ -269,7 +269,6 @@ export default defineConfig({
       link: 'https://github.com/sig-net',
     },
   ],
-  // vocs 2.x takes a top-level `accentColor` string (light-dark() syntax); the
-  // old v1 `theme.accentColor` object was silently ignored.
+  // Sig Network brand green, brightened in dark mode for contrast.
   accentColor: 'light-dark(#00C08B, #00E6A6)',
 }) as Config

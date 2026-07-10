@@ -4,6 +4,40 @@ Guidance for AI coding agents and human contributors working in this repository.
 It is tool-agnostic; tool-specific entrypoints (e.g. `CLAUDE.md`) should reference
 this file rather than duplicate it.
 
+## Rules — NEVER IGNORE
+
+These rules are non-negotiable. They outrank convenience, local precedent, and
+personal style. Two standing obligations apply to **every** rule below:
+
+- **Never introduce a new violation.**
+- **Fix regressions on contact.** Code written before a rule existed may violate
+  it. When a task leads you to touch such code, fix the violation as part of that
+  task — leave the spot cleaner than you found it. (Fix what your task touches;
+  don't detour into unrelated files to hunt for violations.)
+
+### 1. Comments describe the code as it is — never how it changed
+
+A comment must explain what the code does or why it exists — intent that helps the
+next reader. It must **not** narrate the edit that introduced it or contrast the
+current code with a former approach. Banned in source comments: "now uses…",
+"switched to…", "previously…", "the old way…", "instead of…", "used to…", version
+migration notes ("vocs 2.x takes… the v1 form was ignored"). That is changelog
+history: it belongs in the commit message and PR description, where it stays
+accurate. In the source it goes stale the moment the old way is forgotten and
+misleads every reader after that.
+
+```ts
+// Bad — narrates the change, meaningless once v1 is forgotten:
+//   vocs 2.x takes a top-level accentColor; the old v1 theme.accentColor was ignored
+// Good — states intent:
+//   Sig Network brand green, brightened in dark mode for contrast
+accentColor: 'light-dark(#00C08B, #00E6A6)'
+```
+
+If you catch yourself writing a comment that only makes sense to someone who saw
+the previous version of the code, move it to the commit message and delete it from
+the source.
+
 ## Commands
 
 Yarn 4 via corepack (`packageManager` field). Corepack ships with Node ≤ 24; on Node 25+ run `npm i -g corepack` once, then `corepack enable`.
