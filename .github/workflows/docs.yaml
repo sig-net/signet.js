@@ -1,0 +1,64 @@
+name: Docs
+
+# Build the vocs docs site and publish it to GitHub Pages.
+#
+# The site is fully static (renderStrategy: 'full-static' in docs/vocs.config.ts)
+# and is served under /signet.js/ — DOCS_BASE_PATH bakes that base path into the
+# built asset URLs. To test the deploy without cutting a real release, push a
+# tag like v0.5.1-rc1 (see the tags trigger below). Those rc tags are excluded
+# from deploy.yaml so they never trigger an npm publish.
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*-rc*'
+  workflow_dispatch:
+
+# Allow the deploy job to publish to Pages via OIDC.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deploy at a time; don't cancel an in-progress deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'yarn'
+      - run: yarn install --immutable
+      - name: Build docs
+        working-directory: docs
+        env:
+          DOCS_BASE_PATH: /signet.js/
+        # Skip search embeddings — they need a model download/API and basic
+        # search still works without them.
+        run: yarn vocs build --no-embeddings
+      - name: Disable Jekyll processing
+        run: touch docs/dist/public/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

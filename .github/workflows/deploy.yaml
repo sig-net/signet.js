@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*.*.*'
+      # rc tags (e.g. v0.5.1-rc1) are used to test the docs Pages deploy only;
+      # exclude them here so they never trigger an npm publish.
+      - '!v*-rc*'
   workflow_dispatch:
 
 permissions:

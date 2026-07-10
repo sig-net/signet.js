@@ -3,8 +3,17 @@ import { defineConfig, type Config } from 'vocs/config'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 
+// GitHub Pages serves project sites under /<repo>/. The deploy workflow sets
+// DOCS_BASE_PATH=/signet.js/; local dev/preview default to the root path.
+const basePath = process.env.DOCS_BASE_PATH ?? '/'
+
 export default defineConfig({
   srcDir: '.',
+  // Emit a fully static site (per-route HTML) so it can be hosted on any
+  // static host, e.g. GitHub Pages. Without this vocs builds a Waku SSR
+  // server bundle that needs a Node runtime.
+  renderStrategy: 'full-static',
+  basePath,
   title: 'Sig Network',
   description:
     'Manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions',
@@ -27,8 +36,10 @@ export default defineConfig({
       },
     },
   },
-  logoUrl: 'signet-logo.png',
-  iconUrl: 'signet-logo.png',
+  // Absolute (base-path-prefixed) so the logo/favicon resolve on nested routes;
+  // vocs does not prefix logoUrl/iconUrl with basePath automatically.
+  logoUrl: `${basePath}signet-logo.png`,
+  iconUrl: `${basePath}signet-logo.png`,
   sidebar: [
     {
       text: 'Introduction',
