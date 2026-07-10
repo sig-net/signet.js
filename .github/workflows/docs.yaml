@@ -2,17 +2,19 @@ name: Docs
 
 # Build the vocs docs site and publish it to GitHub Pages.
 #
+# Publishes only on version tags (vX.Y.Z) — never on plain pushes to a branch.
+# rc tags like v0.5.1-rc1 also match (they're vX.Y.Z-shaped), so they can be
+# used to test the deploy without cutting a real release; rc tags are excluded
+# from deploy.yaml so they never trigger an npm publish.
+#
 # The site is fully static (renderStrategy: 'full-static' in docs/vocs.config.ts)
 # and is served under /signet.js/ — DOCS_BASE_PATH bakes that base path into the
-# built asset URLs. To test the deploy without cutting a real release, push a
-# tag like v0.5.1-rc1 (see the tags trigger below). Those rc tags are excluded
-# from deploy.yaml so they never trigger an npm publish.
+# built asset URLs.
 
 on:
   push:
-    branches: [main]
     tags:
-      - 'v*-rc*'
+      - 'v*.*.*'
   workflow_dispatch:
 
 # Allow the deploy job to publish to Pages via OIDC.
