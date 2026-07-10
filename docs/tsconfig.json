@@ -1,0 +1,33 @@
+{
+  // Scopes the docs' own TypeScript (vocs.config.ts + code snippets) so editors
+  // resolve them correctly. These files legitimately use Node APIs (node:url,
+  // process.env) and run in Node/Vite at build time — they are NOT part of the
+  // browser-facing SDK, which is type-checked separately by the root tsconfig.
+  // Path aliases mirror the twoslash config so snippet imports resolve to ../src.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@sig-net/signet.js": ["../src/index.ts"],
+      "@chain-adapters": ["../src/chain-adapters/index.ts"],
+      "@contracts": ["../src/contracts/index.ts"],
+      "@utils": ["../src/utils/index.ts"],
+      "@constants": ["../src/constants.ts"],
+      "@types": ["../src/types.ts"],
+      "@chain-adapters/*": ["../src/chain-adapters/*"],
+      "@contracts/*": ["../src/contracts/*"],
+      "@utils/*": ["../src/utils/*"]
+    }
+  },
+  "include": ["vocs.config.ts", "snippets/**/*.ts", "snippets/**/*.tsx"],
+  "exclude": ["dist", "node_modules"]
+}
