@@ -252,6 +252,10 @@ export default defineConfig({
                   link: '/signetjs/contracts/solana/get-public-key',
                 },
                 {
+                  text: 'submitSignRequest',
+                  link: '/signetjs/contracts/solana/submit-sign-request',
+                },
+                {
                   text: 'waitForEvent',
                   link: '/signetjs/contracts/solana/wait-for-event',
                 },

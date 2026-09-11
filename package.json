@@ -26,7 +26,8 @@
   "scripts": {
     "build": "tsdown",
     "watch": "tsdown --watch",
-    "test": "yarn test:evm && yarn test:btc && yarn test:cosmos",
+    "test": "yarn test:solana && yarn test:evm && yarn test:btc && yarn test:cosmos",
+    "test:solana": "vitest run tests/unit/solana",
     "test:evm": "sh -c 'hardhat node --config hardhat.config.mts & NODE_PID=$!; sleep 2 && vitest run tests/unit/evm/EVM.test.ts; kill $NODE_PID'",
     "test:btc": "docker compose -f docker/bitcoin/docker-compose.yml up -d && vitest run tests/unit/btc/Bitcoin.test.ts; docker compose -f docker/bitcoin/docker-compose.yml down -v",
     "test:cosmos": "sh -c 'docker rm -f cosmos-node 2>/dev/null; docker build -t cosmos-local docker/cosmos && docker run -d --name cosmos-node -p 26657:26657 -p 1317:1317 cosmos-local && until curl -s http://localhost:26657/status 2>/dev/null | grep -q \"latest_block_height.:.[1-9]\"; do sleep 2; done && vitest run tests/unit/cosmos/Cosmos.test.ts; docker rm -f cosmos-node'",

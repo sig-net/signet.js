@@ -1,0 +1,43 @@
+# submitSignRequest
+
+Sends a signature request and returns as soon as the Solana transaction is confirmed, without waiting for the MPC network's response. Use it with [`waitForEvent`](/signetjs/contracts/solana/wait-for-event) when many requests are in flight at once, or when the caller tracks confirmation and response on its own schedule.
+
+## Usage
+
+```ts twoslash
+// [!include ~/snippets/code/solana/fee-delegation.ts]
+const solanaChainSigContract = chainSigContract
+// ---cut---
+const { requestId, txSignature } =
+  await solanaChainSigContract.submitSignRequest({
+    path: 'my_derivation_path',
+    payload: Array.from(new Uint8Array(32).fill(1)), // 32-byte array
+    key_version: 1,
+  })
+
+const signature = await solanaChainSigContract.waitForEvent({
+  eventName: 'signatureRespondedEvent',
+  requestId,
+  signer: solanaChainSigContract.programId,
+  afterSignature: txSignature,
+  timeoutMs: 60_000,
+})
+```
+
+## Parameters
+
+| Parameter                      | Type            | Description                                                                                                                                              |
+| ------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `args.path`                    | `string`        | The derivation path to use                                                                                                                               |
+| `args.payload`                 | `number[]`      | The data to sign as an array of 32 bytes                                                                                                                 |
+| `args.key_version`             | `number`        | Version of the key to use                                                                                                                                |
+| `options.sign?`                | `object`        | Optional `algo`, `dest` and `params` for the request                                                                                                     |
+| `options.remainingAccounts?`   | `AccountMeta[]` | Additional accounts required for the transaction                                                                                                         |
+| `options.remainingSigners?`    | `Signer[]`      | Additional signers required for the transaction                                                                                                          |
+| `options.waitForConfirmation?` | `boolean`       | Whether to poll until the transaction is confirmed before returning (default: `true`). With `false` it returns once the RPC has accepted the transaction |
+
+## Returns
+
+| Type                                                  | Description                                                                              |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `Promise<{ requestId: string; txSignature: string }>` | The request id the MPC echoes back in its response, and the sign transaction's signature |

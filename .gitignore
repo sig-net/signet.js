@@ -13,3 +13,5 @@ dist/
 vocs.config.ts.timestamp-*
 .vocs/
 docs/pages.gen.ts
+# yarn pack output
+*.tgz

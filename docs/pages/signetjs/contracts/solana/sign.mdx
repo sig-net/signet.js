@@ -1,6 +1,8 @@
 # sign
 
-Requests a signature through the Chain Signatures program.
+Requests a signature through the Chain Signatures program and waits for the MPC network's response.
+
+Composes [`submitSignRequest`](/signetjs/contracts/solana/submit-sign-request) with [`waitForEvent`](/signetjs/contracts/solana/wait-for-event), then verifies that the signature recovers to the requester's derived address. Concurrent `sign` calls share one event subscription.
 
 ## Usage
 

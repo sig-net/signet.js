@@ -21,6 +21,7 @@ jobs:
       - run: yarn format --check
       - run: yarn lint
       - run: yarn typecheck
+      - run: yarn test:solana
       - run: yarn build
       - run: yarn test:compat
 
