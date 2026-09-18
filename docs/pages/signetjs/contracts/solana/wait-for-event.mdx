@@ -1,6 +1,10 @@
 # waitForEvent
 
-Waits for a specific event matching a given request ID by combining a WebSocket listener (real-time) with polling backfill (resilience). Use this when invoking the `sign` instruction on the contract without using this class's `sign` method (e.g. for cross-contract invocations or bidirectional flows).
+Registers a waiter for a specific event and request ID. The waiter is served by
+the shared HTTP RPC poller; calling `waitForEvent` does not open a WebSocket or
+start a new polling loop. The higher-level `sign()` method uses this flow
+internally. Use `waitForEvent` directly when you submit a request instruction
+yourself, such as for cross-contract invocations or bidirectional flows.
 
 ## Usage
 
@@ -51,19 +55,77 @@ const result = await solanaChainSigContract.waitForEvent({
 // result.signature - raw Signature { bigR, s, recoveryId }
 ```
 
+## Sharing the Poller
+
+Each contract creates a lazy poller when no service is injected. Applications
+with concurrent contract instances should create one poller per RPC endpoint and
+program, then pass it to each contract:
+
+```ts
+const eventPoller = new contracts.solana.SolanaEventPoller({
+  connection: provider.connection,
+  programId,
+})
+
+const contract = new contracts.solana.ChainSignatureContract({
+  provider,
+  programId,
+  eventPoller,
+})
+```
+
+Listen for one event by registering its event name and request ID on the shared
+contract. Register the listener before sending the transaction so the poller can
+establish its history boundary first:
+
+```ts
+import { PublicKey } from '@solana/web3.js'
+
+const requestId = '0x...'
+const controller = new AbortController()
+
+await contract.prepareEventPolling()
+const signaturePromise = contract.waitForEvent({
+  eventName: 'signatureRespondedEvent',
+  requestId,
+  signer: new PublicKey('ResponderPublicKeyHere'),
+  timeoutMs: 60_000,
+  signal: controller.signal,
+})
+
+try {
+  await sendYourSignRequest()
+  const signature = await signaturePromise
+  console.log('Signature response:', signature)
+} finally {
+  controller.abort()
+}
+```
+
+Call `prepareEventPolling()` before submitting the transaction when possible.
+This establishes the initial slot boundary and lets the poller observe events
+while the submission is being confirmed. `afterSignature` can seed the initial
+history boundary when the poller has not started yet.
+
+Keep the poller alive between request batches and call `eventPoller.close()` when
+the application shuts down. `eventPoller.restart()` restarts a failed loop while
+preserving its in-memory cursor and pending waiters. Poller state is not durable
+across a process restart.
+
 ## Parameters
 
-| Parameter                | Type                       | Description                                                                                                                               |
-| ------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `eventName`              | `ChainSignaturesEventName` | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`)                              |
-| `requestId`              | `string`                   | Unique identifier for the signature request                                                                                               |
-| `signer`                 | `PublicKey`                | Address to monitor for transactions (e.g. responder address)                                                                              |
-| `afterSignature?`        | `string`                   | Transaction signature to start polling from                                                                                               |
-| `timeoutMs?`             | `number`                   | Timeout in milliseconds (default: 60000)                                                                                                  |
-| `backfillIntervalMs?`    | `number`                   | Interval between backfill polls in milliseconds (default: 30000)                                                                          |
-| `backfillLimit?`         | `number`                   | Max transactions to fetch per backfill poll (default: 50)                                                                                 |
-| `healthCheckIntervalMs?` | `number`                   | Interval in milliseconds for WebSocket health checks. Triggers reconnection and fast backfill if the connection is lost. (default: 10000) |
-| `signal?`                | `AbortSignal`              | Abort signal for cancellation                                                                                                             |
+| Parameter         | Type                       | Description                                                                                       |
+| ----------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `eventName`       | `ChainSignaturesEventName` | Event to listen for (`signatureRespondedEvent`, `signatureErrorEvent`, or `respondBidirectionalEvent`) |
+| `requestId`       | `string`                   | Unique identifier for the signature request                                                      |
+| `signer`          | `PublicKey`                | Responder address associated with the event                                                       |
+| `afterSignature?` | `string`                   | Transaction signature to use as the initial history cursor                                        |
+| `timeoutMs?`      | `number`                   | Timeout in milliseconds (default: 60000)                                                          |
+| `signal?`         | `AbortSignal`              | Abort signal for cancellation                                                                    |
+
+`backfillIntervalMs`, `backfillLimit`, and `healthCheckIntervalMs` are retained
+for source compatibility and are deprecated. Configure polling on the shared
+`SolanaEventPoller` instead.
 
 ## Returns
 
