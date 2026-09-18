@@ -46,7 +46,8 @@
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "tsc --noEmit",
     "check": "yarn typecheck && yarn lint && prettier --check .",
-    "fix": "yarn lint --fix && yarn format"
+    "fix": "yarn lint --fix && yarn format",
+    "test:solana:unit": "vitest run tests/unit/solana"
   },
   "author": "Sig Network",
   "license": "MIT",
