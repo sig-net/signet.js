@@ -113,6 +113,31 @@ This establishes the initial slot boundary and lets the poller observe events
 while the submission is being confirmed. `afterSignature` can seed the initial
 history boundary when the poller has not started yet.
 
+## Queue Pressure and Dropped Work
+
+The poller queues every transaction sent to the program, not only the ones you
+requested, and fetches each to decode its events. A transaction the RPC will not
+serve - pruned history, a node behind on slots, an endpoint pool where one node
+lacks what another listed - is retried rather than failing outright.
+
+Such work is discarded in two ways, both counted in `stats`:
+
+- `expiredTransactions` - queued for longer than `maxTransactionAgeMs`
+  (default: 5 minutes). Set this above the longest wait any caller registers;
+  `sign()` derives its window from `retry.delay * retryCount`. Above that age,
+  no waiter can still be expecting the transaction.
+- `evictedTransactions` - dropped oldest-first because the queue reached
+  `maxPendingTransactions`. Discovery is never blocked to protect the queue: a
+  fresher transaction is likelier to carry a response someone is waiting for
+  than one that has already failed for minutes.
+
+This is lossy by design. A discarded transaction may be the one carrying a
+response, and its waiter then rejects at its own deadline, which callers already
+handle as a timeout. Applications needing complete event delivery should treat
+the two counters as a health signal: sustained expiry points at an RPC that
+cannot serve the program's history, and sustained eviction at a queue sized
+below the program's transaction rate.
+
 Keep the poller alive between request batches and call `eventPoller.close()` when
 the application shuts down. `eventPoller.restart()` restarts a failed loop while
 preserving its in-memory cursor and pending waiters. Poller state is not durable

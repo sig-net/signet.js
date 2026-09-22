@@ -116,6 +116,41 @@ describe('shared HTTP event observation', () => {
     expect(poller!.stats.pendingWaiters).toBe(0)
   })
 
+  it('keeps discovering when unavailable transactions fill the queue', async () => {
+    const rpc = connection()
+    // Never available: the transaction cannot leave the queue on its own, and
+    // at this capacity it used to block every later scan for good.
+    rpc.getParsedTransaction.mockResolvedValue(null)
+    rpc.getSignaturesForAddress.mockResolvedValue([signature('stuck')])
+    create(rpc, { pageSize: 1, maxPendingTransactions: 1 })
+    await poller!.start()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(poller!.stats.pendingTransactions).toBe(1)
+    rpc.getParsedTransaction.mockResolvedValue(transaction(7))
+    rpc.getSignaturesForAddress.mockResolvedValue([signature('fresh')])
+    const wait = poller!.waitForEvent('signatureErrorEvent', '0x07')
+    await vi.advanceTimersByTimeAsync(30_000)
+    // The fresh response is still discovered, decoded and delivered.
+    expect((await wait).error).toBe('result-7')
+    expect(poller!.stats.evictedTransactions).toBeGreaterThan(0)
+  })
+
+  it('discards queued work that outlives its age, without evicting', async () => {
+    const rpc = connection()
+    rpc.getParsedTransaction.mockResolvedValue(null)
+    rpc.getSignaturesForAddress.mockResolvedValueOnce([signature('stuck')])
+    create(rpc, { maxTransactionAgeMs: 60_000 })
+    await poller!.start()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(poller!.stats.pendingTransactions).toBe(1)
+    expect(poller!.stats.expiredTransactions).toBe(0)
+    await vi.advanceTimersByTimeAsync(120_000)
+    // Past its age, with capacity to spare, it is dropped rather than retried.
+    expect(poller!.stats.pendingTransactions).toBe(0)
+    expect(poller!.stats.expiredTransactions).toBe(1)
+    expect(poller!.stats.evictedTransactions).toBe(0)
+  })
+
   it('paginates a burst before committing its discovery cursor', async () => {
     const rpc = connection()
     rpc.getSignaturesForAddress

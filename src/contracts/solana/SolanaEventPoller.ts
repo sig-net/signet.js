@@ -25,6 +25,14 @@ export interface SolanaEventPollerOptions {
   pageSize?: number
   fetchConcurrency?: number
   maxPendingTransactions?: number
+  /**
+   * How long a discovered transaction may stay queued while it cannot be
+   * fetched, before it is discarded (default: 5 minutes). Set this above the
+   * longest wait any caller registers - `sign()` derives its window from
+   * `retry.delay * retryCount` - so that an expiry can only discard work no
+   * waiter is still expecting.
+   */
+  maxTransactionAgeMs?: number
   recentEventsLimit?: number
 }
 
@@ -39,6 +47,12 @@ export interface PollerWaitOptions {
   signal?: AbortSignal
   /** Initial history boundary when the poller has not started yet. */
   afterSignature?: string
+}
+
+interface QueuedTransaction {
+  info: ConfirmedSignatureInfo
+  /** Stamped once on discovery. Retries rotate the entry but never reset it. */
+  firstQueuedAt: number
 }
 
 interface Waiter {
@@ -76,7 +90,7 @@ export class SolanaEventPoller {
    * identifier, so that cannot be disambiguated on the client.
    */
   private readonly recent = new Map<string, ChainSignaturesEvent['data']>()
-  private readonly queue = new Map<string, ConfirmedSignatureInfo>()
+  private readonly queue = new Map<string, QueuedTransaction>()
   private readonly seen = new Set<string>()
   private cursor?: string
   private initialSlot?: number
@@ -89,7 +103,10 @@ export class SolanaEventPoller {
   private readonly pageSize: number
   private readonly concurrency: number
   private readonly maxPending: number
+  private readonly maxTransactionAgeMs: number
   private readonly recentLimit: number
+  private expired = 0
+  private evicted = 0
 
   constructor(options: SolanaEventPollerOptions) {
     this.connection = options.connection
@@ -103,12 +120,14 @@ export class SolanaEventPoller {
     this.pageSize = options.pageSize ?? 100
     this.concurrency = options.fetchConcurrency ?? 8
     this.maxPending = options.maxPendingTransactions ?? 10_000
+    this.maxTransactionAgeMs = options.maxTransactionAgeMs ?? 300_000
     this.recentLimit = options.recentEventsLimit ?? 1_000
     for (const value of [
       this.rpcTimeoutMs,
       this.pageSize,
       this.concurrency,
       this.maxPending,
+      this.maxTransactionAgeMs,
       this.recentLimit,
     ]) {
       if (!Number.isInteger(value) || value < 1)
@@ -130,6 +149,8 @@ export class SolanaEventPoller {
       running: this.loop.running,
       pendingWaiters,
       pendingTransactions: this.queue.size,
+      expiredTransactions: this.expired,
+      evictedTransactions: this.evicted,
       cursor: this.cursor,
       lastSuccessAt: this.loop.lastSuccessAt,
       lastError: this.loop.lastError,
@@ -268,8 +289,40 @@ export class SolanaEventPoller {
     }
   }
 
+  /**
+   * Discard queued work that can no longer matter, so that transactions the RPC
+   * will not serve cannot accumulate. Discovery is never blocked by the retry
+   * backlog: advancing the cursor is what keeps the poller correct, and a
+   * fresher transaction is likelier to carry a response someone is waiting for
+   * than one that has already failed for minutes.
+   *
+   * This is lossy. An expired or evicted transaction may be the one carrying a
+   * response, and its waiter then rejects at its own deadline.
+   */
+  private trimQueue(): void {
+    const cutoff = Date.now() - this.maxTransactionAgeMs
+    for (const [signature, queued] of this.queue)
+      if (queued.firstQueuedAt <= cutoff) {
+        this.queue.delete(signature)
+        this.seen.add(signature)
+        this.expired++
+      }
+    if (this.queue.size <= this.maxPending) return
+    // Rotation reorders the queue, so age has to be sorted for, not assumed.
+    const byAge = [...this.queue.entries()].sort(
+      (a, b) => a[1].firstQueuedAt - b[1].firstQueuedAt
+    )
+    for (const [signature] of byAge.slice(
+      0,
+      this.queue.size - this.maxPending
+    )) {
+      this.queue.delete(signature)
+      this.seen.add(signature)
+      this.evicted++
+    }
+  }
+
   private async discover(signal: AbortSignal): Promise<void> {
-    if (this.queue.size + this.pageSize > this.maxPending) return
     this.scan ??= {}
     const scan = this.scan
     const page = await boundedRpc(
@@ -287,6 +340,7 @@ export class SolanaEventPoller {
       this.rpcTimeoutMs
     )
     scan.head ??= page[0]?.signature
+    const now = Date.now()
     let complete = page.length < this.pageSize
     for (const entry of page) {
       if (
@@ -297,7 +351,10 @@ export class SolanaEventPoller {
         break
       }
       if (!entry.err && !this.seen.has(entry.signature))
-        this.queue.set(entry.signature, entry)
+        this.queue.set(entry.signature, {
+          info: entry,
+          firstQueuedAt: this.queue.get(entry.signature)?.firstQueuedAt ?? now,
+        })
     }
     if (complete) {
       this.cursor = scan.head ?? this.cursor
@@ -309,13 +366,15 @@ export class SolanaEventPoller {
 
   private async tick(signal: AbortSignal): Promise<void> {
     // Discovery and processing can fail independently; queued work still drains
-    // when signature listing fails, and a missing transaction stays queued.
+    // when signature listing fails, and a missing transaction stays queued
+    // until it ages out.
     let failure: unknown
     try {
       await this.discover(signal)
     } catch (error) {
       failure = error
     }
+    this.trimQueue()
     if (signal.aborted) throw signal.reason
     const batch = [...this.queue.keys()].slice(0, this.pageSize)
     const results: PromiseSettledResult<void>[] = []
