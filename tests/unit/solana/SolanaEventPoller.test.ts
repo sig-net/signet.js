@@ -95,6 +95,27 @@ describe('shared HTTP event observation', () => {
     expect(rpc.onSignature).not.toHaveBeenCalled()
   })
 
+  it('lets a caller own the deadline, and requires a signal to do so', async () => {
+    const rpc = connection()
+    create(rpc)
+    await poller!.start()
+    await flush()
+    await expect(
+      poller!.waitForEvent('signatureErrorEvent', '0x01', { timeoutMs: null })
+    ).rejects.toThrow('requires an abort signal')
+    const controller = new AbortController()
+    const wait = poller!.waitForEvent('signatureErrorEvent', '0x01', {
+      timeoutMs: null,
+      signal: controller.signal,
+    })
+    void wait.catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(600_000)
+    expect(poller!.stats.pendingWaiters).toBe(1)
+    controller.abort(new Error('caller deadline'))
+    await expect(wait).rejects.toThrow('caller deadline')
+    expect(poller!.stats.pendingWaiters).toBe(0)
+  })
+
   it('paginates a burst before committing its discovery cursor', async () => {
     const rpc = connection()
     rpc.getSignaturesForAddress
@@ -276,6 +297,58 @@ describe('HTTP transaction confirmation', () => {
       )
     ).toBe(true)
     expect(rpc.onSignature).not.toHaveBeenCalled()
+  })
+
+  it('settles confirmations from a tick whose height lookup fails', async () => {
+    const rpc = connection()
+    rpc.getSignatureStatuses.mockImplementation(async (hashes: string[]) => ({
+      value: hashes.map((hash) =>
+        hash === 'confirmed'
+          ? { confirmationStatus: 'confirmed', err: null }
+          : null
+      ),
+    }))
+    rpc.getBlockHeight.mockRejectedValue(new Error('height unavailable'))
+    confirmer = new HttpTransactionConfirmer(rpc as unknown as Connection)
+    const confirmed = confirmer.wait('confirmed', 101)
+    const unobserved = confirmer.wait('unobserved', 101)
+    void unobserved.catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(await confirmed).toBe('confirmed')
+    // The entry awaiting an expiry check stays pending rather than abandoned.
+    expect(confirmer.pendingCount).toBe(1)
+    rpc.getBlockHeight.mockResolvedValue(102)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await expect(unobserved).rejects.toThrow('block height exceeded')
+  })
+
+  it('confirms later batches when an earlier status batch fails', async () => {
+    const rpc = connection()
+    // The first 256-signature batch fails; the 44 signatures after it must
+    // still be checked in the same tick.
+    rpc.getSignatureStatuses.mockImplementation(async (hashes: string[]) =>
+      hashes.includes('0')
+        ? Promise.reject(new Error('batch unavailable'))
+        : {
+            value: hashes.map(() => ({
+              confirmationStatus: 'confirmed',
+              err: null,
+            })),
+          }
+    )
+    confirmer = new HttpTransactionConfirmer(rpc as unknown as Connection)
+    const waits = Array.from({ length: 300 }, (_, i) =>
+      confirmer!.wait(String(i), 101)
+    )
+    for (const wait of waits) void wait.catch(() => undefined)
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(await Promise.all(waits.slice(256))).toHaveLength(44)
+    expect(confirmer.pendingCount).toBe(256)
+    rpc.getSignatureStatuses.mockImplementation(async (hashes: string[]) => ({
+      value: hashes.map(() => ({ confirmationStatus: 'confirmed', err: null })),
+    }))
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(await Promise.all(waits)).toHaveLength(300)
   })
 
   it('rejects an expired unobserved transaction', async () => {

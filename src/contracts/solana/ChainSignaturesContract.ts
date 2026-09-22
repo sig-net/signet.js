@@ -303,11 +303,15 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     transaction.feePayer = this.provider.wallet.publicKey
     await this.prepareEventPolling()
     const abort = new AbortController()
+    // Registered before submission so a fast response cannot be missed, but
+    // the response window is owned here and only armed once the request is on
+    // chain. Measuring it from registration would spend it on wallet approval
+    // and confirmation, and could expire the wait before the request exists.
     const resultPromise = this.waitForEvent({
       eventName: 'signatureRespondedEvent',
       requestId,
       signer: this.programId,
-      timeoutMs: timeoutMs + 60_000,
+      timeoutMs: null,
       signal: abort.signal,
     })
     void resultPromise.catch(() => undefined)
@@ -322,6 +326,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       throw error
     }
 
+    // The request is on chain: the response window starts here.
     const deadline = setTimeout(
       () => abort.abort(new SignatureNotFoundError(requestId)),
       timeoutMs
@@ -370,6 +375,20 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     await this.getEventPoller().start()
   }
 
+  /**
+   * Resolve the confirmer, refusing to construct one after close(). A confirmer
+   * owns timers that only its own close() clears, so a late construction would
+   * leak them. Callers must resolve it before broadcasting: once a transaction
+   * is submitted, refusing to wait for it only orphans work already paid for.
+   */
+  private getTransactionConfirmer(): HttpTransactionConfirmer {
+    if (this.closed) throw new Error('Contract closed')
+    if (this.transactionConfirmer?.isClosed)
+      throw new Error('Contract confirmation service closed')
+    this.transactionConfirmer ??= new HttpTransactionConfirmer(this.connection)
+    return this.transactionConfirmer
+  }
+
   private getEventPoller(): SolanaEventPoller {
     if (this.closed) throw new Error('Contract closed')
     this.eventPoller ??= new SolanaEventPoller({
@@ -399,9 +418,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     transaction.recentBlockhash = blockhash
     transaction.feePayer ??= this.provider.wallet.publicKey
     transaction = await this.provider.wallet.signTransaction(transaction)
-    if (this.closed || this.transactionConfirmer?.isClosed)
-      throw new Error('Contract confirmation service closed')
     if (signers.length) transaction.partialSign(...signers)
+    // Resolved before the broadcast: this is the last point where refusing to
+    // proceed is free. close() during sendRawTransaction cannot be made
+    // atomic - the transaction may still execute while wait() rejects.
+    const confirmer = this.getTransactionConfirmer()
     const signature = await this.connection.sendRawTransaction(
       transaction.serialize(),
       {
@@ -410,8 +431,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         maxRetries: 3,
       }
     )
-    this.transactionConfirmer ??= new HttpTransactionConfirmer(this.connection)
-    return await this.transactionConfirmer.wait(signature, lastValidBlockHeight)
+    return await confirmer.wait(signature, lastValidBlockHeight)
   }
 
   /** Waiters share the contract's HTTP event poller. Start it before submission. */
@@ -420,7 +440,8 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     requestId: string
     signer: PublicKey
     afterSignature?: string
-    timeoutMs?: number
+    /** Response deadline. `null` requires `signal` and defers it to the caller. */
+    timeoutMs?: number | null
     /** @deprecated Configure pollIntervalMs on the shared poller. */
     backfillIntervalMs?: number
     /** @deprecated Configure pageSize on the shared poller. */

@@ -96,18 +96,30 @@ export class HttpTransactionConfirmer {
   private async tick(signal: AbortSignal): Promise<void> {
     const entries = [...this.pending]
     if (entries.length === 0) return
-    let height: number | undefined
+    // Status batches and the height lookup fail independently. One failed
+    // batch must not abandon the others, and a failed height lookup must not
+    // discard the confirmations a status already settled. The first failure is
+    // rethrown at the end so the polling loop still records it and backs off.
+    let failure: unknown
+    const withoutStatus: Confirmation[] = []
     for (let offset = 0; offset < entries.length; offset += 256) {
       const batch = entries.slice(offset, offset + 256)
-      const { value: statuses } = await boundedRpc(
-        () =>
-          this.connection.getSignatureStatuses(
-            batch.map((entry) => entry.signature),
-            { searchTransactionHistory: true }
-          ),
-        signal,
-        this.rpcTimeoutMs
-      )
+      let statuses
+      try {
+        ;({ value: statuses } = await boundedRpc(
+          () =>
+            this.connection.getSignatureStatuses(
+              batch.map((entry) => entry.signature),
+              { searchTransactionHistory: true }
+            ),
+          signal,
+          this.rpcTimeoutMs
+        ))
+      } catch (error) {
+        if (signal.aborted) throw signal.reason
+        failure ??= error
+        continue
+      }
       for (let i = 0; i < batch.length; i++) {
         const entry = batch[i]
         if (!this.pending.has(entry)) continue
@@ -129,12 +141,19 @@ export class HttpTransactionConfirmer {
         }
         // A processed transaction can still reach confirmation after its
         // blockhash expires. Expiry applies only when no status is visible.
-        if (!status) {
-          height ??= await boundedRpc(
-            () => this.connection.getBlockHeight('confirmed'),
-            signal,
-            this.rpcTimeoutMs
-          )
+        if (!status) withoutStatus.push(entry)
+      }
+    }
+    if (signal.aborted) throw signal.reason
+    if (withoutStatus.length > 0) {
+      try {
+        const height = await boundedRpc(
+          () => this.connection.getBlockHeight('confirmed'),
+          signal,
+          this.rpcTimeoutMs
+        )
+        for (const entry of withoutStatus) {
+          if (!this.pending.has(entry)) continue
           if (height > entry.lastValidBlockHeight) {
             entry.cleanup()
             entry.reject(
@@ -142,7 +161,12 @@ export class HttpTransactionConfirmer {
             )
           }
         }
+      } catch (error) {
+        // Expiry checks resume next tick; the sweep still enforces timeoutMs.
+        if (signal.aborted) throw signal.reason
+        failure ??= error
       }
     }
+    if (failure) throw failure
   }
 }

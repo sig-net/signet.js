@@ -29,7 +29,13 @@ export interface SolanaEventPollerOptions {
 }
 
 export interface PollerWaitOptions {
-  timeoutMs?: number
+  /**
+   * Response deadline, measured from registration. `null` leaves the deadline
+   * to the caller, which must then pass `signal`: a caller that registers
+   * before submitting its request cannot measure a response window from
+   * registration, because submission has not happened yet.
+   */
+  timeoutMs?: number | null
   signal?: AbortSignal
   /** Initial history boundary when the poller has not started yet. */
   afterSignature?: string
@@ -38,7 +44,8 @@ export interface PollerWaitOptions {
 interface Waiter {
   resolve: (event: ChainSignaturesEvent['data']) => void
   reject: (error: unknown) => void
-  deadline: number
+  /** Undefined when the caller owns the deadline and cancels through a signal. */
+  deadline?: number
   requestId: string
   cleanup: () => void
 }
@@ -56,6 +63,18 @@ export class SolanaEventPoller {
   private readonly parser: EventParser
   private readonly loop: HttpPollingLoop
   private readonly waiters = new Map<string, Set<Waiter>>()
+  /**
+   * Events observed before any waiter registered for them, so that a caller
+   * which registers after submitting its request still receives a response the
+   * loop already fetched and would otherwise never re-fetch. Bounded by
+   * `recentEventsLimit` and scoped to this instance.
+   *
+   * Keyed by event name and request id only. `getRequestIdRespond` is a pure
+   * hash of the request parameters with no nonce, so identical parameters from
+   * the same requester collide by construction: an entry here may answer a
+   * request other than the caller's. The response event carries no attempt
+   * identifier, so that cannot be disambiguated on the client.
+   */
   private readonly recent = new Map<string, ChainSignaturesEvent['data']>()
   private readonly queue = new Map<string, ConfirmedSignatureInfo>()
   private readonly seen = new Set<string>()
@@ -146,12 +165,26 @@ export class SolanaEventPoller {
     this.loop.restart()
   }
 
+  /**
+   * Resolve with a matching event for `requestId`.
+   *
+   * The result is not guaranteed to postdate this call: a matching event
+   * observed earlier, while no waiter was registered, is returned immediately.
+   * Because request ids collide for identical parameters, a caller that needs
+   * evidence of a fresh response must make its request unique - varying the
+   * payload is the reliable way - rather than relying on this method to
+   * observe one submission in particular.
+   */
   waitForEvent<E extends ChainSignaturesEventName>(
     eventName: E,
     requestId: string,
     options: PollerWaitOptions = {}
   ): Promise<EventData<E>> {
     if (this.closed) return Promise.reject(new Error('Event poller is closed'))
+    if (options.timeoutMs === null && !options.signal)
+      return Promise.reject(
+        new Error('A wait without a timeout requires an abort signal')
+      )
     if (options.signal?.aborted) return Promise.reject(options.signal.reason)
     const key = `${eventName}:${requestId.toLowerCase()}`
     const cached = this.recent.get(key)
@@ -172,7 +205,10 @@ export class SolanaEventPoller {
       const waiter: Waiter = {
         resolve: (data) => resolve(data as EventData<E>),
         reject,
-        deadline: Date.now() + (options.timeoutMs ?? 60_000),
+        deadline:
+          options.timeoutMs === null
+            ? undefined
+            : Date.now() + (options.timeoutMs ?? 60_000),
         requestId,
         cleanup: remove,
       }
@@ -204,7 +240,7 @@ export class SolanaEventPoller {
   private expire(): void {
     for (const set of this.waiters.values())
       for (const waiter of [...set]) {
-        if (Date.now() >= waiter.deadline) {
+        if (waiter.deadline !== undefined && Date.now() >= waiter.deadline) {
           waiter.cleanup()
           waiter.reject(new SignatureNotFoundError(waiter.requestId))
         }
