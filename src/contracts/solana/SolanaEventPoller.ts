@@ -299,12 +299,23 @@ export class SolanaEventPoller {
    * This is lossy. An expired or evicted transaction may be the one carrying a
    * response, and its waiter then rejects at its own deadline.
    */
+  /**
+   * Record a signature as handled so discovery does not queue it again. Every
+   * exit from the queue passes through here - processed, expired or evicted -
+   * so that the bound holds when fetching fails as persistently as it succeeds.
+   */
+  private markSeen(signature: string): void {
+    this.seen.add(signature)
+    while (this.seen.size > this.maxPending * 2)
+      this.seen.delete(this.seen.values().next().value!)
+  }
+
   private trimQueue(): void {
     const cutoff = Date.now() - this.maxTransactionAgeMs
     for (const [signature, queued] of this.queue)
       if (queued.firstQueuedAt <= cutoff) {
         this.queue.delete(signature)
-        this.seen.add(signature)
+        this.markSeen(signature)
         this.expired++
       }
     if (this.queue.size <= this.maxPending) return
@@ -317,7 +328,7 @@ export class SolanaEventPoller {
       this.queue.size - this.maxPending
     )) {
       this.queue.delete(signature)
-      this.seen.add(signature)
+      this.markSeen(signature)
       this.evicted++
     }
   }
@@ -409,9 +420,7 @@ export class SolanaEventPoller {
                 this.dispatch(events)
               }
               this.queue.delete(signature)
-              this.seen.add(signature)
-              while (this.seen.size > this.maxPending * 2)
-                this.seen.delete(this.seen.values().next().value!)
+              this.markSeen(signature)
             })
         ))
       )

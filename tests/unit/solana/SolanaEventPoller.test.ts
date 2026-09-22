@@ -151,6 +151,23 @@ describe('shared HTTP event observation', () => {
     expect(poller!.stats.evictedTransactions).toBe(0)
   })
 
+  it('bounds the deduplication set when fetching keeps failing', async () => {
+    const rpc = connection()
+    // Discovery keeps working while every fetch fails: entries leave the queue
+    // by eviction, never by success.
+    rpc.getParsedTransaction.mockResolvedValue(null)
+    let next = 0
+    rpc.getSignaturesForAddress.mockImplementation(async () => [
+      signature(`sig-${next++}`),
+    ])
+    create(rpc, { pageSize: 1, maxPendingTransactions: 1 })
+    await poller!.start()
+    await vi.advanceTimersByTimeAsync(60_000)
+    const seen = (poller as unknown as { seen: Set<string> }).seen
+    expect(seen.size).toBeLessThanOrEqual(2)
+    expect(poller!.stats.evictedTransactions).toBeGreaterThan(2)
+  })
+
   it('paginates a burst before committing its discovery cursor', async () => {
     const rpc = connection()
     rpc.getSignaturesForAddress
