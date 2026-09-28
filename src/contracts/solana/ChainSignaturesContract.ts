@@ -1,9 +1,4 @@
-import {
-  type AnchorProvider,
-  Program,
-  EventParser,
-  type Idl,
-} from '@coral-xyz/anchor'
+import { type AnchorProvider, Program, type Idl } from '@coral-xyz/anchor'
 import { hex } from '@scure/base'
 import {
   type AccountMeta,
@@ -12,7 +7,6 @@ import {
   type Signer,
   Transaction,
   type TransactionInstruction,
-  TransactionExpiredTimeoutError,
 } from '@solana/web3.js'
 import {
   normalizeToUncompressedPubKey,
@@ -32,8 +26,9 @@ import { cryptography } from '@utils'
 
 import type { SignOptions, SignatureErrorData } from '../evm/types'
 
-import { CpiEventParser } from './CpiEventParser'
 import { SignatureNotFoundError, SigningError } from './errors'
+import { HttpTransactionConfirmer } from './HttpTransactionConfirmer'
+import { SolanaEventPoller } from './SolanaEventPoller'
 import { type ChainSignaturesProject } from './types/chain_signatures_project'
 import IDL from './types/chain_signatures_project.json'
 import type {
@@ -53,6 +48,11 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   private readonly rootPublicKey: UncompressedPubKeySEC1
   private readonly requesterAddress: string
   private readonly _connection: Connection
+  private closed = false
+  private eventPoller?: SolanaEventPoller
+  private transactionConfirmer?: HttpTransactionConfirmer
+  private readonly ownsPoller: boolean
+  private readonly ownsConfirmer: boolean
 
   /**
    * Creates a new instance of the ChainSignatureContract for Solana chains.
@@ -64,11 +64,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @param args.config.rootPublicKey - Optional root public key. If not provided, it will be derived from the program ID
    * @param args.config.requesterAddress - Provider wallet address is always the fee payer but requester can be overridden
    * @param args.config.idl - Optional custom IDL. If not provided, the default ChainSignatures IDL will be used
-   * @param args.config.disableRetryOnRateLimit - If true, disables @solana/web3.js automatic retry on 429 responses. Recommended when using the built-in backfill mechanism.
+   * @param args.config.disableRetryOnRateLimit - If true, disables @solana/web3.js automatic retry on 429 responses. Useful when the shared HTTP poller should own retry and backoff behavior.
    */
   constructor(args: {
     provider: AnchorProvider
     programId: string | PublicKey
+    eventPoller?: SolanaEventPoller
+    transactionConfirmer?: HttpTransactionConfirmer
     config?: {
       rootPublicKey?: RootPublicKey
       requesterAddress?: string
@@ -77,6 +79,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     }
   }) {
     super()
+    this.eventPoller = args.eventPoller
+    this.transactionConfirmer = args.transactionConfirmer
+    this.ownsPoller = !args.eventPoller
+    this.ownsConfirmer = !args.transactionConfirmer
     this.provider = args.provider
     this.requesterAddress =
       args.config?.requesterAddress ?? this.provider.wallet.publicKey.toString()
@@ -85,6 +91,22 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       typeof args.programId === 'string'
         ? new PublicKey(args.programId)
         : args.programId
+
+    if (
+      args.eventPoller &&
+      (!args.eventPoller.programId.equals(this.programId) ||
+        args.eventPoller.connection.rpcEndpoint !==
+          this.provider.connection.rpcEndpoint)
+    )
+      throw new Error(
+        'Event poller must match the contract program and RPC endpoint'
+      )
+    if (
+      args.transactionConfirmer &&
+      args.transactionConfirmer.connection.rpcEndpoint !==
+        this.provider.connection.rpcEndpoint
+    )
+      throw new Error('Transaction confirmer must match the RPC endpoint')
 
     const idl = args.config?.idl || (IDL as ChainSignaturesProject & Idl)
     this.program = new Program<ChainSignaturesProject>(
@@ -231,7 +253,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
 
   /**
    * Sends a transaction to the program to request a signature, then
-   * races a WebSocket listener against polling backfill to find the result.
+   * observes the result through a shared HTTP event poller.
    * If the signature is not found within the timeout, it will throw an error.
    */
   async sign(
@@ -279,20 +301,38 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     })
     const transaction = new Transaction().add(instruction)
     transaction.feePayer = this.provider.wallet.publicKey
-    const hash = await this.sendAndConfirmWithoutWebSocket(
-      transaction,
-      options?.remainingSigners
-    )
-
+    await this.prepareEventPolling()
+    const abort = new AbortController()
+    // Registered before submission so a fast response cannot be missed, but
+    // the response window is owned here and only armed once the request is on
+    // chain. Measuring it from registration would spend it on wallet approval
+    // and confirmation, and could expire the wait before the request exists.
+    const resultPromise = this.waitForEvent({
+      eventName: 'signatureRespondedEvent',
+      requestId,
+      signer: this.programId,
+      timeoutMs: null,
+      signal: abort.signal,
+    })
+    void resultPromise.catch(() => undefined)
+    let hash: string
     try {
-      const result = await this.waitForEvent({
-        eventName: 'signatureRespondedEvent',
-        requestId,
-        signer: this.programId,
-        afterSignature: hash,
-        timeoutMs,
-        backfillIntervalMs: delay,
-      })
+      hash = await this.sendAndConfirmWithoutWebSocket(
+        transaction,
+        options?.remainingSigners
+      )
+    } catch (error) {
+      abort.abort(error)
+      throw error
+    }
+
+    // The request is on chain: the response window starts here.
+    const deadline = setTimeout(
+      () => abort.abort(new SignatureNotFoundError(requestId)),
+      timeoutMs
+    )
+    try {
+      const result = await resultPromise
 
       const isValid = await verifyRecoveredAddress(
         result,
@@ -324,330 +364,137 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
           error instanceof Error ? error : undefined
         )
       }
+    } finally {
+      clearTimeout(deadline)
+      abort.abort()
     }
   }
 
-  private async sendAndConfirmWithoutWebSocket(
+  /** Establish event observation before sending a request. */
+  async prepareEventPolling(): Promise<void> {
+    await this.getEventPoller().start()
+  }
+
+  /**
+   * Resolve the confirmer, refusing to construct one after close(). A confirmer
+   * owns timers that only its own close() clears, so a late construction would
+   * leak them. Callers must resolve it before broadcasting: once a transaction
+   * is submitted, refusing to wait for it only orphans work already paid for.
+   */
+  private getTransactionConfirmer(): HttpTransactionConfirmer {
+    if (this.closed) throw new Error('Contract closed')
+    if (this.transactionConfirmer?.isClosed)
+      throw new Error('Contract confirmation service closed')
+    this.transactionConfirmer ??= new HttpTransactionConfirmer(this.connection)
+    return this.transactionConfirmer
+  }
+
+  private getEventPoller(): SolanaEventPoller {
+    if (this.closed) throw new Error('Contract closed')
+    this.eventPoller ??= new SolanaEventPoller({
+      connection: this.connection,
+      programId: this.programId,
+      idl: this.program.idl,
+    })
+    return this.eventPoller
+  }
+
+  /** Close resources owned by this contract. Injected services belong to their caller. */
+  close(): void {
+    this.closed = true
+    if (this.ownsPoller) this.eventPoller?.close()
+    if (this.ownsConfirmer) this.transactionConfirmer?.close()
+  }
+
+  /** Sign, submit and confirm a transaction exclusively through HTTP RPC. */
+  async sendAndConfirmWithoutWebSocket(
     transaction: Transaction,
-    signers?: Signer[]
+    signers: Signer[] = []
   ): Promise<string> {
-    const { blockhash } = await this.connection.getLatestBlockhash('confirmed')
+    if (this.closed || this.transactionConfirmer?.isClosed)
+      throw new Error('Contract confirmation service closed')
+    const { blockhash, lastValidBlockHeight } =
+      await this.connection.getLatestBlockhash('confirmed')
     transaction.recentBlockhash = blockhash
-
+    transaction.feePayer ??= this.provider.wallet.publicKey
     transaction = await this.provider.wallet.signTransaction(transaction)
-
-    if (signers && signers.length > 0) {
-      transaction.partialSign(...signers)
-    }
-
+    if (signers.length) transaction.partialSign(...signers)
+    // Resolved before the broadcast: this is the last point where refusing to
+    // proceed is free. close() during sendRawTransaction cannot be made
+    // atomic - the transaction may still execute while wait() rejects.
+    const confirmer = this.getTransactionConfirmer()
     const signature = await this.connection.sendRawTransaction(
       transaction.serialize(),
       {
         skipPreflight: false,
-        preflightCommitment: 'processed',
+        preflightCommitment: 'confirmed',
         maxRetries: 3,
       }
     )
-
-    const startTime = Date.now()
-    const timeout = 30000 // 30 seconds, same as default sendAndConfirm
-
-    while (Date.now() - startTime < timeout) {
-      const status = await this.connection.getSignatureStatus(signature)
-
-      if (status.value?.err) {
-        throw new Error(
-          `Transaction failed: ${JSON.stringify(status.value.err)}`
-        )
-      }
-
-      if (
-        status.value?.confirmationStatus === 'confirmed' ||
-        status.value?.confirmationStatus === 'finalized'
-      ) {
-        return signature
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-    }
-
-    throw new TransactionExpiredTimeoutError(signature, timeout / 1000)
+    return await confirmer.wait(signature, lastValidBlockHeight)
   }
 
-  /**
-   * Waits for a specific event matching the given requestId by combining
-   * a WebSocket listener (real-time) with polling backfill (resilience).
-   */
+  /** Waiters share the contract's HTTP event poller. Start it before submission. */
   async waitForEvent<E extends ChainSignaturesEventName>(options: {
     eventName: E
     requestId: string
     signer: PublicKey
     afterSignature?: string
-    timeoutMs?: number
+    /** Response deadline. `null` requires `signal` and defers it to the caller. */
+    timeoutMs?: number | null
+    /** @deprecated Configure pollIntervalMs on the shared poller. */
     backfillIntervalMs?: number
+    /** @deprecated Configure pageSize on the shared poller. */
     backfillLimit?: number
+    /** @deprecated HTTP polling has no WebSocket health check. */
     healthCheckIntervalMs?: number
     signal?: AbortSignal
   }): Promise<EventResult<E>> {
-    const {
-      eventName,
-      requestId,
-      signer,
-      afterSignature,
-      timeoutMs = 60_000,
-      backfillIntervalMs = 30_000,
-      backfillLimit = 50,
-      healthCheckIntervalMs = 10_000,
-      signal,
-    } = options
+    const data = await this.getEventPoller().waitForEvent(
+      options.eventName,
+      options.requestId,
+      options
+    )
+    const result = this.mapEventForName(
+      options.eventName,
+      data as never,
+      options.requestId
+    )
+    if (result === undefined) throw new Error('Unexpected event result')
+    return result
+  }
 
-    return await new Promise<EventResult<E>>((resolve, reject) => {
-      let settled = false
-      const seenSignatures = new Set<string>()
-      let lastCheckedSignature = afterSignature
-      const cleanupFns: Array<() => void> = []
-
-      const cleanup = (): void => {
-        for (const fn of cleanupFns) {
-          try {
-            fn()
-          } catch {}
-        }
-      }
-
-      const settle = (action: () => void): void => {
-        if (settled) return
-        settled = true
-        cleanup()
-        action()
-      }
-
-      const processEvent = (
-        name: string,
-        data:
-          | SignatureRespondedEvent
-          | SignatureErrorEvent
-          | RespondBidirectionalEvent,
-        txSignature?: string
-      ): boolean => {
-        if (settled) return false
-        if (txSignature && seenSignatures.has(txSignature)) return false
-        if (txSignature) seenSignatures.add(txSignature)
-        if (name !== eventName) return false
-
-        const result = this.mapEventForName<E>(eventName, data, requestId)
-        if (result !== undefined) {
-          settle(() => {
-            resolve(result)
-          })
-          return true
-        }
-        return false
-      }
-
-      // AbortSignal listener
-      if (signal) {
-        if (signal.aborted) {
-          settle(() => {
-            reject(signal.reason ?? new Error('Aborted'))
-          })
-          return
-        }
-        const onAbort = (): void => {
-          settle(() => {
-            reject(signal.reason ?? new Error('Aborted'))
-          })
-        }
-        signal.addEventListener('abort', onAbort, { once: true })
-        cleanupFns.push(() => {
-          signal.removeEventListener('abort', onAbort)
-        })
-      }
-
-      // Timeout
-      const timeoutId = setTimeout(() => {
-        settle(() => {
-          reject(new SignatureNotFoundError(requestId))
-        })
-      }, timeoutMs)
-      cleanupFns.push(() => {
-        clearTimeout(timeoutId)
-      })
-
-      // Backfill polling
-      const runBackfill = async (): Promise<void> => {
-        if (settled) return
-        const parser = new EventParser(
-          this.program.programId,
-          this.program.coder
-        )
-        try {
-          const signatures = await this.connection.getSignaturesForAddress(
-            signer,
-            {
-              until: lastCheckedSignature,
-              limit: backfillLimit,
-            },
-            'confirmed'
-          )
-
-          if (signatures.length > 0) {
-            lastCheckedSignature = signatures[0].signature
-          }
-
-          for (const sig of signatures) {
-            if (settled) return
-            if (seenSignatures.has(sig.signature)) continue
-
-            const tx = await this.connection.getParsedTransaction(
-              sig.signature,
-              {
-                commitment: 'confirmed',
-                maxSupportedTransactionVersion: 0,
-              }
-            )
-            if (!tx) continue
-
-            const cpiEvents = CpiEventParser.parseCpiEventsFromTransaction(
-              tx,
-              this.programId.toString(),
-              this.program
-            )
-            for (const event of cpiEvents) {
-              if (processEvent(event.name, event.data, sig.signature)) return
-            }
-
-            const logs = tx.meta?.logMessages
-            if (logs) {
-              for (const evt of parser.parseLogs(logs)) {
-                if (!evt) continue
-                if (
-                  processEvent(
-                    evt.name,
-                    evt.data as
-                      | SignatureRespondedEvent
-                      | SignatureErrorEvent
-                      | RespondBidirectionalEvent,
-                    sig.signature
-                  )
-                )
-                  return
-              }
-            }
-          }
-        } catch {
-          // Backfill errors are non-fatal; next interval will retry
-        }
-      }
-
-      // --- Layer 1: WebSocket subscription (primary) ---
-      let lastWsCallbackTime = Date.now()
-      let currentSubId: number | undefined
-
-      const subscribeToLogs = (): void => {
-        const parser = new EventParser(
-          this.program.programId,
-          this.program.coder
-        )
-        currentSubId = this.connection.onLogs(
-          signer,
-          (logs, _context) => {
-            if (settled) return
-            lastWsCallbackTime = Date.now()
-            if (logs.err) return
-
-            for (const evt of parser.parseLogs(logs.logs)) {
-              if (!evt) continue
-              if (
-                processEvent(
-                  evt.name,
-                  evt.data as
-                    | SignatureRespondedEvent
-                    | SignatureErrorEvent
-                    | RespondBidirectionalEvent,
-                  logs.signature
-                )
-              )
-                return
-            }
-
-            void CpiEventParser.fetchAndParseCpiEvents(
-              this.connection,
-              logs.signature,
-              this.programId.toString(),
-              this.program
-            ).then((cpiEvents) => {
-              for (const event of cpiEvents) {
-                if (processEvent(event.name, event.data, logs.signature)) return
-              }
-            })
-          },
-          'confirmed'
-        )
-        cleanupFns.push(() => {
-          if (currentSubId !== undefined) {
-            void this.connection.removeOnLogsListener(currentSubId)
-          }
-        })
-      }
-
-      subscribeToLogs()
-
-      // --- Layer 2: Health monitor + reconnection ---
-      let fastBackfillId: ReturnType<typeof setInterval> | undefined
-
-      const startFastBackfill = (): void => {
-        if (fastBackfillId !== undefined) return
-        fastBackfillId = setInterval(() => {
-          void runBackfill()
-        }, 5_000)
-        cleanupFns.push(() => {
-          if (fastBackfillId !== undefined) {
-            clearInterval(fastBackfillId)
-            fastBackfillId = undefined
-          }
-        })
-      }
-
-      const stopFastBackfill = (): void => {
-        if (fastBackfillId !== undefined) {
-          clearInterval(fastBackfillId)
-          fastBackfillId = undefined
-        }
-      }
-
-      const healthCheckId = setInterval(() => {
-        if (settled) return
-        void this.connection
-          .getSlot('confirmed')
-          .then(() => {
-            // RPC is healthy; check if WS callbacks are flowing
-            if (Date.now() - lastWsCallbackTime < healthCheckIntervalMs * 3) {
-              stopFastBackfill()
-            }
-          })
-          .catch(() => {
-            // RPC call failed — assume WS is down, reconnect
-            if (currentSubId !== undefined) {
-              void this.connection.removeOnLogsListener(currentSubId)
-              currentSubId = undefined
-            }
-            subscribeToLogs()
-            startFastBackfill()
-          })
-      }, healthCheckIntervalMs)
-      cleanupFns.push(() => {
-        clearInterval(healthCheckId)
-      })
-
-      // --- Layer 3: Safety backfill (always runs at slow interval) ---
-      const safetyBackfillId = setInterval(() => {
-        void runBackfill()
-      }, backfillIntervalMs)
-      cleanupFns.push(() => {
-        clearInterval(safetyBackfillId)
-      })
-    })
+  /** Build a bidirectional request without submitting or waiting for it. */
+  async getSignBidirectionalInstruction(
+    args: {
+      serializedTransaction: Buffer
+      caip2Id: string
+      keyVersion: number
+      path: string
+      algo: string
+      dest: string
+      params: string
+      outputDeserializationSchema: Buffer
+      respondSerializationSchema: Buffer
+      callbackProgramId?: PublicKey
+    },
+    accounts: { requester: PublicKey; feePayer: PublicKey }
+  ): Promise<TransactionInstruction> {
+    return await this.program.methods
+      .signBidirectional(
+        args.serializedTransaction,
+        args.caip2Id,
+        args.keyVersion,
+        args.path,
+        args.algo,
+        args.dest,
+        args.params,
+        args.callbackProgramId ?? PublicKey.default,
+        args.outputDeserializationSchema,
+        args.respondSerializationSchema
+      )
+      .accounts({ ...accounts, instructions: null, program: this.programId })
+      .instruction()
   }
 
   private mapRespondToResult(

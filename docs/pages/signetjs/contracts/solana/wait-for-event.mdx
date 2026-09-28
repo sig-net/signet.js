@@ -1,6 +1,10 @@
 # waitForEvent
 
-Waits for a specific event matching a given request ID by combining a WebSocket listener (real-time) with polling backfill (resilience). Use this when invoking the `sign` instruction on the contract without using this class's `sign` method (e.g. for cross-contract invocations or bidirectional flows).
+Registers a waiter for a specific event and request ID. The waiter is served by
+the shared HTTP RPC poller; calling `waitForEvent` does not open a WebSocket or
+start a new polling loop. The higher-level `sign()` method uses this flow
+internally. Use `waitForEvent` directly when you submit a request instruction
+yourself, such as for cross-contract invocations or bidirectional flows.
 
 ## Usage
 
@@ -51,19 +55,129 @@ const result = await solanaChainSigContract.waitForEvent({
 // result.signature - raw Signature { bigR, s, recoveryId }
 ```
 
+## Sharing the Poller
+
+Each contract creates a lazy poller when no service is injected. Applications
+with concurrent contract instances should create one poller per RPC endpoint and
+program, then pass it to each contract:
+
+```ts
+const eventPoller = new contracts.solana.SolanaEventPoller({
+  connection: provider.connection,
+  programId,
+})
+
+const contract = new contracts.solana.ChainSignatureContract({
+  provider,
+  programId,
+  eventPoller,
+})
+```
+
+Listen for one event by registering its event name and request ID on the shared
+contract. Register the listener before sending the transaction so the poller can
+establish its history boundary first:
+
+```ts
+import { PublicKey } from '@solana/web3.js'
+
+const requestId = '0x...'
+const controller = new AbortController()
+
+await contract.prepareEventPolling()
+const signaturePromise = contract.waitForEvent({
+  eventName: 'signatureRespondedEvent',
+  requestId,
+  signer: new PublicKey('ResponderPublicKeyHere'),
+  timeoutMs: 60_000,
+  signal: controller.signal,
+})
+
+try {
+  await sendYourSignRequest()
+  const signature = await signaturePromise
+  console.log('Signature response:', signature)
+} finally {
+  controller.abort()
+}
+```
+
+A wait registered before submission should not measure its response window
+from registration: wallet approval and confirmation would spend it, and it can
+expire before the request reaches the chain. Pass `timeoutMs: null` with an
+`AbortSignal` and start the deadline once the transaction is confirmed. This is
+what `sign()` does internally.
+
+Call `prepareEventPolling()` before submitting the transaction when possible.
+This establishes the initial slot boundary and lets the poller observe events
+while the submission is being confirmed. `afterSignature` can seed the initial
+history boundary when the poller has not started yet.
+
+## Queue Pressure and Dropped Work
+
+The poller queues every transaction sent to the program, not only the ones you
+requested, and fetches each to decode its events. A transaction the RPC will not
+serve - pruned history, a node behind on slots, an endpoint pool where one node
+lacks what another listed - is retried rather than failing outright.
+
+Such work is discarded in two ways, both counted in `stats`:
+
+- `expiredTransactions` - queued for longer than `maxTransactionAgeMs`
+  (default: 5 minutes). Set this above the longest wait any caller registers;
+  `sign()` derives its window from `retry.delay * retryCount`. Above that age,
+  no waiter can still be expecting the transaction.
+- `evictedTransactions` - dropped oldest-first because the queue reached
+  `maxPendingTransactions`. Discovery is never blocked to protect the queue: a
+  fresher transaction is likelier to carry a response someone is waiting for
+  than one that has already failed for minutes.
+
+This is lossy by design. A discarded transaction may be the one carrying a
+response, and its waiter then rejects at its own deadline, which callers already
+handle as a timeout. Applications needing complete event delivery should treat
+the two counters as a health signal: sustained expiry points at an RPC that
+cannot serve the program's history, and sustained eviction at a queue sized
+below the program's transaction rate.
+
+Keep the poller alive between request batches and call `eventPoller.close()` when
+the application shuts down. `eventPoller.restart()` restarts a failed loop while
+preserving its in-memory cursor and pending waiters. Poller state is not durable
+across a process restart.
+
+## Result Freshness
+
+A resolved event is not guaranteed to postdate the `waitForEvent` call. The
+poller retains events it observes while no waiter is registered, so that a
+caller registering after its submission still receives a response the loop
+already fetched and will not fetch again. Retention is bounded by
+`recentEventsLimit` and scoped to a single poller instance.
+
+Retained events are keyed by event name and request ID alone. A request ID is a
+hash of the request parameters with no nonce, so two requests from the same
+requester with identical parameters share one ID, and the response event carries
+no attempt identifier to tell them apart. A wait can therefore resolve with a
+response to an earlier identical request rather than to the submission the
+caller has in mind.
+
+This matters when a successful response is being used as evidence that a
+request was served - a liveness probe, for example, rather than a caller that
+simply needs a valid signature for known inputs. Vary the payload per request so
+each one derives its own request ID; no client-side filtering can substitute for
+that.
+
 ## Parameters
 
-| Parameter                | Type                       | Description                                                                                                                               |
-| ------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `eventName`              | `ChainSignaturesEventName` | Event to listen for (`'signatureRespondedEvent'`, `'signatureErrorEvent'`, or `'respondBidirectionalEvent'`)                              |
-| `requestId`              | `string`                   | Unique identifier for the signature request                                                                                               |
-| `signer`                 | `PublicKey`                | Address to monitor for transactions (e.g. responder address)                                                                              |
-| `afterSignature?`        | `string`                   | Transaction signature to start polling from                                                                                               |
-| `timeoutMs?`             | `number`                   | Timeout in milliseconds (default: 60000)                                                                                                  |
-| `backfillIntervalMs?`    | `number`                   | Interval between backfill polls in milliseconds (default: 30000)                                                                          |
-| `backfillLimit?`         | `number`                   | Max transactions to fetch per backfill poll (default: 50)                                                                                 |
-| `healthCheckIntervalMs?` | `number`                   | Interval in milliseconds for WebSocket health checks. Triggers reconnection and fast backfill if the connection is lost. (default: 10000) |
-| `signal?`                | `AbortSignal`              | Abort signal for cancellation                                                                                                             |
+| Parameter         | Type                       | Description                                                                                              |
+| ----------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `eventName`       | `ChainSignaturesEventName` | Event to listen for (`signatureRespondedEvent`, `signatureErrorEvent`, or `respondBidirectionalEvent`)   |
+| `requestId`       | `string`                   | Unique identifier for the signature request                                                              |
+| `signer`          | `PublicKey`                | Responder address associated with the event                                                              |
+| `afterSignature?` | `string`                   | Transaction signature to use as the initial history cursor                                               |
+| `timeoutMs?`      | `number \| null`           | Timeout in milliseconds (default: 60000). `null` defers the deadline to the caller and requires `signal` |
+| `signal?`         | `AbortSignal`              | Abort signal for cancellation                                                                            |
+
+`backfillIntervalMs`, `backfillLimit`, and `healthCheckIntervalMs` are retained
+for source compatibility and are deprecated. Configure polling on the shared
+`SolanaEventPoller` instead.
 
 ## Returns
 

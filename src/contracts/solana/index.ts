@@ -14,3 +14,17 @@ const utils = {
 }
 
 export { utils }
+
+export { SolanaEventPoller } from './SolanaEventPoller'
+export type {
+  SolanaEventPollerOptions,
+  PollerWaitOptions,
+} from './SolanaEventPoller'
+export { HttpTransactionConfirmer } from './HttpTransactionConfirmer'
+export { CpiEventParser } from './CpiEventParser'
+export type {
+  ChainSignaturesEvent,
+  ChainSignaturesEventName,
+  EventData,
+  EventResult,
+} from './types/events'

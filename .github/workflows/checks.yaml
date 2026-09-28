@@ -23,6 +23,7 @@ jobs:
       - run: yarn typecheck
       - run: yarn build
       - run: yarn test:compat
+      - run: yarn test:solana:unit
 
   test-evm:
     needs: check
