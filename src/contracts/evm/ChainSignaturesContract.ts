@@ -339,7 +339,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * const requestId = ChainSignatureContract.getRequestId({
    *   payload: bytesToHex(new Uint8Array(args.payload)),
    *   path: '',
-   *   keyVersion: 0
+   *   keyVersion: 1
    * });
    * console.log(requestId); // 0x...
    * ```

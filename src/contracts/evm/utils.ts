@@ -37,7 +37,7 @@ export const getChain = (chainId: number): Chain => {
  *   address: '0x1234...abcd',
  *   payload: '0xdeadbeef',
  *   path: 'ethereum,1',
- *   keyVersion: 0,
+ *   keyVersion: 1,
  *   chainId: 1n,
  *   algo: '',
  *   dest: '',
