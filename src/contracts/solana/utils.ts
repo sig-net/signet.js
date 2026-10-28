@@ -92,7 +92,7 @@ export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
  * @param request - The bidirectional signature request parameters
  * @param request.sender - The sender's address (Solana public key as string)
  * @param request.payload - The data payload to be signed
- * @param request.caip2Id - The CAIP-2 chain identifier (e.g., 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')
+ * @param request.caip2Id - The CAIP-2 identifier of the target chain the transaction executes on (e.g., 'eip155:1')
  * @param request.keyVersion - The version of the signing key
  * @param request.path - The derivation path for the signing key
  * @param request.algo - The signing algorithm identifier
@@ -105,10 +105,10 @@ export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
  * const requestId = getRequestIdBidirectional({
  *   sender: 'So11111111111111111111111111111111111111112',
  *   payload: new Uint8Array([1, 2, 3, 4]),
- *   caip2Id: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+ *   caip2Id: 'eip155:1',
  *   keyVersion: 1,
  *   path: 'ethereum,1',
- *   algo: '',
+ *   algo: 'ECDSA',
  *   dest: '',
  *   params: '',
  * })
