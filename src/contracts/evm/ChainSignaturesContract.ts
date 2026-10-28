@@ -325,9 +325,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * Generates the request ID for a signature request allowing to track the response.
    *
    * @param args - The signature request object containing:
-   *   @param args.payload - The data payload to be signed as a hex string
+   *   @param args.payload - The data payload to be signed as an array of bytes
    *   @param args.path - The derivation path for the key
-   *   @param args.keyVersion - The version of the key to use
+   *   @param args.key_version - The version of the key to use
    * @param options - The signature request object containing:
    *   @param options.algo - The signing algorithm to use
    *   @param options.dest - The destination for the signature
@@ -336,10 +336,10 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    *
    * @example
    * ```typescript
-   * const requestId = ChainSignatureContract.getRequestId({
-   *   payload: bytesToHex(new Uint8Array(args.payload)),
+   * const requestId = contract.getRequestId({
+   *   payload: args.payload,
    *   path: '',
-   *   keyVersion: 0
+   *   key_version: 1,
    * });
    * console.log(requestId); // 0x...
    * ```

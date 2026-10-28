@@ -52,7 +52,7 @@ export interface SolanaBidirectionalRequestIdArgs {
  *   address: 'So11111111111111111111111111111111111111112',
  *   payload: new Uint8Array([1, 2, 3, 4]),
  *   path: 'solana,1',
- *   keyVersion: 0,
+ *   keyVersion: 1,
  *   chainId: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
  *   algo: '',
  *   dest: '',
@@ -92,7 +92,7 @@ export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
  * @param request - The bidirectional signature request parameters
  * @param request.sender - The sender's address (Solana public key as string)
  * @param request.payload - The data payload to be signed
- * @param request.caip2Id - The CAIP-2 chain identifier (e.g., 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')
+ * @param request.caip2Id - The CAIP-2 identifier of the target chain the transaction executes on (e.g., 'eip155:1')
  * @param request.keyVersion - The version of the signing key
  * @param request.path - The derivation path for the signing key
  * @param request.algo - The signing algorithm identifier
@@ -102,13 +102,27 @@ export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
  *
  * @example
  * ```typescript
+ * import { hexToBytes, parseEther, parseGwei, serializeTransaction } from 'viem'
+ *
+ * // The payload is the unsigned transaction the MPC signs for the target chain.
+ * const unsignedTx = serializeTransaction({
+ *   type: 'eip1559',
+ *   chainId: 1,
+ *   nonce: 0,
+ *   to: '0x4174678c78fEaFd778c1ff319D5D326701449b25',
+ *   value: parseEther('0.1'),
+ *   gas: 21000n,
+ *   maxFeePerGas: parseGwei('30'),
+ *   maxPriorityFeePerGas: parseGwei('1'),
+ * })
+ *
  * const requestId = getRequestIdBidirectional({
  *   sender: 'So11111111111111111111111111111111111111112',
- *   payload: new Uint8Array([1, 2, 3, 4]),
- *   caip2Id: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
- *   keyVersion: 0,
+ *   payload: hexToBytes(unsignedTx),
+ *   caip2Id: 'eip155:1',
+ *   keyVersion: 1,
  *   path: 'ethereum,1',
- *   algo: '',
+ *   algo: 'ECDSA',
  *   dest: '',
  *   params: '',
  * })

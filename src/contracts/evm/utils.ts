@@ -34,10 +34,10 @@ export const getChain = (chainId: number): Chain => {
  * @example
  * ```typescript
  * const requestId = getRequestIdRespond({
- *   address: '0x1234...abcd',
+ *   address: '0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199',
  *   payload: '0xdeadbeef',
  *   path: 'ethereum,1',
- *   keyVersion: 0,
+ *   keyVersion: 1,
  *   chainId: 1n,
  *   algo: '',
  *   dest: '',
