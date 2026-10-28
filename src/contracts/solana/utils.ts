@@ -102,9 +102,23 @@ export function getRequestIdRespond(request: SolanaRequestIdArgs): string {
  *
  * @example
  * ```typescript
+ * import { hexToBytes, parseEther, parseGwei, serializeTransaction } from 'viem'
+ *
+ * // The payload is the unsigned transaction the MPC signs for the target chain.
+ * const unsignedTx = serializeTransaction({
+ *   type: 'eip1559',
+ *   chainId: 1,
+ *   nonce: 0,
+ *   to: '0x4174678c78fEaFd778c1ff319D5D326701449b25',
+ *   value: parseEther('0.1'),
+ *   gas: 21000n,
+ *   maxFeePerGas: parseGwei('30'),
+ *   maxPriorityFeePerGas: parseGwei('1'),
+ * })
+ *
  * const requestId = getRequestIdBidirectional({
  *   sender: 'So11111111111111111111111111111111111111112',
- *   payload: new Uint8Array([1, 2, 3, 4]),
+ *   payload: hexToBytes(unsignedTx),
  *   caip2Id: 'eip155:1',
  *   keyVersion: 1,
  *   path: 'ethereum,1',
