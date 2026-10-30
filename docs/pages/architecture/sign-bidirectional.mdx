@@ -133,6 +133,12 @@ child_pubkey = root_pubkey + epsilon × G
 
 `kdf_chain_id` namespaces derivation per source chain (the `KDF_CHAIN_IDS` constants in signet.js). The reference implementation is [`deriveChildPublicKey`](https://github.com/sig-net/signet.js/blob/main/src/utils/cryptography.ts) in signet.js; root public keys per environment are published as `ROOT_PUBLIC_KEYS` (see [Contract Addresses](/primitives/contract-addresses)).
 
+### Reserved path prefix
+
+On Solana and Hydration, a plain `sign` request and a bidirectional request derive the same key for the same `sender`, `path` and key version. A plain `sign` request could then get a transaction signed that uses up a bidirectional request's nonce, and the bidirectional request would never be answered.
+
+To prevent this, the MPC reserves the path prefix `bidirectional/` on those chains. Bidirectional requests must use a path that starts with it, and plain `sign` requests under it are refused.
+
 ## Response Signature Verification
 
 The `respond_bidirectional` payload is signed with a **dedicated response-verification child key**, derived like any other child key but with a fixed, per-source-chain derivation path (a constant of the form `"<chain> response key"` — the exact value is in each chain's docs).
