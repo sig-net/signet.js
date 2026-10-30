@@ -56,6 +56,8 @@ That's the whole flow. The stETH balance accrues to `stakingAddress`; when you w
 
 The plain `sign` flow trusts nothing and verifies nothing on Solana — which is fine here, because no Solana state depends on the stake succeeding. The moment your program needs to act on the result (credit the staker shares on Solana, refund on failure), switch the request to `sign_bidirectional` and verify the MPC's execution report on-chain, exactly as the [deposit example](/examples/cross-chain-deposit) does.
 
+A bidirectional request needs a path under the [reserved `bidirectional/` prefix](/architecture/sign-bidirectional#reserved-path-prefix), so it derives a different Ethereum address than this example's path. Assets already at `stakingAddress` stay under the plain `sign` key; move them with a plain `sign` request first.
+
 ## Related Documentation
 
 - [Holding Ethereum Assets from Solana](/examples/cross-chain-deposit) — the verified-outcome version of cross-chain execution

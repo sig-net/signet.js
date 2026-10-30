@@ -137,7 +137,7 @@ child_pubkey = root_pubkey + epsilon × G
 
 On Solana and Hydration, a plain `sign` request and a bidirectional request derive the same key for the same `sender`, `path` and key version. A plain `sign` request could then get a transaction signed that uses up a bidirectional request's nonce, and the bidirectional request would never be answered.
 
-To prevent this, the MPC reserves the path prefix `bidirectional/` on those chains. Bidirectional requests must use a path that starts with it, and plain `sign` requests under it are refused.
+To prevent this, the MPC reserves the path prefix `bidirectional/` on those chains. Bidirectional requests must use a path that starts with it, and plain `sign` requests under it are refused. Nodes currently accept bidirectional requests outside the prefix with a warning, and will refuse them in a later release.
 
 ## Response Signature Verification
 
