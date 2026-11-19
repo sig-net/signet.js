@@ -1,0 +1,17 @@
+{/* Imported from sig-net/midnight-integration README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# Packages
+
+| Package | npm | What it is |
+|---|---|---|
+| [`packages/signet-midnight`](/midnight/packages/midnight) | `@sig-net/midnight` | Client-agnostic signet protocol library: shared Compact modules, TS twins of the wire structs, state readers, event decoders, request feed, crypto (epsilon derivation, secp256k1 ECDSA attestations) |
+| [`packages/signet-contract`](/midnight/packages/midnight-contract) | `@sig-net/midnight-contract` | The central singleton contract: emits unverified request-notification events |
+| [`packages/signet-responder`](/midnight/packages/midnight-responder) | `@sig-net/midnight-responder` | The response contract: `respond` and `respondBidirectional` emit unverified response events, proven with MinoCrab-compiled circuits checked against its Compact source |
+| [`packages/signet-contract-deploy`](/midnight/packages/midnight-contract-deploy) | `@sig-net/midnight-contract-deploy` | Deploy tooling for the singleton and the responder + the generic deploy/wallet plumbing |
+| [`packages/midnight-serde-ts`](/midnight/packages/midnight-serde) | `@sig-net/midnight-serde` | Native borsh-js schemas and values, with optional zero padding and documented Compact compatibility |
+| [`packages/midnight-serde-conformance`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/midnight-serde-conformance) | repo-private | Compiler-backed fixtures for the documented Borsh-compatible subset and a shared Rust replay corpus |
+| [`packages/midnight-serde-rs`](/midnight/packages/signet-midnight-serde) | `signet-midnight-serde` (crates.io) | Native Rust Borsh types and derives, with optional zero padding and compiler-backed compatibility fixtures |
+| [`packages/test-caller-contract`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/test-caller-contract) | repo-private | Integration-testing caller contract: submit signature requests, verify the MPC's attestations in-circuit and settle every outcome kind (`executed`, `failed`, `unviable`), the smallest thing that drives the protocol. Testing only, not an integration example |
+| [`packages/test-caller-contract-20-field`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/test-caller-contract-20-field) | repo-private | Integration-testing caller contract: the 20-field lockstep fixture proving the raw ledger readers resolve field numbers through the compiler's chunked (>15-field) state layout. Testing only |
+| [`packages/integration-tests`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/integration-tests) | repo-private | The two e2e suites, the generic flow (submit → notification → MPC signature → in-circuit verify) and the real-EVM flow (broadcast → attestation → in-circuit settlement of every outcome kind), against the local docker stack (`docker-compose.yaml`: midnight node/indexer/proof server + anvil EVM + fakenet MPC responder) |
+| [`packages/lib`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/lib) | repo-private | Shared midnight-js provider adapters |

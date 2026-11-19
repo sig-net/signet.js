@@ -39,6 +39,7 @@
     "release:minor": "npm version minor --no-git-tag-version --force",
     "release:major": "npm version major --no-git-tag-version --force",
     "release:beta": "npm version prerelease --preid=beta --no-git-tag-version --force",
+    "docs:import-midnight": "node docs/scripts/import-midnight-docs.mjs",
     "docs:dev": "cd docs && vocs dev",
     "docs:build": "cd docs && vocs build",
     "docs:preview": "cd docs && vocs preview",

@@ -1,0 +1,185 @@
+{/* Imported from sig-net/midnight-examples examples/erc20-vault/docs/redeem/redeem.md at acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# Redeem
+
+The redeem round trip exits the vault's Aave position through the non-rebasing
+ERC-4626 wrapper (stataUSDC), against shielded vault tokens of the wrapper that
+the caller surrenders on Midnight. It is the [supply](/midnight/erc20-vault/supply) round
+trip run backwards: the wrapper burns shares out of the vault's own EVM account
+and pays the underlying USDC back into it, and the caller's claim on that
+underlying comes back as a shielded vault token of the underlying's colour.
+
+## The protocol
+
+It is best to understand the
+[sign bidirectional flow](/midnight/examples#sign-bidirectional-protocol-flow)
+before you continue here. For more detail see the
+[sign bidirectional flow](/midnight/protocol-flow)
+in the midnight integration repository.
+
+## The integration
+
+To wire this shape into a contract of your own, start from the
+[Integration guide](/midnight/examples#integrator-guide) in the repo README.
+For the full walkthrough see the
+[Integrator Guide](/midnight/integrator-guide)
+in the midnight integration repository. The queue the vault runs every request
+through is described in [Contention handling](/midnight/erc20-vault/contention-handling).
+
+## The redeem round trip
+
+The round trip runs from the caller surrendering their wrapper vault tokens on
+Midnight to the complete call that mints the underlying they are worth. There
+is no allowance: the vault redeems its OWN shares, so the redeem names the
+vault's account as both receiver and owner and the wrapper needs no approval
+from anyone. The EVM transaction is sent by the vault's own account, pinned at
+initialise as [`vaultEvmAddress`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact).
+Every step runs as it does for a [withdrawal](/midnight/erc20-vault/withdraw), over
+the redeem's own request map,
+[`bidirectionalRedeemMap`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact), and the
+[deposit](/midnight/erc20-vault/deposit) page describes the shared machinery in full.
+
+![Redeem flow](https://raw.githubusercontent.com/sig-net/midnight-examples/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/redeem/redeem.drawio.png)
+
+As illustrated, the flow comprises 9 steps:
+
+- **1.** startRedeem(...) burns the surrendered coin and queues the request
+  - The caller surrenders a shielded **vault coin** worth the shares being
+    redeemed plus the wrapper's redeem fee, read from
+    [`allowedTokens`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact). [`startRedeem`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) checks
+    the coin's colour is the wrapper's vault token
+    ([`vaultTokenDomainSeparator`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact)
+    over the pinned [`stataToken`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact))
+    and that its value equals the shares plus the fee, then
+    [`takeFee`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) burns it with the same pair of calls a
+    [withdrawal](/midnight/erc20-vault/withdraw) uses and mints the fee to
+    [`feeRecipientCoinPublicKey`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) under the public nonce
+    [`feeMintNonce`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) derives from the surrendered coin's nonce, recorded as `fee` in
+    [`RedeemArgs`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact). The coin spend IS the
+    authorisation, so anyone holding wrapper vault tokens may redeem.
+  - Both tokens are contract-fixed, so the
+    [`RedeemRequest`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) names only the
+    shares, bounded to `Uint<64>` before the burn so a failure can always
+    re-mint them.
+  - The circuit copies the vault's gas settings for a redeem into
+    [`redeemArgsMap`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) beside the
+    request, and queues the entry with `useNextVaultAccountNonce` set and the redeemer's
+    [`ownershipCommitment`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact).
+  - Off chain, [`start-redeem.ts`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/flows/start-redeem.ts)
+    reads the fee from the ledger, funds the coin of the wrapper's colour from
+    the caller's shielded balance and calls the circuit, passing the fee
+    recipient's
+    [`feeRecipientEncryptionPublicKey`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact)
+    so the recipient's wallet discovers the fee coin. The caller must already
+    HOLD those shares plus the fee, so a [supply](/midnight/erc20-vault/supply) comes
+    first.
+- **2.** flushQueue(...) assigns the vault nonce and moves the request into the output buffer
+  - The flush gives the entry the vault account's next EVM nonce
+    ([`vaultAccountNonce`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact)) and moves it
+    into `outputRequestBuffer`, exactly as it does for a
+    [withdrawal](/midnight/erc20-vault/withdraw). `start-redeem.ts` then reads the
+    entry's index with [`flushedRequestIndex`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/vault-queue.ts).
+- **3.** sendRedeem(...) records the request and notifies the MPC
+  - [`sendRedeem`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) builds
+    contract-enforced calldata for
+    `redeem(shares, vaultEvmAddress, vaultEvmAddress)` on the pinned
+    `stataToken`: the vault's account is both the receiver of the assets and
+    the owner of the burned shares, so the underlying lands in the pool and
+    nowhere else.
+  - A wrapper redeem returns a `uint256` asset amount, which the MPC attests
+    whole as 32 little-endian bytes, so the request carries its own output
+    schema ([`redeemOutputSchema`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact)),
+    whose width is part of the redeem map's ledger type.
+  - The record goes into `bidirectionalRedeemMap` under its request id, signed
+    for the vault's own account (path `pad(32, "vault")`) at the assigned
+    nonce and the gas the start copied, and the singleton's
+    `signBidirectional(...)` call carries the map's path
+    ([`VAULT_REDEEM_REQUESTS_PATH`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/index.ts)).
+- **4.** poll for the MPC's signature
+  - The MPC signs the wrapper redeem with the vault's derived signing key, and
+    [`poll-signature-response.ts`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/flows/poll-signature-response.ts)
+    polls for a post whose signature recovers to the vault's own account,
+    `evmVaultAddress`, reading the request record from the redeem map's path.
+- **5.** broadcast the redeem to the EVM chain
+  - The dApp attaches the verified signature to the transaction rebuilt from
+    the request record and sends it. The wrapper burns the shares from the
+    vault's account and pays it the underlying they are worth.
+  - [`broadcast-evm.ts`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/flows/broadcast-evm.ts)
+    is idempotent, as it is for a [withdrawal](/midnight/erc20-vault/withdraw).
+- **6.** poll for the MPC's attestation
+  - [`poll-respond-bidirectional.ts`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/flows/poll-respond-bidirectional.ts)
+    resolves the MPC's attestation as it does for a
+    [deposit](/midnight/erc20-vault/deposit). A post declaring **`executed`** is
+    checked over the wrapper's return decoded per the `uint256` output schema
+    and Borsh-serialised as the MPC does, the 32 little-endian bytes that carry
+    the assets paid out, principal plus accrued interest. A post declaring
+    **`failed`** or **`unviable`** is checked over the EMPTY output. Under
+    `mpc-cache` every post is checked over the cached object instead.
+- **7.** queue the attestation
+  - [`queue-attestation.ts`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/flows/queue-attestation.ts)
+    submits the outcome to
+    [`queueAttestation`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact), whatever its
+    verdict. The circuit verifies the MPC's signature over the output's width
+    and hash the event carries against
+    [`mpcResponseKey`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact), finds the open
+    redeem through `evictionMap`, requires a block height strictly above its
+    `lastSeen`, and queues the attestation record.
+- **8.** flushQueue(...) moves the attestation into the output buffer
+  - An attestation slot moves the record into `outputAttestationBuffer` and
+    folds its block height into `globalLastSeen`.
+- **9.** completeRedeem(...) mints the attested assets as stataUnderlying vault coins
+  - The redeemer calls
+    [`completeRedeem`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) with the
+    request id, the 32-byte serialised output and a mint nonce. The circuit
+    requires the flushed attestation, a block height strictly above the
+    entry's `lastSeen` and the caller's ownership commitment, which makes
+    every mint redeemer-only, then removes the request's event, its
+    arguments, its `evictionMap` entry, the attestation and the output entry.
+  - An `executed` verdict requires the output to have the record's width and hash,
+    then mints the attested asset amount, which the pure
+    [`redeemAssets`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact) circuit
+    narrows from the output in-circuit, as the `stataUnderlying` vault coin.
+  - A `failed` or `unviable` verdict means the wrapper burned nothing, so the
+    circuit re-mints the surrendered `stataToken` shares, and the output it is
+    passed is ignored. Either mint goes to the caller under a caller-chosen
+    random `mintNonce`, which ties it to nothing. The fee stays with its
+    recipient on every verdict.
+  - [`complete-redeem.ts`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/flows/complete-redeem.ts)
+    queues and flushes the attestation, then calls the circuit with a fresh
+    random mint nonce on every verdict.
+
+## Shared setup
+
+Every circuit call goes through the deployed vault, joined once with the
+caller's identity secret as private state (see
+[Runtime: joining the deployed vault](/midnight/erc20-vault#runtime-joining-the-deployed-vault)
+in the vault README). That secret is the user's own random value. The
+integration tests take it from the `VAULT_USER_SECRET_KEY` environment
+variable, falling back to the `USER_SEED` bytes when it is unset.
+
+The two polling steps (4 and 6) each build a `SignetRequestResponseReader` over
+the vault and singleton pair through
+[`createResponseReader`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/vault-context.ts),
+pointed at the redeem map's ledger-tree path. The expected signer is the
+vault's own account, whose derivation path is the contract-fixed
+`pad(32, "vault")`. The MPC renders a request's 32 opaque path bytes as their
+full-width lowercase hex, padding included, and `deriveEvmAddress` takes the
+same rendering, so the vault's account derives from
+[`VAULT_PATH_HEX`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/index.ts).
+`deriveEvmAddress` derives the vault's EVM account, and
+`deriveMidnightResponseKey` derives the response key: they are the concrete
+functions behind the abstract `keyDerivation(...)` notes on the
+[actor map](/midnight/erc20-vault#the-actors), and the diagram above names only
+their inputs, in its footnote. The response key does not use any request's
+derivation path: the MPC derives it for this contract under a
+reserved path that no request may name ("midnight response key" in the SDK),
+and `queueAttestation` verifies the MPC's attestation against it.
+
+The flow needs the wrapper to exist on the chain the vault is pinned to, which
+means Sepolia or a fork of it. The setup pipeline probes for the wrapper's code
+with [`stataAvailable`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests/src/evm-stata.ts) before any
+spec runs and fails the run where it is absent.
+
+---
+
+Previous: [Supply](/midnight/erc20-vault/supply) · Up: [ERC20 Vault](/midnight/erc20-vault) · Protocol: [Sign Bidirectional Flow](/midnight/examples#sign-bidirectional-protocol-flow)

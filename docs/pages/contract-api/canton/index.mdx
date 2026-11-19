@@ -2,7 +2,7 @@
 
 On Canton, signature requests do not go through a deployed contract at an address. They go through **Daml templates** — the `Signer` from the `signet-signer-v1` package — authorized by Canton parties and disclosed to consumer contracts. MPC responses are delivered as Canton contracts and verified **on-ledger** with `secp256k1WithEcdsaOnly`.
 
-The flow itself is the standard [Sign Bidirectional Flow](/architecture/sign-bidirectional); only the API surface is Canton-specific.
+The flow itself is the standard Sign Bidirectional Flow; only the API surface is Canton-specific.
 
 ## Documentation
 
@@ -16,7 +16,7 @@ The complete Canton documentation lives in the [sig-net/canton](https://github.c
 
 ## Key Differences from Other Chains
 
-- **No contract address**: integrators receive the `Signer` as a disclosed-contract envelope from the operator's disclosure endpoint, not by address lookup. See [Contract Addresses](/primitives/contract-addresses) for the per-environment root public keys.
+- **No contract address**: integrators receive the `Signer` as a disclosed-contract envelope from the operator's disclosure endpoint, not by address lookup. See [`constants.ts`](https://github.com/sig-net/signet.js/blob/main/src/constants.ts) for the per-environment root public keys.
 - **KDF chain ID**: key derivation uses `canton:global` (see `KDF_CHAIN_IDS` in signet.js), with `sender` bound to the hash of the on-ledger operator set.
 - **On-ledger verification**: the response signature over `keccak256(requestId || serializedOutput)` is checked inside the consumer's Daml choice via `secp256k1WithEcdsaOnly`, using the response child key derived with the fixed path `"canton response key"`.
 
