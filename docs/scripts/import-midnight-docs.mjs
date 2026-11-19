@@ -1,7 +1,7 @@
 // Imports the Midnight documentation into docs/pages from the repositories that own it.
 //
 // Every page listed in PAGES is copied from its source repository at the commit pinned in
-// SOURCES. The text is not edited. A file may be split into one page per top-level heading, and
+// SOURCES. The text is not edited beyond the passages in REWORDED. A file may be split into one page per top-level heading, and
 // links and images are rewritten: to the page that holds the target when it is imported too, and
 // to GitHub at the pinned commit otherwise. Outside code, `<` and `{` are escaped, since vocs
 // compiles every page as MDX and would read them as JSX. To update the docs, change the source
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 const SOURCES = {
   'midnight-integration': {
     repo: 'sig-net/midnight-integration',
-    commit: '5e79dff78a027dbeea9ab20a76a7d6391dca8037',
+    commit: 'c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53',
   },
   'midnight-examples': {
     repo: 'sig-net/midnight-examples',
@@ -49,8 +49,8 @@ const PAGES = [
   ],
   [
     'midnight-integration',
-    'packages/signet-contract/README.md',
-    '/midnight/packages/midnight-contract',
+    'packages/signet-signer/README.md',
+    '/midnight/packages/midnight-signer',
   ],
   [
     'midnight-integration',
@@ -110,15 +110,49 @@ const PAGES = [
   ],
 ]
 
-/** Passages left out of an imported file. Each must still be in its source, so a stale entry fails the import. */
-const OMITTED = {
+/**
+ * Passages reworded in an imported file, each as the source text and what replaces it. A README
+ * speaks of "this repository", which reads wrongly on a docs page, and the package README's
+ * under construction notice is left out. Each source text must still be in its file, so a stale
+ * entry fails the import.
+ */
+const REWORDED = {
+  'midnight-integration:README.md': [
+    [
+      'The two caller contracts in this repository are worked examples of each case:',
+      'The two caller contracts in the `sig-net/midnight-integration` repository are worked examples of each case:',
+    ],
+    [
+      "On a local stack there is no fixed value: this repository's [integration-test setup](packages/integration-tests) generates a fresh `MPC_ROOT_KEY`, prints it during setup and appends it to the repo-root `.env`",
+      'On a local stack there is no fixed value: the `sig-net/midnight-integration` [integration-test setup](packages/integration-tests) generates a fresh `MPC_ROOT_KEY`, prints it during setup and appends it to the `.env` at the root of that repository',
+    ],
+  ],
   'midnight-integration:packages/signet-midnight/README.md': [
-    `> ## 🚧 Under Construction 🚧
+    [
+      `> ## 🚧 Under Construction 🚧
 >
 > This Sig Network Midnight integration is still under construction.
 > Use at your own risk and expect rapid iteration.
 
 `,
+      '',
+    ],
+  ],
+  'midnight-examples:README.md': [
+    [
+      'This monorepo holds experimental example contracts for Midnight.',
+      'The [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples) repository holds experimental example contracts for Midnight.',
+    ],
+    [
+      "This repository's compile scripts already pass it.",
+      'The `sig-net/midnight-examples` compile scripts already pass it.',
+    ],
+  ],
+  'midnight-examples:examples/erc20-vault/README.md': [
+    [
+      'Everything runs from the repo root against the local docker stack',
+      'Everything runs from the root of the `sig-net/midnight-examples` repository against the local docker stack',
+    ],
   ],
 }
 
@@ -178,11 +212,11 @@ for (const [source, file, routes] of PAGES) {
   if (!response.ok)
     throw new Error(`${repo} ${file}: HTTP ${String(response.status)}`)
   let sourceText = await response.text()
-  for (const passage of OMITTED[`${source}:${file}`] ?? []) {
-    if (!sourceText.includes(passage)) {
-      throw new Error(`${repo} ${file} no longer holds an omitted passage`)
+  for (const [from, to] of REWORDED[`${source}:${file}`] ?? []) {
+    if (!sourceText.includes(from)) {
+      throw new Error(`${repo} ${file} no longer holds "${from.slice(0, 40)}"`)
     }
-    sourceText = sourceText.replace(passage, '')
+    sourceText = sourceText.replace(from, to)
   }
   const parts = partsOf(sourceText, routes)
   const anchors = new Map()
@@ -226,7 +260,7 @@ function rewriteTarget(source, file, target) {
     return (other && routeOf(other, github[2], github[3] ?? '')) ?? target
   }
   if (/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(target)) return target
-  const [path, anchor = ''] = target.split(/(?=#)/)
+  const [, path, anchor = ''] = /^([^#]*)(#.*)?$/.exec(target)
   const resolved =
     path === ''
       ? file
@@ -287,4 +321,165 @@ for (const [source, file] of PAGES) {
     await writeFile(target, origin + convert(source, file, text))
     console.log(`${route} <- ${repo} ${file}`)
   }
+}
+
+// ---- TypeScript reference -----------------------------------------------------------------------
+
+/**
+ * The reference page of `@sig-net/midnight`: every export of its entry point, with the declaration
+ * and the TSDoc comment written beside it in the source.
+ */
+const REFERENCE = {
+  source: 'midnight-integration',
+  entry: 'packages/signet-midnight/src/index.ts',
+  route: '/midnight/typescript-reference',
+}
+
+const ts = (await import('typescript')).default
+
+async function parseSource(source, file) {
+  const { repo, commit } = SOURCES[source]
+  const response = await fetch(
+    `https://raw.githubusercontent.com/${repo}/${commit}/${file}`
+  )
+  if (!response.ok) {
+    throw new Error(`${repo} ${file}: HTTP ${String(response.status)}`)
+  }
+  return ts.createSourceFile(
+    file,
+    await response.text(),
+    ts.ScriptTarget.Latest,
+    true
+  )
+}
+
+/** A TSDoc comment as Markdown: its description, then its tags as a list. */
+function docOf(node) {
+  const doc = node.jsDoc?.at(-1)
+  if (doc === undefined) return ''
+  const prose = (text) =>
+    (ts.getTextOfJSDocComment(text) ?? '')
+      .replace(/\{@link\s+([^}\s|]+)[^}]*\}/g, '`$1`')
+      .split('\n')
+      .map(escapeForMdx)
+      .join('\n')
+  const tags = (doc.tags ?? []).map((tag) => {
+    const name = tag.name === undefined ? '' : ` \`${tag.name.getText()}\``
+    const text = prose(tag.comment)
+      .replace(/^\s*-\s*/, '')
+      .replace(/\n\s*/g, ' ')
+    return `- **${tag.tagName.text}**${name}${text === '' ? '' : `: ${text}`}`
+  })
+  return [prose(doc.comment), tags.join('\n')].filter(Boolean).join('\n\n')
+}
+
+const has = (node, kind) =>
+  node.modifiers?.some((m) => m.kind === kind) ?? false
+
+/** A declaration without its implementation: a function or method up to its body. */
+function signatureOf(node, sourceFile) {
+  const end =
+    node.body === undefined ? node.end : node.body.getStart(sourceFile)
+  return sourceFile.text
+    .slice(node.getStart(sourceFile), end)
+    .replace(/^export\s+/, '')
+    .trim()
+}
+
+/** The Markdown of one exported declaration, or of each variable a statement declares. */
+function entriesOf(statement, sourceFile) {
+  const entry = (name, node, code) => {
+    const doc = docOf(node)
+    return [
+      name,
+      `### \`${name}\`\n\n${doc === '' ? '' : `${doc}\n\n`}\`\`\`ts\n${code}\n\`\`\`\n`,
+    ]
+  }
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations.map((declaration) => {
+      const lines = signatureOf(statement, sourceFile).split('\n')
+      const code =
+        lines.length > 12
+          ? [...lines.slice(0, 12), '// ...'].join('\n')
+          : lines.join('\n')
+      return entry(declaration.name.getText(sourceFile), statement, code)
+    })
+  }
+  if (ts.isClassDeclaration(statement)) {
+    const members = statement.members
+      .filter(
+        (member) =>
+          (ts.isMethodDeclaration(member) ||
+            ts.isConstructorDeclaration(member)) &&
+          !has(member, ts.SyntaxKind.PrivateKeyword) &&
+          !has(member, ts.SyntaxKind.ProtectedKeyword) &&
+          !(member.name !== undefined && ts.isPrivateIdentifier(member.name))
+      )
+      .map((member) => {
+        const doc = docOf(member)
+        const name = ts.isConstructorDeclaration(member)
+          ? 'constructor'
+          : member.name.getText(sourceFile)
+        return `#### \`${statement.name.text}.${name}\`\n\n${doc === '' ? '' : `${doc}\n\n`}\`\`\`ts\n${signatureOf(member, sourceFile)}\n\`\`\`\n`
+      })
+    const [name, text] = entry(
+      statement.name.text,
+      statement,
+      `class ${statement.name.text}`
+    )
+    return [[name, [text, ...members].join('\n')]]
+  }
+  if (
+    ts.isFunctionDeclaration(statement) ||
+    ts.isInterfaceDeclaration(statement) ||
+    ts.isTypeAliasDeclaration(statement) ||
+    ts.isEnumDeclaration(statement)
+  ) {
+    return [
+      entry(statement.name.text, statement, signatureOf(statement, sourceFile)),
+    ]
+  }
+  return []
+}
+
+const entryFile = await parseSource(REFERENCE.source, REFERENCE.entry)
+const sections = []
+for (const statement of entryFile.statements) {
+  if (
+    !ts.isExportDeclaration(statement) ||
+    statement.moduleSpecifier === undefined
+  )
+    continue
+  const specifier = statement.moduleSpecifier.text
+  // The compiled contract module is generated at build time and is not in the repository.
+  if (!specifier.endsWith('.ts')) continue
+  const file = posix.join(posix.dirname(REFERENCE.entry), specifier)
+  const moduleFile = await parseSource(REFERENCE.source, file)
+  const wanted =
+    statement.exportClause === undefined
+      ? undefined
+      : new Set(
+          statement.exportClause.elements.map(
+            (e) => (e.propertyName ?? e.name).text
+          )
+        )
+  const entries = moduleFile.statements
+    .filter((s) => has(s, ts.SyntaxKind.ExportKeyword))
+    .flatMap((s) => entriesOf(s, moduleFile))
+    .filter(([name]) => wanted === undefined || wanted.has(name))
+  if (entries.length === 0) continue
+  sections.push(
+    `## \`${posix.basename(file)}\`\n\n${entries.map(([, text]) => text).join('\n')}`
+  )
+}
+
+{
+  const { repo, commit } = SOURCES[REFERENCE.source]
+  const origin = `{/* Generated from ${repo} ${posix.dirname(REFERENCE.entry)} at ${commit} by docs/scripts/import-midnight-docs.mjs. Edit the TSDoc comments there. */}\n\n`
+  const target = join(pagesDir, `${REFERENCE.route.slice(1)}.mdx`)
+  await writeFile(
+    target,
+    `${origin}# TypeScript Reference\n\nEvery export of \`@sig-net/midnight\`, with the declaration and the comment written beside it in the source.\n\n${sections.join('\n')}`
+  )
+  console.log(`${REFERENCE.route} <- ${repo} ${REFERENCE.entry}`)
 }

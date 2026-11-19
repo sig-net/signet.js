@@ -1,4 +1,4 @@
-{/* Imported from sig-net/midnight-integration packages/signet-midnight/README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+{/* Imported from sig-net/midnight-integration packages/signet-midnight/README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
 
 # @sig-net/midnight
 
@@ -18,7 +18,7 @@ This package has 2 components:
 
 - **TypeScript library** for clients off chain: readers that poll the signet responder and verify the MPC's responses, key derivation and attestation crypto, output serialisation, the published per-network addresses and constant values, and typed twins of the on-chain structs and circuits.
 
-The [Export highlights](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/signet-midnight/#export-highlights) section lists the specific exports each task uses.
+The [Export highlights](/midnight/packages/midnight#export-highlights) section lists the specific exports each task uses.
 
 ## Install
 
@@ -48,12 +48,12 @@ What your contract imports with `import "@sig-net/midnight/src/Signet"`:
 
 | Task | Exports |
 |---|---|
-| Declare the protocol ledger state (setup step 3) | `SignBidirectionalEventMapV1` (the request map the MPC reads) and `SignetSigner` (the Signet singleton's cross-contract-call interface, pinned at deploy). |
+| Declare the protocol ledger state (setup step 3) | `SignBidirectionalEventMapV1` (the request map the MPC reads) and `SignetSigner` (the Signet signer's cross-contract-call interface, pinned at deploy). |
 | Build and store a signature request (runtime step 1) | `constructSignBidirectionalEventV1` and `calculateEvmType2RequestIdV1`, over the request structs `EvmType2TxParams`, `EvmCalldata` and `EvmAccessListEntry`. The id hashes `calculateEvmType2TxParamsDigestV1`, a digest over the transaction's used entries only, so it ignores your struct's capacities and unused slots. |
 | Notify the MPC of the request (runtime step 1) | `constructSignBidirectionalEventNotificationV1`: packs your contract's address and the request map's ledger-tree path. |
 | Narrow an attested `uint256` in-circuit | `checkedTruncationU128`: the `Bytes<32>` the MPC attests (little-endian) to a `Uint<128>`, aborting unless the high 16 bytes are zero (see [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation)). |
 | Build and read calldata words in-circuit | The builders `evmAddressAbiWord`, `numericAbiWord` and `boolAbiWord`, and the readers `abiWordToUint128` and `abiWordToBool` (see [EVM Type 2 transactions and ABI calldata words](/midnight/integrator-guide#evm-type-2-transactions-and-abi-calldata-words)). |
-| Verify the execution attestation (runtime step 5) | `verifyRespondBidirectionalEventV1`: checks that the output bytes have the posted width and output hash, recomputes the attestation digest from the posted request id, block height, output kind, width and hash, requires the posted digest to equal it, and checks the MPC's signature against your pinned response key. Its two halves are exported for a contract that verifies an attestation before it has the output: `verifyRespondBidirectionalAttestationV1` (the signature, without the output) and `verifyAttestedOutputV1` (the output against an attested width and hash, taken from the event or from the copy your contract stored when it verified the event). |
+| Verify the execution attestation (runtime step 5) | `verifyRespondBidirectionalEventV1`: checks that the output bytes have the posted width and output hash, recomputes the attestation digest from the posted request id, block height, output kind, width and hash, and checks the MPC's signature against your pinned response key. Its two halves are exported for a contract that verifies an attestation before it has the output: `verifyRespondBidirectionalAttestationV1` (the signature, without the output) and `verifyAttestedOutputV1` (the output against an attested width and hash, taken from the event or from the copy your contract stored when it verified the event). |
 
 ### TypeScript library
 
@@ -61,26 +61,25 @@ What clients import from `@sig-net/midnight`:
 
 | Task | Exports |
 |---|---|
-| Poll for the MPC's responses and verify them (runtime steps 2 to 4) | `SignetRequestResponseReader`: one reader per contract and Signet responder pair, reused across polls. Its getters `getVerifiedSignatureRespondedEvent`, `getSignedEvmTransaction` and `getVerifiedRespondBidirectionalEvent` map to steps 2, 3 and 4. Each poll handles only the Signet responder events it has not seen yet, and each distinct response is verified once. |
-| Find out why a posted signature response was rejected | `reader.getSignatureResponseVerdicts(requestId, expectedSigner)`: a verdict for every distinct post under the request, where `getVerifiedSignatureRespondedEvent` stops at the first valid one. |
+| Poll for the MPC's responses and verify them (runtime steps 2 to 4) | `SignetRequestResponseReader`: one reader per contract and Signet responder pair. Its getters `getVerifiedSignatureRespondedEvent`, `getSignedEvmTransaction` and `getVerifiedRespondBidirectionalEvent` map to steps 2, 3 and 4. |
 | Verify responses over events already in hand (explorers, anything that streams the history once) | Decode the stream once with `tryDecodeSignetEvent`, then `reader.verifySignatureRespondedEvents(requestId, expectedSigner, events)` and `findVerifiedRespondBidirectionalEvent(requestId, serializedOutput, mpcResponseKey, events)` judge a request's posts without another walk of the event history. `signetEventRecordsOf` is the routing step both share. |
 | Derive the key the MPC signs your requests with | `deriveMidnightRequestSigningKey`: the request signing public key for a contract address and path, and `deriveEvmAddress`: that key's EVM address, the expected signer checked in step 2 (see [Derived keys](/midnight/protocol-flow#derived-keys)). With a request record in hand, `deriveSignBidirectionalEventSigningKey` and `deriveSignBidirectionalEventSignerEvmAddress` take the record and render its `sender` and `path` into the derivation themselves. |
 | Derive the response key your deploy pins | `deriveMidnightResponseKey`: the key `initialise` stores (setup step 4), derived from your contract's address. |
-| Look up published counterparty values | `MidnightNetwork`, `getMpcRootPublicKey`, `getSignetContractAddress` and `getResponderContractAddress`: the fixed per-network values (see the notes in [Runtime](/midnight/integrator-guide#runtime)). |
+| Look up published counterparty values | `MidnightNetwork`, `getMpcRootPublicKey`, `getSignerContractAddress` and `getResponderContractAddress`: the fixed per-network values (see the notes in [Runtime](/midnight/integrator-guide#runtime)). |
 | Accept an MPC public key in any published spelling | `parseSecp256k1PublicKey` (to a Compact `Secp256k1Point`) and `normaliseSecp256k1PublicKey` (to the canonical `0x04…` uncompressed SEC1 hex): both take SEC1 hex, compressed or uncompressed with an optional `0x`, and NEAR's `secp256k1:<base58>`. |
 | Read a text field of a request record | `asciiUnpadded`: the inverse of `asciiPadded`, for the zero-padded text fields (`executionDest`, `outputDeserializationSchema`). |
 | Compute a request id off chain | `calculateRequestId`: the TS twin of the on-chain circuit, plus `requestIdHex` and `parseRequestIdHex` for the hex form. |
 | Compose expected calldata words off chain (UIs, expected-record builders, tests) | The builders `numericAbiWord`, `evmAddressAbiWord` and `boolAbiWord`, and the readers `abiWordToUint128` and `abiWordToBool`: TS twins of the circuits under identical names. |
 | Digest a transaction decomposition off chain | `calculateEvmType2TxParamsDigest`: the TS twin of the circuit, what `calculateRequestId` hashes in place of the parameters. |
-| Rebuild the respond bytes the MPC attests for an executed EVM transaction | `executedEvmRespondOutput`: the request's `outputDeserializationSchema`, whether the transaction was a contract call (`isEvmContractCall` over its calldata) and its traced return data (`EvmTraceOutput`, read off a `debug_traceTransaction` callTracer frame by `evmTraceOutputFromCallFrame`) give the exact `serializedOutput` of steps 4 and 5, empty for an empty output schema. |
+| Rebuild the respond bytes the MPC attests for an executed EVM transaction | `executedEvmRespondOutput`: the request's `outputDeserializationSchema`, whether the transaction was a contract call (`isEvmContractCall` over its calldata) and its traced return data (`EvmTraceOutput`, read off a `debug_traceTransaction` callTracer frame by `evmTraceOutputFromCallFrame`, or off a Tron `/walletsolidity/gettransactioninfobyid` receipt by `evmTraceOutputFromTronReceipt`) give the exact `serializedOutput` of steps 4 and 5, empty for an empty output schema. |
 | Convert a foreign execution output into respond bytes | `deserializeEvmOutput` (raw EVM return data to named values) and `serializeRespondOutput` (named values to the attested Borsh bytes): the two conversions `executedEvmRespondOutput` runs on a contract call's return data. |
 | Know what an output schema attests to | `deriveRespondSchema` (the Borsh struct the MPC serialises with), `respondOutputWidth` (the `Bytes<N>` width a settle circuit declares) and `unsupportedEvmOutputFields` (the fields that make the MPC drop a request, without throwing). |
 | Recognise a failed remote execution | `OutputKind` on the verified `RespondBidirectionalEvent`: `failed` or `unviable` beside an empty output (see [Handling Failure](/midnight/protocol-flow#handling-failure)). |
-| Read the attested output bytes from the MPC's output cache | `MpcOutputCacheReader`: one reader per network and Signet singleton pair, over the public bucket an MPC configured with output storage writes each request's exact attested bytes to before posting, defaulting to the bucket `getMpcOutputCacheUrl` publishes for the network. `fetchSerializedOutput` yields the bytes step 5 verifies, `undefined` while the object is not in the cache (not written yet, or never written, since the cache is optional). |
+| Read the attested output bytes from the MPC's output cache | `MpcOutputCacheReader`: one reader per network and Signet signer pair, over the public bucket an MPC configured with output storage writes each request's exact attested bytes to before posting, defaulting to the bucket `getMpcOutputCacheUrl` publishes for the network. `fetchSerializedOutput` yields the bytes step 5 verifies, `undefined` while the object is not in the cache (not written yet, or never written, since the cache is optional). |
 | Hand a verified attestation to your verify circuit (runtime step 5) | `respondBidirectionalEventToCircuitInput`: flips the wire event's big-endian `bigR.x` and `s` into the little-endian record `verifyRespondBidirectionalEventV1` reads. |
 | Verify attestations without the reader | `verifyRespondBidirectionalEvent`: the full check the reader applies, exposed for custom pipelines. `verifyRespondBidirectionalAttestation` checks a post's signature without the output, `verifyAttestedOutput` checks an output against an attested width and hash, and `calculateAttestedOutputHash` gives the output hash a post commits to. |
-| Mint attestations in your contract's unit tests | The `@sig-net/midnight/testing` entry point, see [Testing entry point](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/signet-midnight/#testing-entry-point). |
-| Discover requests MPC-side (responders, background workers) | The discovery primitives: decode the signet contract's emitted notification events with `decodeSignetEventNamed(event, SignetEventName.SignBidirectionalEvent)`, which throws on a notification whose payload does not decode, so a loop over the live stream must catch and skip it (or every kind at once with `decodeSignetEvent`, which throws on an undecodable payload anyone can emit, or its non-throwing sibling `tryDecodeSignetEvent`), then resolve each pointer against the named caller's own request map with `lookupSignetRequestAt(state, callerAddress, requestsPath, requestId)` (the authenticated read: it returns a record only when the record's `sender` is the contract the state was read from and the record hashes to the request id). The polling loop belongs to the responder. |
+| Mint attestations in your contract's unit tests | The `@sig-net/midnight/testing` entry point, see [Testing entry point](/midnight/packages/midnight#testing-entry-point). |
+| Discover requests MPC-side (responders, background workers) | The discovery primitives: decode the signet signer's emitted notification events with `decodeSignetEventNamed(event, SignetEventName.SignBidirectionalEvent)` (or every kind at once with `decodeSignetEvent`, which throws on an undecodable payload anyone can emit, or its non-throwing sibling `tryDecodeSignetEvent`), then resolve each pointer against the named caller's own request map with `lookupSignetRequestAt` (the authenticated read). The polling loop belongs to the responder. |
 | Call the compiled protocol circuits | `pureCircuits`: the compiled pure circuits of `circuits.compact`: the non-generic circuits of `Signet.compact` under their own names, for example the notification packer, and fixed-size instances of the generic ones with the sizes in the name, for example `calculateEvmType2RequestIdV1_1_0_0_34`. Off-chain code calls these compiled artefacts, so it always agrees with what the contracts prove. |
 
 ### Testing entry point
@@ -113,9 +112,9 @@ const event = attestRespondBidirectional(
 
 ## Related packages
 
-- [`@sig-net/midnight-contract`](https://www.npmjs.com/package/@sig-net/midnight-contract): the central signet contract this library reads requests from.
+- [`@sig-net/midnight-signer`](https://www.npmjs.com/package/@sig-net/midnight-signer): the central signet signer this library reads requests from.
 - [`@sig-net/midnight-responder`](https://www.npmjs.com/package/@sig-net/midnight-responder): the signet responder this library reads the MPC's responses from.
-- [`@sig-net/midnight-contract-deploy`](https://www.npmjs.com/package/@sig-net/midnight-contract-deploy): deploy tooling for the signet contract and the signet responder plus generic Midnight deploy/wallet plumbing.
+- [`@sig-net/midnight-contract-deploy`](https://www.npmjs.com/package/@sig-net/midnight-contract-deploy): deploy tooling for the signet signer and the signet responder plus generic Midnight deploy/wallet plumbing.
 
 Developed in [sig-net/midnight-integration](https://github.com/sig-net/midnight-integration).
 

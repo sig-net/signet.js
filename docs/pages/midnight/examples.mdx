@@ -6,7 +6,7 @@
 
 This project is built on the Midnight Network.
 
-This monorepo holds experimental example contracts for Midnight. They use the Sig Network [Distributed MPC](https://github.com/sig-net/mpc) to execute arbitrary transactions on foreign blockchains, through the [Sign Bidirectional Protocol Flow](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/#sign-bidirectional-protocol-flow).
+The [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples) repository holds experimental example contracts for Midnight. They use the Sig Network [Distributed MPC](https://github.com/sig-net/mpc) to execute arbitrary transactions on foreign blockchains, through the [Sign Bidirectional Protocol Flow](/midnight/examples#sign-bidirectional-protocol-flow).
 
 The examples demonstrate how to integrate using the following packages:
 - [`@sig-net/midnight`](https://www.npmjs.com/package/@sig-net/midnight): the
@@ -20,9 +20,9 @@ The examples demonstrate how to integrate using the following packages:
   local e2e stack.
 
 ## Reading Guide
-- Start by reading the [Sign Bidirectional Protocol Flow](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/#sign-bidirectional-protocol-flow) to understand the fundamentals of the cross chain protocol.
-- Then go through the [Integrator Guide](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/#integrator-guide) to see how to wire your own applications with Sig Network to make cross chain calls.
-- Or jump straight into complete [Examples](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/#examples) to see applications of the protocol.
+- Start by reading the [Sign Bidirectional Protocol Flow](/midnight/examples#sign-bidirectional-protocol-flow) to understand the fundamentals of the cross chain protocol.
+- Then go through the [Integrator Guide](/midnight/examples#integrator-guide) to see how to wire your own applications with Sig Network to make cross chain calls.
+- Or jump straight into complete [Examples](/midnight/examples#examples) to see applications of the protocol.
 
 If you are looking for the parts of the Sig Network stack that these examples are built upon, visit:
 - [Midnight Integration Protocol and SDK Repository](https://github.com/sig-net/midnight-integration)
@@ -76,7 +76,7 @@ Setup entails:
 3. Declaring the required protocol state in your ledger: the `SignBidirectionalEventMapV1` your requests live in, the `SignetSigner` singleton reference your circuits invoke via cross contract call to notify the MPC of requests, the `mpcResponseKey` your circuits verify attestations against, and the highest target-chain height the contract has accepted (`lastSeen`) together with the height recorded for each request when it is made.
 4. Setting the contract's own `mpcResponseKey` with an initialisation circuit call after deploy (its derivation takes the contract's address as input, which exists only once the contract is deployed).
 
-At runtime you integrate the [Sign Bidirectional Protocol Flow above](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/#sign-bidirectional-protocol-flow):
+At runtime you integrate the [Sign Bidirectional Protocol Flow above](/midnight/examples#sign-bidirectional-protocol-flow):
 - **Steps 1** and **5** are circuits on your contract.
 - **Steps 2** and **4** are performed by the MPC. **Step 3**, and the watching for the MPC's posts from steps 2 and 4, are off-chain client/dApp/relayer code built on the readers and helpers in `@sig-net/midnight`.
 
@@ -84,7 +84,7 @@ Consult the [Integrator Guide documentation](/midnight/integrator-guide) in the 
 
 # Contributor Guide
 
-First install the [Prerequisites](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/#prerequisites), then get set up for contributing by getting both test layers green: the offline unit tests, then the end to end integration suites.
+First install the [Prerequisites](/midnight/examples#prerequisites), then get set up for contributing by getting both test layers green: the offline unit tests, then the end to end integration suites.
 
 Every change must also pass the linter and the formatter, which CI enforces on every pull request. One ESLint flat config (`eslint.config.js`) and one Prettier config (`.prettierrc.json`) at the repo root cover all packages, so there is nothing to configure per package. In VS Code, install the two recommended extensions the editor offers on first open (`dbaeumer.vscode-eslint` and `esbenp.prettier-vscode`) and both run on save.
 
@@ -181,7 +181,7 @@ For more detail on the ERC20 vault example and on running its e2e suite (a fresh
 **NOTE:** every `compact compile` against this stack must pass the
 `--feature-zkir-v3` flag: it is part of the pinned ledger-9 matched set
 (compiler, node, indexer, proof server), and output compiled without it is not
-compatible with that stack. This repository's compile scripts already pass it.
+compatible with that stack. The `sig-net/midnight-examples` compile scripts already pass it.
 Integrators compiling their own contracts must pass it themselves, as shown in
 the [Integrator Guide](/midnight/integrator-guide).
 

@@ -1,8 +1,8 @@
-{/* Imported from sig-net/midnight-integration packages/signet-contract/README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+{/* Imported from sig-net/midnight-integration packages/signet-signer/README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
 
-# @sig-net/midnight-contract
+# @sig-net/midnight-signer
 
-The central [Sig Network](https://sig.network) signet contract on the [Midnight blockchain](https://midnight.network): the singleton that exposes the MPC's [sign bidirectional flow](/midnight/protocol-flow) to other Midnight contracts. Integrating contracts notify it of their requests through `signBidirectional`, which emits a named contract event the MPC polls. The MPC posts its responses to the [signet responder](https://www.npmjs.com/package/@sig-net/midnight-responder), and clients poll that contract's events.
+The central [Sig Network](https://sig.network) signet signer on the [Midnight blockchain](https://midnight.network): the contract that exposes the MPC's [sign bidirectional flow](/midnight/protocol-flow) to other Midnight contracts. Integrating contracts notify it of their requests through `signBidirectional`, which emits a named contract event the MPC polls. The MPC posts its responses to the [signet responder](https://www.npmjs.com/package/@sig-net/midnight-responder), and clients poll that contract's events.
 
 ## What is in it
 
@@ -14,7 +14,7 @@ Consumers import the package root. The `./managed/*` paths exist only for runtim
 ## Install
 
 ```sh
-npm install @sig-net/midnight-contract
+npm install @sig-net/midnight-signer
 ```
 
 ## Documentation

@@ -29,9 +29,9 @@ action.
 
 | Circuit(s) | What it does |
 |---|---|
-| [`initialise`](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#setup-step-4-pin-the-derived-addresses-and-the-response-key) | Deployment setup rather than an MPC flow: the deployer-gated one-shot that pins the vault's derived EVM address, the EVM chain, the Uniswap router, the Aave stataToken pair, the MPC response key and the EVM height attestations must exceed. |
+| [`initialise`](/midnight/erc20-vault#setup-step-4-pin-the-derived-addresses-and-the-response-key) | Deployment setup rather than an MPC flow: the deployer-gated one-shot that pins the vault's derived EVM address, the EVM chain, the Uniswap router, the Aave stataToken pair, the MPC response key and the EVM height attestations must exceed. |
 | `setGasParams` | The deployer resets the fee envelope and the per-action gas limits of the transactions the vault's own account signs. A request keeps the values it was started with. |
-| `addAllowedToken` / `setTokenFees` | The deployer allows one more ERC20 into the vault, with the flat fee each fee-charging action takes on it, and reprices an allowed token's fees later. `startDeposit` accepts only an allowed ERC20, and `startSwap` buys only an allowed `erc20AddressOut`. `initialise` allows the stata pair itself, and no circuit removes a token. Check a token against [Whitelisting](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#whitelisting) before you allow it. |
+| `addAllowedToken` / `setTokenFees` | The deployer allows one more ERC20 into the vault, with the flat fee each fee-charging action takes on it, and reprices an allowed token's fees later. `startDeposit` accepts only an allowed ERC20, and `startSwap` buys only an allowed `erc20AddressOut`. `initialise` allows the stata pair itself, and no circuit removes a token. Check a token against [Whitelisting](/midnight/erc20-vault#whitelisting) before you allow it. |
 | `setFeeRecipient` | The deployer moves the wallet every fee coin is minted to: its coin public key and the encryption public key clients encrypt the coin's ciphertext to. `initialise` names the first one. |
 | [`flushQueue`](/midnight/erc20-vault/contention-handling#the-flush) | The only writer of `globalLastSeen` after `initialise` and of `vaultAccountNonce`: moves up to 10 queued requests and attestations into the output buffers, assigning each vault-signed request the vault account's next EVM nonce. Anyone may submit it. |
 | [`queueAttestation`](/midnight/erc20-vault/contention-handling#why-the-queue-needs-no-output) | Verify an MPC attestation's signature over the output width and hash it carries, and queue it for the flush, whatever the output's width. Anyone may submit one. |
@@ -66,12 +66,12 @@ The actor map lays out every actor in the example and the vault contract's
 anatomy: its exported circuits, its witness and its exported ledger fields.
 
 The edges it draws are the dashed key derivations (see
-[Derived keys and accounts](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#derived-keys-and-accounts)) plus the three
+[Derived keys and accounts](/midnight/erc20-vault#derived-keys-and-accounts)) plus the three
 standing responsibilities of the dApp/relayer: picking up the singleton's
 `SignatureRespondedEvent`s and `RespondBidirectionalEvent`s, and broadcasting
 the MPC-signed transactions. Every other runtime interaction between these
 actors belongs to a specific MPC flow, and each flow's own walkthrough page
-draws and describes its steps (see [The flows](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#the-flows)).
+draws and describes its steps (see [The flows](/midnight/erc20-vault#the-flows)).
 
 - **Sig Network Distributed MPC**: signs requested transactions with keys
   derived for the requesting contract, and attests their execution outcomes.
@@ -81,7 +81,7 @@ draws and describes its steps (see [The flows](https://github.com/sig-net/midnig
   and through which the MPC posts its responses as contract events, and the
   **ERC20 Vault Contract**, this example's contract, whose exported circuits
   appear on the map and are listed in
-  [The vault's circuits](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#the-vaults-circuits).
+  [The vault's circuits](/midnight/erc20-vault#the-vaults-circuits).
 - **EVM Blockchain (target chain)** hosts what the vault transacts with:
   the ERC20 token contract being bridged, the Uniswap V3 router (swap) and
   the Aave stataToken wrapper (supply / redeem), the vault's own derived EVM
@@ -102,7 +102,7 @@ draws and describes its steps (see [The flows](https://github.com/sig-net/midnig
 - **Users**: each user holds a Midnight wallet (calls the circuits and
   receives the shielded vault tokens), their own EVM wallet, and a derived
   EVM deposit account the MPC signs deposit sweeps from (see
-  [Derived keys and accounts](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#derived-keys-and-accounts)).
+  [Derived keys and accounts](/midnight/erc20-vault#derived-keys-and-accounts)).
 
 ## The underlying protocol
 
@@ -129,7 +129,7 @@ token can have 18 decimals: one deposit, withdraw or swap of it moves at most
 The attested output of a supply or redeem is not known at start. If it reaches
 `2^64`, the settle circuit can never succeed, and the funds stay locked. So the
 stata pair must stay below `2^64` in total supply, in base units (see
-[Choosing the Supply and Redeem Pair](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#choosing-the-supply-and-redeem-pair)).
+[Choosing the Supply and Redeem Pair](/midnight/erc20-vault#choosing-the-supply-and-redeem-pair)).
 
 This limit is temporary. We are working to support 18-decimal tokens. Progress
 is tracked in [#100](https://github.com/sig-net/midnight-examples/issues/100).
@@ -141,7 +141,7 @@ every time: add the protocol dependencies, import the Signet module, declare
 the protocol-required ledger fields, and pin the derived addresses and the
 response key after deploy. Read
 [Integration guide](/midnight/examples#integrator-guide) in the repo README for
-that overview, and the [Integration walkthrough](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#integration-walkthrough)
+that overview, and the [Integration walkthrough](/midnight/erc20-vault#integration-walkthrough)
 below for the vault's own code, step by step.
 
 ## The flows
@@ -228,7 +228,7 @@ hex of the identity commitment (see the shared setup section of the
 Integrating the vault with the Sig Network MPC consists of 4 once-off
 **setup** steps, run once per vault deployment, after which each flow runs its
 own per-request **runtime** steps, documented flow by flow in the walkthrough
-pages listed under [The flows](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#the-flows). Each Compact snippet is abridged
+pages listed under [The flows](/midnight/erc20-vault#the-flows). Each Compact snippet is abridged
 from [`contract/src/erc20-vault.compact`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract/src/erc20-vault.compact),
 which is laid out in banner sections: `Configuration`, the admin sections
 that send no EVM transaction (`Initialisation`, `Gas settings`, `Allowed tokens`), the
@@ -359,7 +359,7 @@ and the vault's readers (`swapAmountIn`, `supplyShares`, `redeemAssets`) narrow
 it in-circuit: the SDK's `checkedTruncationU128` to `Uint<128>`, then a checked
 cast to the `Uint<64>` the mint API takes, so an attested value at or above
 `2^64` fails the settle circuit under a valid signature (see
-[Supported tokens](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#supported-tokens)). The simulator tests
+[Supported tokens](/midnight/erc20-vault#supported-tokens)). The simulator tests
 exercise those bounds and decode SDK-produced bytes with the compiled circuits.
 Failed and unviable outcomes carry an empty output, and so does an executed
 nonce replacement: its settle verifies at width 0 and closes the request on
@@ -514,7 +514,7 @@ the deposit round trip, from funding the deposit account through
 
 ## Running it
 
-Everything runs from the repo root against the local docker stack (Midnight
+Everything runs from the root of the `sig-net/midnight-examples` repository against the local docker stack (Midnight
 node, indexer, proof server, anvil forking Sepolia, fakenet MPC responder).
 The anvil service forks Sepolia so the real Uniswap V3 deployment and real
 USDC are present, so `SEPOLIA_FORK_RPC_URL` MUST be in `.env` before the
@@ -553,7 +553,7 @@ yarn setup-local:erc20-vault        # deploy signet + vault, initialise, allow E
 It runs the suite's own setup steps in-process, then the deploy package's
 `initialise`, then allows every ERC20 `EVM_ALLOWED_TOKENS` lists (each with
 the fees `VAULT_TOKEN_FEES` or the flat `VAULT_FEE_*` variables set, see
-[Deploying](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#deploying)), and appends
+[Deploying](/midnight/erc20-vault#deploying)), and appends
 every value it generated to `.env` under the names the suite reads: the role
 wallet seeds, `MPC_ROOT_KEY`, `MPC_SECP256K1_PUBKEY`, both contract addresses,
 `MPC_RESPONSE_KEY`, the derived EVM addresses, `EVM_CHAIN_ID`,
@@ -922,7 +922,7 @@ proof server restarts and resume vars between failures for you.
 
 # Vault Operator Guidelines
 
-The operator is the vault's deployer. [The vault's circuits](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#the-vaults-circuits)
+The operator is the vault's deployer. [The vault's circuits](/midnight/erc20-vault#the-vaults-circuits)
 lists every deployer-only circuit. This section covers the two duties that need
 ongoing care: fee setting and token whitelisting. The operator's choices decide
 three things:
@@ -1045,7 +1045,7 @@ erc20-vault example:
 
 | Package | Directory | What a consumer gets |
 | ------- | --------- | -------------------- |
-| `@sig-net/midnight-examples-erc20-vault-contract` | [`contract/`](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract) | The contract's export surface, its compiled `managed/` assets minus the prover keys (the generated module, the binary zkir, the verifier keys, the integrity manifest, and the signet callee's generated module), the `.compact` source, and the `erc20-vault-zk-assets` bin that regenerates the prover keys (see [Regenerating the zk assets](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/#regenerating-the-zk-assets)) |
+| `@sig-net/midnight-examples-erc20-vault-contract` | [`contract/`](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/contract) | The contract's export surface, its compiled `managed/` assets minus the prover keys (the generated module, the binary zkir, the verifier keys, the integrity manifest, and the signet callee's generated module), the `.compact` source, and the `erc20-vault-zk-assets` bin that regenerates the prover keys (see [Regenerating the zk assets](/midnight/erc20-vault#regenerating-the-zk-assets)) |
 
 The deploy package and [`packages/lib`](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/packages/lib) it runs on stay
 private: they are consumed only inside this workspace, by the entrypoints and

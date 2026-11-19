@@ -1,4 +1,4 @@
-{/* Imported from sig-net/midnight-integration README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+{/* Imported from sig-net/midnight-integration README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
 
 # Prerequisites
 
@@ -21,13 +21,13 @@ These versions move together. Bumping one alone produces a stack that compiles b
 
 | Component | Version | Pinned in |
 | ------- | ------ | ------ |
-| `@sig-net/*` npm packages | 0.26.0-rc.8 | [`packages/*/package.json`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages) |
-| fakenet MPC responder | `ghcr.io/sig-net/fakenet:0.38.0` | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docker-compose.yaml) |
-| Compact compiler | 0.36.0 | [`.github/workflows/ci.yml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/.github/workflows/ci.yml), [`.github/workflows/publish.yml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/.github/workflows/publish.yml), [`.github/workflows/deploy.yml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/.github/workflows/deploy.yml) |
-| Midnight node | 2.1.101 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docker-compose.yaml) |
-| Midnight indexer | 4.4.101 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docker-compose.yaml) |
-| Midnight proof server | 9.0.1 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docker-compose.yaml) |
-| `@midnightntwrk/ledger-v9` | 1.0.1 | [`package.json`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/package.json) resolutions |
-| MinoCrab | `sig-net/minocrab` rev `b41babe`, with the `midnight-*` crates it locks (`midnight-ledger-v9` 1.0.1, `midnight-zkir` 3.2.0) | [`packages/signet-responder/minocrab/Cargo.toml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/signet-responder/minocrab/Cargo.toml) |
+| `@sig-net/*` npm packages | 0.27.0-rc.3 | [`packages/*/package.json`](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages) |
+| fakenet MPC responder | `ghcr.io/sig-net/fakenet:0.41.0` | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| Compact compiler | 0.36.0 | [`.github/workflows/ci.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/ci.yml), [`.github/workflows/publish.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/publish.yml), [`.github/workflows/deploy.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/deploy.yml) |
+| Midnight node | 2.1.101 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| Midnight indexer | 4.4.101 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| Midnight proof server | 9.0.1 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| `@midnightntwrk/ledger-v9` | 1.0.1 | [`package.json`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/package.json) resolutions |
+| MinoCrab | `sig-net/minocrab` rev `b41babe`, with the `midnight-*` crates it locks (`midnight-ledger-v9` 1.0.1, `midnight-zkir` 3.2.0) | [`packages/signet-responder/minocrab/Cargo.toml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/signet-responder/minocrab/Cargo.toml) |
 
-**NOTE:** each fakenet release names the `@sig-net` version it was built against ([`fakenet-v*` tags](https://github.com/sig-net/solana-signet-program/tags)). The real-EVM integration flow reads the responder's output cache simulation on port 3040 (mapped by [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docker-compose.yaml)), the fakenet twin of the MPC's output storage bucket (see [Output Recovery and Serialisation](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#output-recovery-and-serialisation)).
+**NOTE:** each fakenet release names the `@sig-net` version it was built against ([`fakenet-v*` tags](https://github.com/sig-net/solana-signet-program/tags)). The real-EVM integration flow reads the responder's output cache simulation on port 3040 (mapped by [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml)), the fakenet twin of the MPC's output storage bucket (see [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation)).

@@ -1,11 +1,11 @@
-{/* Imported from sig-net/midnight-integration README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+{/* Imported from sig-net/midnight-integration README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
 
 # Integrator Guide
 
 A signet-compliant client contract:
 
 - it stores its requests in a public `SignBidirectionalEventMapV1` in its own ledger
-- it pins its counterparties: the Signet singleton contract and its own MPC response key
+- it pins its counterparties: the Signet signer and its own MPC response key
 - it submits signature requests
 - it verifies execution responses in-circuit
 - it records the target-chain height known when each request is made and accepts only responses above that height
@@ -19,7 +19,7 @@ Integrating a contract on Midnight with the Sig Network MPC consists of:
 
 Set up your contract for integration with the Sig Network MPC's sign bidirectional flow. This basic example targets one target chain, Ethereum (here on Sepolia), so it uses one `lastSeen` height. This is the highest target-chain height the contract has accepted in an attestation, initially zero, not a height supplied by the client. A contract supporting multiple target chains needs a separate `lastSeen` per chain.
 
-> **⚠️ WARNING:** For clarity, the Setup and Runtime steps read and write `lastSeen` naively directly from the circuits every user calls. This naive approach is taken for demonstration purposes. Do not ship it: every request and every attestation reads the single `lastSeen` value, and attestations write it. On Midnight a transaction that reads a value fails if that value changes before the transaction lands, so only one attestation can be processed at a time, and every other request or attestation in flight at that moment fails and must be proven again. Under load, or against someone deliberately sending attestations as fast as they can, users' requests and attestations keep failing and may never land. Ship the buffer-and-flush pattern in [Preventing Contention on `lastSeen`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#preventing-contention-on-lastseen) instead, as the ERC20 vault example does.
+> **⚠️ WARNING:** For clarity, the Setup and Runtime steps read and write `lastSeen` naively directly from the circuits every user calls. This naive approach is taken for demonstration purposes. Do not ship it: every request and every attestation reads the single `lastSeen` value, and attestations write it. On Midnight a transaction that reads a value fails if that value changes before the transaction lands, so only one attestation can be processed at a time, and every other request or attestation in flight at that moment fails and must be proven again. Under load, or against someone deliberately sending attestations as fast as they can, users' requests and attestations keep failing and may never land. Ship the buffer-and-flush pattern in [Preventing Contention on `lastSeen`](/midnight/integrator-guide#preventing-contention-on-lastseen) instead, as the ERC20 vault example does.
 
 1. Add the protocol library to your project:
    ```sh
@@ -36,9 +36,9 @@ Set up your contract for integration with the Sig Network MPC's sign bidirection
    COMPACT_PATH=node_modules compact compile src/my-contract.compact src/managed/my-contract
    ```
 
-   The Compact toolchain requirements in [Prerequisites](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#prerequisites) apply to integrators too: compile with the pinned compiler version (currently `compact update 0.36.0`).
+   The Compact toolchain requirements in [Prerequisites](/midnight/prerequisites) apply to integrators too: compile with the pinned compiler version (currently `compact update 0.36.0`).
 
-3. Declare the required Sig Network protocol state in your ledger (plus recommended deployer identity and initialisation state). The event map can sit at ANY ledger field. Each notification call your contract makes passes the stored request's id beside a notification that carries the map's resolved ledger-tree path (see [The Request Map's Ledger-Tree Path](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#the-request-maps-ledger-tree-path)), and the MPC looks the authenticated request up there by that id.
+3. Declare the required Sig Network protocol state in your ledger (plus recommended deployer identity and initialisation state). The event map can sit at ANY ledger field. Each notification call your contract makes passes the stored request's id beside a notification that carries the map's resolved ledger-tree path (see [The Request Map's Ledger-Tree Path](/midnight/integrator-guide#the-request-maps-ledger-tree-path)), and the MPC looks the authenticated request up there by that id.
 
    ```compact
    // Required: Map of SignBidirectionalEvent signature requests, configured by transaction type.
@@ -51,7 +51,7 @@ Set up your contract for integration with the Sig Network MPC's sign bidirection
    // Snapshot lastSeen per request so later responses cannot move its threshold.
    export ledger heightAtRequest: Map<RequestId, Uint<64>>;
 
-   // Required: The Signet singleton signer interface, set at deploy.
+   // Required: The SignetSigner interface, set at deploy.
    // Used to notify the MPC of events you add to your signBidirectionalEventMap.
    sealed ledger signetSigner: SignetSigner;
 
@@ -75,15 +75,15 @@ Set up your contract for integration with the Sig Network MPC's sign bidirection
      return upgradeFromTransient(transientHash<Vector<2, Bytes<32>>>([pad(32, "my-contract:deployer:"), sk]));
    }
 
-   // Required: set signet contract and (recommended) deployer commitment on deployment.
-   constructor(signetContract: SignetSigner, deployerCommitment: Bytes<32>) {
-     signetSigner = disclose(signetContract);
+   // Required: set signet signer and (recommended) deployer commitment on deployment.
+   constructor(signetSigner: SignetSigner, deployerCommitment: Bytes<32>) {
+     signetSigner = disclose(signetSigner);
      deployer = disclose(deployerCommitment);
      lastSeen = 0;
    }
    ```
 
-4. Set the contract's MPC response key once, right after deploy. Deriving this key requires the address of the contract, which only exists after deploy (see [Response Key](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#response-key)):
+4. Set the contract's MPC response key once, right after deploy. Deriving this key requires the address of the contract, which only exists after deploy (see [Response Key](/midnight/protocol-flow#response-key)):
 
    ```compact
    export circuit initialise(responseKey: Secp256k1Point): [] {
@@ -109,10 +109,10 @@ The path shape comes from how compactc lays out state. The compiler packs a cont
 
 Do not derive the path by hand: the compiler records it in your compiled artifacts. Compile your contract, then look up your map's `"index"` in `managed/<contract>/compiler/contract-info.json` (a bare number `4` means path `[4]`). The generated `managed/<contract>/contract/index.js` accessors walk the same indices, for example `state.asArray()[1].asArray()[14]` for a map recorded at `[1, 14]`. That path packs as `requestsPathDepth = 2` and `requestsPath = [1, 14, 0, 0]`.
 
-The two caller contracts in this repository are worked examples of each case:
+The two caller contracts in the `sig-net/midnight-integration` repository are worked examples of each case:
 
-- [`packages/test-caller-contract`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/test-caller-contract): the flat case, where its 9-field ledger stores the bool-schema request map at field 3 and a second map at field 6, so notifications carry depth `1` and path `[3, 0, 0, 0]` or `[6, 0, 0, 0]`.
-- [`packages/test-caller-contract-20-field`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/test-caller-contract-20-field): the chunked case, where its 20 fields split 5 + 15, so the map at field 19 packs as depth `2` and path `[1, 14, 0, 0]`.
+- [`packages/test-caller-contract`](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/test-caller-contract): the flat case, where its 9-field ledger stores the bool-schema request map at field 3 and a second map at field 6, so notifications carry depth `1` and path `[3, 0, 0, 0]` or `[6, 0, 0, 0]`.
+- [`packages/test-caller-contract-20-field`](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/test-caller-contract-20-field): the chunked case, where its 20 fields split 5 + 15, so the map at field 19 packs as depth `2` and path `[1, 14, 0, 0]`.
 
 ## Runtime
 
@@ -120,7 +120,7 @@ Each interaction with your contract that executes a transaction on a foreign cha
 
 Steps 1 and 5 are circuits on your contract, and steps 2 to 4 are off-chain client code built on the utilities in `@sig-net/midnight`.
 
-The off-chain steps share one `SignetRequestResponseReader` over your contract / Signet responder pair, and the expected signer of the requested transaction (the key the MPC derives for your contract and the request's path, see [Derived Keys](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#derived-keys)):
+The off-chain steps share one `SignetRequestResponseReader` over your contract / Signet responder pair, and the expected signer of the requested transaction (the key the MPC derives for your contract and the request's path, see [Derived Keys](/midnight/protocol-flow#derived-keys)):
 
 ```ts
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
@@ -157,9 +157,8 @@ const reader = new SignetRequestResponseReader({
    // responder emits, queried from the same indexer
    eventSource: signetEventSourceFromIndexer({ queryUrl: indexerUrl }),
 
-   // Lowest Midnight block a request's first scan for responses starts at: the
-   // tip, taken BEFORE the first request is submitted (see "Bounding the event
-   // scan" below)
+   // Lowest Midnight block to scan for responses: the tip, taken BEFORE
+   // the first request is submitted (see "Bounding the event scan" below)
    responderEventsFromBlock: (await publicDataProvider.queryBlock())?.height,
 });
 
@@ -174,15 +173,13 @@ const expectedSigner = deriveEvmAddress(
 
 #### Bounding the event scan
 
-`responderEventsFromBlock` is where the reader's first scan for a request's responses starts, which otherwise walks the Signet responder's whole history. Set it to the block just before the oldest request whose responses are still pending. Responses are emitted after their request, so it must not exceed the block in which that request was submitted: a fresh client takes the tip before its first request, a client resuming earlier requests uses the oldest pending request's block or omits the field. A value too high does not fail, it hides responses. Direct consumers of `streamSignetEvents` pass the same bound as `{ fromBlock }`.
+`responderEventsFromBlock` bounds the event scan the reader runs on every poll, which otherwise walks the Signet responder's whole history. Responses are emitted after their request, so it must not exceed the block in which the oldest request you still expect responses for was submitted: a fresh client takes the tip before its first request, a client resuming earlier requests uses the oldest pending request's block or omits the field. A value too high does not fail, it hides responses. Direct consumers of `streamSignetEvents` pass the same bound as `{ fromBlock }`.
 
-Keep one reader for the life of the client and poll through it. Per request it remembers the indexer event it has read up to, so each later poll resumes from that event's block and skips the events it has already read. It also keeps the distinct responses it has read (a post repeated byte for byte is one candidate) with each one's verification outcome, so no response is verified twice, however many invalid posts a third party leaves under your request id. Once a valid response has been read, the verifying getters return it without another scan.
-
-> **mpcRootPublicKey** is the root public key of the MPC network. On a local stack there is no fixed value: this repository's [integration-test setup](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/packages/integration-tests) generates a fresh `MPC_ROOT_KEY`, prints it during setup and appends it to the repo-root `.env`. For the public networks (stagenet, preview, preprod, mainnet) the fixed values are published in `@sig-net/midnight` via `getMpcRootPublicKey`, as `0x04…` uncompressed SEC1 hex (stagenet's and preview's are published, the others are placeholders until each network's key is). Every key entry point (`deriveEvmAddress`, `deriveMidnightResponseKey`, `parseSecp256k1PublicKey`) also accepts NEAR's `secp256k1:<base58>` spelling, the one signet.js and the MPC operators currently publish keys in, and `normaliseSecp256k1PublicKey` converts any spelling to the canonical one.
+> **mpcRootPublicKey** is the root public key of the MPC network. On a local stack there is no fixed value: the `sig-net/midnight-integration` [integration-test setup](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/integration-tests) generates a fresh `MPC_ROOT_KEY`, prints it during setup and appends it to the `.env` at the root of that repository. For the public networks (preview, preprod, mainnet) the fixed values are published in `@sig-net/midnight` via `getMpcRootPublicKey`, as `0x04…` uncompressed SEC1 hex. Every key entry point (`deriveEvmAddress`, `deriveMidnightResponseKey`, `parseSecp256k1PublicKey`) also accepts NEAR's `secp256k1:<base58>` spelling, the one signet.js and the MPC operators currently publish keys in, and `normaliseSecp256k1PublicKey` converts any spelling to the canonical one.
 >
 > **responderContractAddress** is the address of the deployed Signet responder contract. On a local stack the same setup deploys a fresh responder, prints the address as `MIDNIGHT_RESPONDER_CONTRACT_ADDRESS` and appends it to `.env`. For the public networks the addresses are published in `@sig-net/midnight` via `getResponderContractAddress` (placeholders until each deployment lands).
 
-1. Store a signature request and notify the MPC via cross contract call. Build (or overwrite) every part of the transaction your contract enforces in-circuit, calldata above all (see [EVM Type 2 Transactions and ABI Calldata Words](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#evm-type-2-transactions-and-abi-calldata-words)). Never pass caller input through unchecked:
+1. Store a signature request and notify the MPC via cross contract call. Build (or overwrite) every part of the transaction your contract enforces in-circuit, calldata above all (see [EVM Type 2 Transactions and ABI Calldata Words](/midnight/integrator-guide#evm-type-2-transactions-and-abi-calldata-words)). Never pass caller input through unchecked:
 
    ```compact
    assert(initialised == 1, "Not initialised");
@@ -214,18 +211,12 @@ Keep one reader for the life of the client and poll through it. Per request it r
 
    **NOTE:** Return `requestId` from this circuit call so the client can use it in the next steps. You can also compute it off-chain with the `calculateRequestId` TS twin. Both give the raw 32 bytes, and the reader methods below take the id as hex, so convert it once with `requestIdHex(requestId)` from `@sig-net/midnight` and pass that value as `requestId` in steps 2 to 4.
 
-   **NOTE:** Never make a request that was already answered. The `Request already outstanding` check above stops a second copy only while the first is still open. When step 5 settles a request, it removes the request from `signBidirectionalEventMap`, so a later copy passes the check. That copy never gets a response, because its transaction already ran or can never run. To try again, make a new request with a new nonce.
-
-   **NOTE:** Never make a request with a nonce that is already used. Its transaction can never run, and the MPC does not report this, so the request stays open forever.
-
 2. Poll the Signet responder for the MPC's signature response. The responder emits each response as a contract event that carries the request id it answers beside the signature. The id is unauthenticated routing data: it scopes the read to your request's posts and proves nothing. The event log is unauthenticated (anyone can post under any id), so use the verifying getter. It only returns a post whose signature recovers to `expectedSigner` over the signing hash of the requested transaction:
 
    ```ts
-   const verified = await reader.getVerifiedSignatureRespondedEvent(requestId, expectedSigner);
+   const { verified } = await reader.getVerifiedSignatureRespondedEvent(requestId, expectedSigner);
    // verified === undefined: no valid response posted yet, poll again.
    ```
-
-   The getter stops at the first valid post. To see why the other posts under your request id were rejected, `reader.getSignatureResponseVerdicts(requestId, expectedSigner)` returns a verdict for each of them.
 
 3. Construct the signed transaction and submit it to the foreign chain. The reader rebuilds the transaction from the request record on your ledger and attaches the verified MPC signature:
 
@@ -248,7 +239,7 @@ Keep one reader for the life of the client and poll through it. Per request it r
    // undefined: no attestation of that output posted yet, poll again.
    ```
 
-5. Deliver the response and the serialised output to your contract, which checks the output against the posted width and hash, recomputes the attestation digest, requires the posted digest to equal it, verifies the event in-circuit against the response key pinned in Setup step 4, and consumes the request the event names. The digest binds that request id, so consume it from the verified event and never an id taken from elsewhere. The wire event carries `bigR.x` and `s` big-endian and the circuit reads them little-endian, so hand the circuit the flipped record:
+5. Deliver the response and the serialised output to your contract, which checks the output against the posted width and hash, recomputes the attestation digest, verifies the event in-circuit against the response key pinned in Setup step 4, and consumes the request the event names. The digest binds that request id, so consume it from the verified event and never an id taken from elsewhere. The wire event carries `bigR.x` and `s` big-endian and the circuit reads them little-endian, so hand the circuit the flipped record:
 
    ```ts
    const circuitInput = respondBidirectionalEventToCircuitInput(respondBidirectionalEvent);
@@ -256,7 +247,7 @@ Keep one reader for the life of the client and poll through it. Per request it r
 
    Verify the signature before trusting the height. Compare it with the `heightAtRequest` snapshot from step 1, then advance `lastSeen` without ever decreasing it. Complete the checks, remove the request and run your application logic in the same transaction so a failure rolls back all of them.
 
-   The width argument is the exact width your output schema derives under the mapping in [Output Recovery and Serialisation](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#output-recovery-and-serialisation) (a single `bool` is 1 byte, a `uint256` 32):
+   The width argument is the exact width your output schema derives under the mapping in [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation) (a single `bool` is 1 byte, a `uint256` 32):
 
    ```compact
    assert(initialised == 1, "Not initialised");
@@ -282,15 +273,15 @@ Keep one reader for the life of the client and poll through it. Per request it r
 
    For example, a request made when `lastSeen` is 100 records `heightAtRequest[requestId] = 100`. Its response must attest a height above 100. If another response advances `lastSeen` to 120 first, this request can still accept height 110, and `lastSeen` stays 120. Comparing against the current `lastSeen` would incorrectly reject that response.
 
-   **⚠️ WARNING:** Steps 1 and 5 as written both read the single `lastSeen` value and step 5 writes it, the naive form the WARNING under [Setup](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#setup) describes: ship the buffer-and-flush form in [Preventing Contention on `lastSeen`](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#preventing-contention-on-lastseen) instead.
+   **⚠️ WARNING:** Steps 1 and 5 as written both read the single `lastSeen` value and step 5 writes it, the naive form the WARNING under [Setup](/midnight/integrator-guide#setup) describes: ship the buffer-and-flush form in [Preventing Contention on `lastSeen`](/midnight/integrator-guide#preventing-contention-on-lastseen) instead.
 
-   Apply the same height check, maximum update and request cleanup to `failed` and `unviable` responses, verifying their empty output at width 0. Route on the verified kind: see [Handling Failure](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#handling-failure).
+   Apply the same height check, maximum update and request cleanup to `failed` and `unviable` responses, verifying their empty output at width 0. Route on the verified kind: see [Handling Failure](/midnight/protocol-flow#handling-failure).
 
    Preserve `lastSeen`, `heightAtRequest` and outstanding requests across upgrades. The SDK verification circuit authenticates the response but the integrating contract maintains and checks these records. See [the protocol's library rules](https://github.com/sig-net/mpc/blob/develop/doc/bidirectional-calls.md#41-library-inside-the-application-contract).
 
 ## Preventing Contention on `lastSeen`
 
-The Runtime steps above handle `lastSeen` naively, with the consequences the WARNING under [Setup](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#setup) states. This section describes a general fix, a buffer-and-flush pattern, in sketch form. The ERC20 cross chain vault in [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples/tree/main/examples/erc20-vault) integrates the full pattern, where it handles contention on `lastSeen` and on the vault account's EVM nonce assignment alike. Its [contention handling](/midnight/erc20-vault/contention-handling) document is the complete reference.
+The Runtime steps above handle `lastSeen` naively, with the consequences the WARNING under [Setup](/midnight/integrator-guide#setup) states. This section describes a general fix, a buffer-and-flush pattern, in sketch form. The ERC20 cross chain vault in [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples/tree/main/examples/erc20-vault) integrates the full pattern, where it handles contention on `lastSeen` and on the vault account's EVM nonce assignment alike. Its [contention handling](/midnight/erc20-vault/contention-handling) document is the complete reference.
 
 The problem in detail. A Midnight transaction is proven against the ledger state its prover saw, and every value it read must still hold when it reaches the chain. Step 1 reads `lastSeen` to snapshot it into `heightAtRequest`, and step 5 reads it and may update it to raise it. So every response that updates `lastSeen` invalidates every request and every response proven against the previous value, and each of those must be re-proven and resubmitted. Step 5 is the expensive one to re-prove, as `verifyRespondBidirectionalEventV1` runs an ECDSA verification in-circuit. A stale read in the transaction's guaranteed section rejects the transaction without a fee, one in the fallible section lands as a failure and still pays. Ordinary concurrent use produces this on its own, and anyone can turn it into a denial of service by delivering responses that advance `lastSeen` as fast as they can prove them, so that honest requests and settlements are rejected again on every retry and never land.
 
@@ -321,7 +312,7 @@ export ledger inputAttestationBuffer: Map<RequestId, AttestationRecord>;
 export ledger outputAttestationBuffer: Map<RequestId, AttestationRecord>;
 ```
 
-Runtime step 1 splits in two. The request circuit only queues, so the only shared value it reads is `initialised`, which nothing writes after `initialise`. Its `lastSeen` snapshot must be taken before the MPC learns of the request, otherwise a response could land at a height the snapshot later overtakes, so the notification moves into a send circuit that runs after the flush. The send stores the request in `signBidirectionalEventMap` and notifies in the same circuit, as the partial-success rule in [Sign Bidirectional Event Discovery & Verification](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#sign-bidirectional-event-discovery--verification) requires:
+Runtime step 1 splits in two. The request circuit only queues, so the only shared value it reads is `initialised`, which nothing writes after `initialise`. Its `lastSeen` snapshot must be taken before the MPC learns of the request, otherwise a response could land at a height the snapshot later overtakes, so the notification moves into a send circuit that runs after the flush. The send stores the request in `signBidirectionalEventMap` and notifies in the same circuit, as the partial-success rule in [Sign Bidirectional Event Discovery & Verification](/midnight/protocol-flow#sign-bidirectional-event-discovery--verification) requires:
 
 ```compact
 // Step 1a: queue. Build and check the request exactly as in step 1, then store it.
@@ -519,7 +510,7 @@ const calldata = EvmCalldata<2> {
 
 The readers run the same rules in the other direction. They reject any non-canonical word outright (no silent truncation or coercion).
 
-The builders and readers apply to CALLDATA words only. The serialised output a settle circuit verifies (the explicit `serializedOutput` argument `verifyRespondBidirectionalEventV1` checks against the attested width and hash) is NOT ABI words. It is the Borsh serialisation the MPC derives from the request's output schema under the mapping in [Output Recovery and Serialisation](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#output-recovery-and-serialisation): a `bool` is 1 byte, a `uint256` is its value as 32 little-endian bytes, a `bytesN` is N bytes. The circuit reads it with a single stdlib `deserialize<T, N>` call, where `T` is a struct that mirrors the schema field for field in the mapped Compact types and `N` is the sum of their widths. For an ERC20 `transfer`'s `bool` return under a one-field bool schema:
+The builders and readers apply to CALLDATA words only. The serialised output a settle circuit verifies (the explicit `serializedOutput` argument `verifyRespondBidirectionalEventV1` checks against the attested width and hash) is NOT ABI words. It is the Borsh serialisation the MPC derives from the request's output schema under the mapping in [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation): a `bool` is 1 byte, a `uint256` is its value as 32 little-endian bytes, a `bytesN` is N bytes. The circuit reads it with a single stdlib `deserialize<T, N>` call, where `T` is a struct that mirrors the schema field for field in the mapped Compact types and `N` is the sum of their widths. For an ERC20 `transfer`'s `bool` return under a one-field bool schema:
 
 ```compact
 struct TransferResult {

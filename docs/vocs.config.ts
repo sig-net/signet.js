@@ -47,11 +47,14 @@ export default defineConfig({
       text: 'Midnight',
       items: [
         { text: 'Overview', link: '/' },
+        { text: 'Quickstart', link: '/quickstart' },
         {
           text: 'Sign Bidirectional Protocol Flow',
           link: '/midnight/protocol-flow',
         },
         { text: 'Integrator Guide', link: '/midnight/integrator-guide' },
+        { text: 'Building the dApp', link: '/building-the-dapp' },
+        { text: 'Privacy Model', link: '/privacy' },
       ],
     },
     {
@@ -84,8 +87,8 @@ export default defineConfig({
         { text: 'Packages', link: '/midnight/packages' },
         { text: '@sig-net/midnight', link: '/midnight/packages/midnight' },
         {
-          text: '@sig-net/midnight-contract',
-          link: '/midnight/packages/midnight-contract',
+          text: '@sig-net/midnight-signer',
+          link: '/midnight/packages/midnight-signer',
         },
         {
           text: '@sig-net/midnight-responder',
@@ -102,6 +105,16 @@ export default defineConfig({
         {
           text: 'signet-midnight-serde',
           link: '/midnight/packages/signet-midnight-serde',
+        },
+      ],
+    },
+    {
+      text: 'Reference',
+      items: [
+        { text: 'Networks and Addresses', link: '/networks' },
+        {
+          text: 'TypeScript Reference',
+          link: '/midnight/typescript-reference',
         },
       ],
     },

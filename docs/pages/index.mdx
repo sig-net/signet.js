@@ -4,23 +4,10 @@ Midnight contracts act on foreign chains through the Sig Network MPC, bringing M
 
 The [Sig Network](https://sig.network) [Distributed MPC](https://github.com/sig-net/mpc) integration for the [Midnight Blockchain](https://midnight.network) allows contracts on Midnight to execute arbitrary transactions on foreign blockchains.
 
-## Sign Bidirectional Protocol Flow
-
-This Sig Network Protocol Flow brings foreign blockchain assets and functionality to contracts on Midnight. Contracts record signature requests that the Sig Network MPC signs. dApps relay signed transactions to foreign chains and the MPC attests their execution outcomes back to Midnight. Then contracts complete cross chain interactions with in-circuit validation of the MPC foreign execution attestation.
-
-The protocol is best understood in 5 steps:
-
-![The sign bidirectional protocol flow: five steps between a dApp, contracts on Midnight, the Sig Network MPC and a foreign blockchain](https://raw.githubusercontent.com/sig-net/midnight-integration/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docs/sign-bidirectional-flow.drawio.png)
-
-1. A user interacts with a dApp, which starts a cross chain interaction by calling a circuit on a contract on Midnight that has integrated with Sig Network.
-2. The MPC network, watching for events on the Singleton contract, picks up the emitted **SignBidirectionalEvent** (which carries the **SignBidirectionalEventNotification**) and honours the signature request it points to.
-3. The integrating dApp, watching for events on the Responder contract, picks up the emitted **SignatureRespondedEvent** and relays the fully signed transaction to the foreign chain.
-4. The MPC network observes the outcome of the signed transaction in final blocks of the foreign blockchain and posts an attestation thereof back to Midnight.
-5. The integrating dApp collects the execution output and its attestation and submits both back to the integrating contract, completing the cross chain interaction.
-
 ## Reading Guide
 
-- Start by reading the [Sign Bidirectional Protocol Flow](/midnight/protocol-flow) to understand the fundamentals of the cross chain protocol.
+- Start with the [Quickstart](/quickstart) to make one cross chain call from a contract of your own.
+- Read the [Sign Bidirectional Protocol Flow](/midnight/protocol-flow) to understand the fundamentals of the cross chain protocol.
 - Then go through the [Integrator Guide](/midnight/integrator-guide) to see how to wire your own applications with Sig Network to make cross chain calls.
 - Or jump straight into complete [Examples](/midnight/examples) to see applications of the protocol.
 
@@ -47,3 +34,17 @@ import "@sig-net/midnight/src/Signet";
 | Example                              | What it demonstrates                                                                          | Flow walkthroughs                                                                                                                                                                                        |
 | ------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [ERC20 Vault](/midnight/erc20-vault) | A Midnight vault holding, swapping (Uniswap) and lending (Aave) ERC20 tokens on an EVM chain. | [deposit](/midnight/erc20-vault/deposit), [withdraw](/midnight/erc20-vault/withdraw), [swap](/midnight/erc20-vault/swap), [supply](/midnight/erc20-vault/supply), [redeem](/midnight/erc20-vault/redeem) |
+
+## Sign Bidirectional Protocol Flow
+
+This Sig Network Protocol Flow brings foreign blockchain assets and functionality to contracts on Midnight. Contracts record signature requests that the Sig Network MPC signs. dApps relay signed transactions to foreign chains and the MPC attests their execution outcomes back to Midnight. Then contracts complete cross chain interactions with in-circuit validation of the MPC foreign execution attestation.
+
+The protocol is best understood in 5 steps:
+
+1. A user interacts with a dApp, which starts a cross chain interaction by calling a circuit on a contract on Midnight that has integrated with Sig Network.
+2. The MPC network, watching for events on the Signer contract, picks up the emitted **SignBidirectionalEvent** (which carries the **SignBidirectionalEventNotification**) and honours the signature request it points to.
+3. The integrating dApp, watching for events on the Responder contract, picks up the emitted **SignatureRespondedEvent** and relays the fully signed transaction to the foreign chain.
+4. The MPC network observes the outcome of the signed transaction in final blocks of the foreign blockchain and posts an attestation thereof back to Midnight.
+5. The integrating dApp collects the execution output and its attestation and submits both back to the integrating contract, completing the cross chain interaction.
+
+![The sign bidirectional protocol flow: five steps between a dApp, contracts on Midnight, the Sig Network MPC and a foreign blockchain](https://raw.githubusercontent.com/sig-net/midnight-integration/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docs/sign-bidirectional-flow.drawio.png)

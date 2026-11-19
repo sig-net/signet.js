@@ -1,11 +1,11 @@
-{/* Imported from sig-net/midnight-integration packages/signet-contract-deploy/README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+{/* Imported from sig-net/midnight-integration packages/signet-contract-deploy/README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
 
 # @sig-net/midnight-contract-deploy
 
-Deploy tooling for the [Sig Network](https://sig.network) protocol contracts on the [Midnight blockchain](https://midnight.network), the central signet contract and the signet responder, self-contained for npm:
+Deploy tooling for the [Sig Network](https://sig.network) protocol contracts on the [Midnight blockchain](https://midnight.network), the central signet signer and the signet responder, self-contained for npm:
 
-- **The operator deploy flows** (`deploySignetContract`, `deploySignetResponder`): build, balance, prove and submit the contract's deploy transaction through a synced wallet, using the compiled assets shipped in [`@sig-net/midnight-contract`](https://www.npmjs.com/package/@sig-net/midnight-contract) or [`@sig-net/midnight-responder`](https://www.npmjs.com/package/@sig-net/midnight-responder).
-- **The Node bindings** of `@sig-net/midnight-contract` and `@sig-net/midnight-responder` to their compiled assets (zk config, private state).
+- **The operator deploy flows** (`deploySignetSigner`, `deploySignetResponder`): build, balance, prove and submit the contract's deploy transaction through a synced wallet, using the compiled assets shipped in [`@sig-net/midnight-signer`](https://www.npmjs.com/package/@sig-net/midnight-signer) or [`@sig-net/midnight-responder`](https://www.npmjs.com/package/@sig-net/midnight-responder).
+- **The Node bindings** of `@sig-net/midnight-signer` and `@sig-net/midnight-responder` to their compiled assets (zk config, private state).
 - **Generic deploy/wallet plumbing** any Compact contract's deploy script composes: network config, seed parsing and key derivation, the wallet facade lifecycle, funding primitives (a root wallet funds role wallets and registers NIGHT for dust generation), and unproven-transaction build/submit.
 
 ## Install
@@ -20,21 +20,48 @@ Everything is read from the environment:
 
 | Variable | Purpose |
 |---|---|
-| `NETWORK_ID` | Target network: `undeployed` (local stack, the default), `stagenet`, `preview`, `preprod` or `mainnet`. Selects the default endpoints. |
-| `MIDNIGHT_NODE_URL`, `MIDNIGHT_NODE_INDEXER_URL`, `MIDNIGHT_NODE_INDEXER_WS_URL`, `MIDNIGHT_NODE_PROOF_SERVER_URL` | Optional per-endpoint overrides of the network defaults. |
+| `NETWORK_ID` | Target network: `undeployed` (local stack, the default), `preview`, `preprod` or `mainnet`. Selects the default endpoints. |
+| `MIDNIGHT_NODE_URL`, `MIDNIGHT_NODE_INDEXER_URL`, `MIDNIGHT_NODE_INDEXER_WS_URL`, `MIDNIGHT_NODE_PROOF_SERVER_URL` | Optional per-endpoint overrides of the built-in endpoints. Setting both the node and the indexer URL reaches a node and indexer you run, on any network. The indexer WS URL derives from the indexer URL when unset. |
+| `BLOCKFROST_PROJECT_ID` | Required on `preprod` and `mainnet` unless both the node and the indexer URL are set. Blockfrost serves the public node and indexer of those two networks and answers only requests that carry a project token: create a "Midnight Preprod" or "Midnight Mainnet" project at [blockfrost.io](https://blockfrost.io) and use its project id. A token works on its own network only. It is a secret, and it travels in the node and indexer URLs, which this package masks in everything it logs. |
 | `DEPLOYER_SEED` | The deploying wallet's seed (hex or mnemonic). On the local stack it defaults to the pre-funded genesis mint wallet. |
-| `MIDNIGHT_SIGNET_CONTRACT_ADDRESS` | Optional on a deployed network: the signet singleton a requester contract seals at deploy. `resolveSignetContractAddress` takes the singleton `@sig-net/midnight` publishes for the network when it is unset, and refuses a set value that disagrees with it. The local stack publishes none, so there it names the singleton you deployed. |
+| `MIDNIGHT_SIGNER_CONTRACT_ADDRESS` | Optional on a deployed network: the signet signer a requester contract seals at deploy. `resolveSignerContractAddress` takes the signet signer `@sig-net/midnight` publishes for the network when it is unset, and refuses a set value that disagrees with it. The local stack publishes none, so there it names the signet signer you deployed. |
 | `MPC_SECP256K1_PUBKEY` | Optional on a deployed network: the MPC root public key a requester's derived accounts start from, in SEC1 hex or NEAR `secp256k1:<base58>` form. `resolveMpcRootPublicKey` takes the key `@sig-net/midnight` publishes for the network when it is unset, refuses a set value that disagrees with it, and returns `0x04…` uncompressed hex either way. |
-| `MIDNIGHT_FAUCET_URL` | The faucet named in the unfunded-wallet hint. Built in per network: stagenet `https://faucet.stagenet.shielded.tools`, preview `https://midnight-tmnight-preview.nethermind.dev`, preprod `https://midnight-tmnight-preprod.nethermind.dev`. Set it to override one of those, or to name a faucet for a network without one. |
+| `MIDNIGHT_FAUCET_URL` | The faucet named in the unfunded-wallet hint. Built in per network: preview `https://midnight-tmnight-preview.nethermind.dev`, preprod `https://midnight-tmnight-preprod.nethermind.dev`. Set it to override one of those, or to name a faucet for a network without one. |
 
-In a checkout of the [sig-net/midnight-integration](https://github.com/sig-net/midnight-integration) repository, `yarn deploy:signet-contract` and `yarn deploy:signet-responder` also load the repository root's `.env` file whenever one exists. A variable already set in the shell takes precedence over the same key in the file.
+## Generating a wallet
+
+In a checkout of the repository, `yarn generate:wallet` prints a fresh wallet: a random 24-word BIP-39 mnemonic, the same seed in hex, and the wallet's unshielded (NIGHT), shielded and dust addresses on each network named after it.
+
+```bash
+yarn generate:wallet preprod mainnet
+```
+
+The networks are `undeployed`, `preview`, `preprod` and `mainnet`, and with none named the addresses of all four are printed. The seed is the same on every network: only the address encoding differs. `Seed Words` and `Seed Hex` are two spellings of one secret, and either is a valid `DEPLOYER_SEED`. Nothing is written to disk and nothing touches a network, so the printed secret is the only copy: store it before closing the terminal. In code the same flow is `generateWallet` and `formatGeneratedWallet`.
+
+## Estimating a deploy
+
+Set `DEPLOY_ESTIMATE_ONLY=1` to price a deploy without making it:
+
+```bash
+DEPLOY_ESTIMATE_ONLY=1 yarn deploy:signet-signer
+```
+
+```bash
+DEPLOY_ESTIMATE_ONLY=1 yarn deploy:signet-responder
+```
+
+The run syncs the deployer wallet, builds the deploy transaction and logs the wallet's NIGHT and DUST balances with their UTXOs, the transaction's fee in DUST, and the NIGHT that generates that fee within 1 minute, 10 minutes, 1 hour and 1 day of being registered, and at the generation cap. It registers no NIGHT and submits nothing. Only `1` asks for an estimate: any other set value except `0` stops the run, so a misspelt request never deploys. In code the same estimate is `estimateSignetSignerDeploy` and `estimateSignetResponderDeploy`.
+
+The NIGHT figures come from the ledger's initial dust parameters: one NIGHT generates 0.000008267 DUST a second until it holds 5 DUST, its cap, which takes about 7 days. They count from registering NIGHT that holds no DUST yet, and they cover the deploy transaction's fee alone: the balancing inputs added at submission cost a little more. A fee burns DUST and leaves the NIGHT in place, so the same NIGHT pays for later transactions as its DUST regenerates.
+
+In a checkout of the [sig-net/midnight-integration](https://github.com/sig-net/midnight-integration) repository, `yarn deploy:signet-signer` and `yarn deploy:signet-responder` also load the repository root's `.env` file whenever one exists. A variable already set in the shell takes precedence over the same key in the file.
 
 ## Usage
 
 ```ts
-import { deploySignetContract, deploySignetResponder } from "@sig-net/midnight-contract-deploy";
+import { deploySignetSigner, deploySignetResponder } from "@sig-net/midnight-contract-deploy";
 
-const singleton = await deploySignetContract(process.env);
+const signet signer = await deploySignetSigner(process.env);
 const responder = await deploySignetResponder(process.env);
 ```
 
@@ -42,23 +69,35 @@ Each returns the deployed `contractAddress` and the deploy transaction's `txId`.
 
 The generic plumbing (network config, wallets, funding, transaction submission) is exported from the package root as well, for deploy scripts of other Compact contracts.
 
-A pipeline that touches several wallets, or one wallet several times, holds them in a `WalletRegistry`: the first request for a seed builds, starts and fully syncs its facade (on a deployed network a fresh facade scans the chain from nothing, and the sync logs a heartbeat with each sub-wallet's position every ten seconds), every later request returns the same running facade, and `close()` stops them all once. `deploySignetContract(env, wallets)`, `deploySignetResponder(env, wallets)` and the funding primitives (`assertRootFunded`, `readAccountFunding`, `fundChildFromRoot`) take the registry. Without one, each deploy flow opens a private registry for its single wallet and closes it after.
+A pipeline that touches several wallets, or one wallet several times, holds them in a `WalletRegistry` (`new WalletRegistry(config, env)`): the first request for a seed opens, starts and fully syncs its facade (the sync logs a heartbeat with each sub-wallet's position every ten seconds), every later request returns the same running facade, and `close()` stops them all once. `deploySignetSigner(env, wallets)`, `deploySignetResponder(env, wallets)` and the funding primitives (`assertRootFunded`, `readAccountFunding`, `fundChildFromRoot`) take the registry. Without one, each deploy flow opens a private registry for its single wallet and closes it after.
+
+## Wallet sync cache
+
+A fresh wallet scans the chain from nothing, which takes minutes on a deployed network. Every wallet this package opens (through `WalletRegistry`, `withSyncedWalletFacade` or `openSyncedWallet`) therefore keeps a cache file of its synced state, restores from it on the next run, and only catches up from where the cache left off.
+
+- **Location.** By default the cache lives in the root of the repository being run (the first directory at or above the working directory holding a `.git` entry), named `.wallet-cache-<networkId>-<fingerprint>.json`. The fingerprint is taken from the wallet's unshielded address, so each seed keeps one file per network whichever role opens it, and a seed shared by two roles is synced once. With no repository root and no path set, the wallet syncs from scratch without a cache.
+- **Setting a path.** Each wallet's path can be set with an environment variable named after its label, the role name it is opened under (`deployer`, `root`, `invoker`, …): upper case, every run of other characters as `_`, then `_WALLET_CACHE_PATH`. The deployer's is `DEPLOYER_WALLET_CACHE_PATH`, the `mpc responder` wallet's is `MPC_RESPONDER_WALLET_CACHE_PATH`. A relative path resolves against the repository root. A `WalletRegistry` opens each seed once, under the label of the first role that asks for it, so that role's variable is the one read for a seed two roles share.
+- **Integrity.** Every file carries a SHA-256 digest over all of its other fields, every wallet snapshot included, and is refused when the digest is missing or does not match, so a truncated, partly written or hand-edited file is never trusted. The file format is strict besides: a missing, empty or unknown field is refused.
+- **Validation.** Beyond its digest, a cache is used only when it is in this package's format, was written for the same network (by the envelope and by each wallet snapshot), the same seed (checked against the addresses, against the public keys inside every wallet snapshot and against the owner of every unshielded UTXO) and the same DUST history setting, when its unshielded UTXOs agree with its transaction history (no unspent UTXO of the history missing, none held that no transaction created, the unshielded cursor not behind a transaction the history finalized), when it sits on the same chain (the indexer still reports its genesis block and the block it last recorded, a block past genesis, which a wiped or reset chain does not, and no wallet's sync cursor is past the chain's newest transaction or ledger event), and when every snapshot restores in the wallet SDK.
+- **A refusal.** An invalid cache at the default path is deleted and the wallet syncs from scratch, logging the reason on one line. An invalid cache at a path set through the environment variable stops the run with an error naming the variable, the path and the reason, and leaves the file in place: delete it or unset the variable to sync from scratch. An indexer that cannot be reached is an error, never a reason to delete a cache, and so is a deployed network's indexer whose newest block is below the block the cache recorded: it is still catching up, and the run succeeds once it has. On the local stack the same finding means the chain was restarted, and the cache is refused. A wallet opened while the indexer's newest block is still the genesis block runs without a cache, as a restarted local chain repeats its genesis block. What the digest alone guards: a wallet snapshot swapped for an older but valid snapshot of the same wallet, which every other check accepts and which the wallet then catches up from.
+- **Writing.** While a wallet runs, its cache is rewritten every ten seconds whenever its state changed, once when its first sync completes, and when it is stopped, so an interrupted sync resumes from at most ten seconds back. Each write goes to a temporary file that is renamed into place, so a reader never sees a partial file. A failed write logs a warning and the wallet carries on.
+- **Contents.** The file holds no seed and no secret key, only the wallet SDK's serialised state and the wallet's public addresses. It does reveal the wallet's balances and transaction history, so it is written readable by its owner only (mode 0600) and should not be committed: `.wallet-cache-*` belongs in `.gitignore`.
 
 ## Deploying from CI
 
-The [sig-net/midnight-integration](https://github.com/sig-net/midnight-integration) repository deploys the singleton and the responder through its manually dispatched `deploy` workflow, which picks a contract, a network and a release tag and runs that contract's flow on a runner with a local proof server.
+The [sig-net/midnight-integration](https://github.com/sig-net/midnight-integration) repository deploys the signet signer and the responder through its manually dispatched `deploy` workflow, which picks a contract, a network and a release tag and runs that contract's flow on a runner with a local proof server.
 
 - **The wallet needs faucet-funded NIGHT and nothing else.** The flow registers that NIGHT for dust generation and waits for the first spendable DUST, so a freshly funded seed works on the first run. A run whose wallet holds no NIGHT yet fails printing the wallet's NIGHT receive address (`mn_addr…`) and the network's faucet URL, ready to paste into the faucet.
-- **The deployed address is recorded by a bot PR.** The workflow writes it into the contract's address table (`signetContractAddresses` or `responderContractAddresses`) of [`@sig-net/midnight`](https://www.npmjs.com/package/@sig-net/midnight) and opens a pull request, so a human reviews the address before it ships to npm consumers.
+- **The deployed address is recorded by a bot PR.** The workflow writes it into the contract's address table (`signerContractAddresses` or `responderContractAddresses`) of [`@sig-net/midnight`](https://www.npmjs.com/package/@sig-net/midnight) and opens a pull request, so a human reviews the address before it ships to npm consumers.
 - **A deploy sets NO contract maintenance authority.** The maintenance signing key is sampled and dropped, so a deployed contract can never be updated: every run creates a fresh, permanent contract instance, and moving forward means a new deployment while the existing contracts stay exactly as they are.
 
 ## Documentation
 
-The deployed contracts are the singleton and the responder of the [sign bidirectional flow](/midnight/protocol-flow), documented in the [sig-net/midnight-integration README](/).
+The deployed contracts are the signet signer and the responder of the [sign bidirectional flow](/midnight/protocol-flow), documented in the [sig-net/midnight-integration README](/).
 
 ## Related packages
 
-- [`@sig-net/midnight-contract`](https://www.npmjs.com/package/@sig-net/midnight-contract) and [`@sig-net/midnight-responder`](https://www.npmjs.com/package/@sig-net/midnight-responder): the contracts this package deploys.
+- [`@sig-net/midnight-signer`](https://www.npmjs.com/package/@sig-net/midnight-signer) and [`@sig-net/midnight-responder`](https://www.npmjs.com/package/@sig-net/midnight-responder): the contracts this package deploys.
 - [`@sig-net/midnight`](https://www.npmjs.com/package/@sig-net/midnight): the client-agnostic protocol library.
 
 Developed in [sig-net/midnight-integration](https://github.com/sig-net/midnight-integration). Example applications live in [sig-net/midnight-examples](https://github.com/sig-net/midnight-examples).

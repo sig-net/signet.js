@@ -33,11 +33,11 @@ The price of a lost race is the losing flush's fee.
 `globalLastSeen` is the safety bound every settlement checks: an attestation
 settles a request only if it comes from a block strictly above every height the
 vault had seen when it accepted that request (see
-[The last seen height](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/#the-last-seen-height)). `initialise` sets it to the
+[The last seen height](/midnight/erc20-vault/contention-handling#the-last-seen-height)). `initialise` sets it to the
 current EVM height.
 
 `vaultAccountNonce` hands each request the vault's own account signs a nonce the
-flush assigns to no other request (see [Vault-signed requests](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/#vault-signed-requests)). It
+flush assigns to no other request (see [Vault-signed requests](/midnight/erc20-vault/contention-handling#vault-signed-requests)). It
 starts at 0, as every deployment derives a fresh vault account from its own
 contract address.
 
@@ -473,7 +473,7 @@ nowhere.
   for its entry and one for its attestation, so a 10-slot flush carries the
   equivalent of 5 complete requests.
 - **Serial flushes.** Concurrent flushes of the same waiting items conflict
-  (see [The flush](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/#the-flush)), so under load flushes land one after another,
+  (see [The flush](/midnight/erc20-vault/contention-handling#the-flush)), so under load flushes land one after another,
   and throughput is bounded by the flush width and the flush rate, not by the
   number of users.
 - **No gas bump.** A request's gas is fixed at start, so a deposit queued with
@@ -483,7 +483,7 @@ nowhere.
   closes. A vault-signed request is fixed to the vault's gas settings at its
   start, and while its transaction waits, every later vault transaction waits
   behind its nonce, until the deployer replaces the nonce (see
-  [Nonce replacement](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/#nonce-replacement)).
+  [Nonce replacement](/midnight/erc20-vault/contention-handling#nonce-replacement)).
 - **No cancel.** No circuit closes an open request without an attestation that
   passes the bound. A request that is sent but never mined stays in
   `outputRequestBuffer`, and keeps its identical repeats in
