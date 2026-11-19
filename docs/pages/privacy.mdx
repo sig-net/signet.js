@@ -1,36 +1,29 @@
 # Privacy Model
 
-What an application built this way hides, and what it cannot. This page summarises the [formal analysis of the ERC20 vault](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/formal-analysis/main.pdf) by Alessandra Scafuro, which defines the unlinkability and soundness a public-to-private cross chain system can achieve and analyses the [ERC20 Vault](/midnight/erc20-vault) against that definition.
+An application built on this integration starts its actions on Midnight and executes them on a public chain. That split decides what it can hide. The points below are stated for the [ERC20 Vault](/midnight/erc20-vault), and apply to any contract built the same way.
 
-The analysis covers the vault contract at release `erc20-vault-v0.3.0`. The latest release, `erc20-vault-v0.4.0`, is not formally analysed: the analysis lists what changed and expects its proof strategy to extend.
+## What is private
 
-## Two kinds of unlinkability
+- **Who is acting.** A user withdraws, swaps, supplies or redeems from Midnight without revealing their identity. The public chain sees your contract's account act, not the user behind the action.
+- **Which actions belong together.** Each withdraw, swap, supply and redeem carries a one-time authentication tag, so the protocol's messages do not tie two of a user's actions to each other, or to the shielded account that made them.
+- **What a user holds.** Balances are shielded tokens on Midnight.
 
-Actions start on a private chain and take effect on a public one, so the amounts are revealed. That leaves two questions:
+The protocol's messages give an observer no help beyond what the public amounts already reveal.
 
-- **Transaction unlinkability**: can an observer tie a withdrawal to a user? This can depend on amounts and on the order of events, and cannot be a property of a protocol. If the public chain records only two deposits, one of 10 and one of 6, and later a withdrawal of 7 to a fresh account, the withdrawal came from the depositor of 10, regardless of the cryptography involved.
-- **Cryptographic unlinkability**: do the protocol messages give any additional help, besides what can be inferred from the public amounts?
+## What is not private
 
-The analysis targets the second. It argues, in a semi-formal proof, that it is computationally infeasible to guess the shielded account behind a withdrawal, a swap, a supply or a redeem, even for an adversary who knows every deposit and every action of all honest users and takes part in the system as a malicious user.
+- **Amounts.** Every action executes on the public chain, so its amount is public even when the identity behind it is not.
+- **Timing and order.** A deposit of 5 USD followed at once by a withdrawal of 5 USD to a fresh Ethereum account is still linked, by the amount and the timing.
+- **The tokens involved.** For a swap, supply or redeem, a user hides only among the people transacting in those particular tokens.
+- **Ethereum accounts.** A withdrawal to an account used before is connected to that account's earlier activity. A withdrawal to the account that funded the deposit links the two.
+- **A user's deposits to each other.** The vault gives each user one fixed identity commitment and one derived deposit account, so all of that user's deposits are linkable, even when they come from different Ethereum accounts.
 
-## What a user should know
+## What this means when you build
 
-- **All amounts are public.** Withdraw, swap, supply and redeem can be called anonymously on Midnight, but they execute on the public chain, so their amounts are public even when the identity is not.
-- **Amounts and timing can link actions.** Depositing 5 USD and immediately withdrawing 5 USD to a fresh Ethereum account still links the two through the amount and the timing.
-- **A withdrawal is unlinkable only to a fresh Ethereum account.** Withdrawing to an account used before connects the withdrawal to that account's earlier activity. Withdrawing to the account that funded the deposit links deposit and withdrawal.
-- **Keep private coins consolidated in one coin.** The number of coins collected to pay for an action leaks information about who is paying. This holds on Midnight with or without this system.
-- **Deposit requests are linkable to each other.** Each user has a fixed identity commitment that every deposit uses, so all deposits by one user are linkable. Other actions are not, since each carries a one-time authentication tag.
-- **The user's secret must stay secret.** Someone who learns it can link all of that user's previous activity. They can steal at most one pending request.
-- **The anonymity set is the people using the same tokens.** For swap, supply and redeem it is restricted to those transacting in those particular tokens.
+- **Choose how paths are derived.** A fixed path per user is a design choice. It is convenient, since the user funds a single derived account, and it is what makes that user's deposits linkable. A contract that derives a fresh path for each deposit trades the convenience back for privacy (see [Derived Keys](/midnight/protocol-flow#derived-keys)).
+- **Withdraw to fresh accounts.** A withdrawal is unlinkable only when it pays an Ethereum account with no history. Make that the default in your interface.
+- **Do not let amounts and timing identify users.** Round amounts, common denominations and a delay between deposit and withdrawal all widen the set a user hides in. An interface that encourages depositing and withdrawing the same amount straight away undoes the rest.
+- **Keep each user's shielded coins consolidated.** The number of coins collected to pay for an action leaks information about who is paying. Pay from one coin and return a change coin.
+- **Protect the user's secret.** Someone who learns it can link all of that user's previous activity, and can steal at most one pending request. A backend that proves calls for the user sees it (see [Building the dApp](/building-the-dapp#who-holds-what)).
 
-## What a developer should know
-
-A fixed derivation path per user is a design choice. The vault's client picks one permanent application secret and uses it for every deposit, which favours convenience over stronger privacy: the user funds a single derived account. The cost is that all deposits to that account are linkable, even from different Ethereum accounts, and that a leaked secret deanonymises the user's past activity. A contract that derives a fresh path per deposit trades that convenience back for privacy (see [Derived Keys](/midnight/protocol-flow#derived-keys)).
-
-## What the analysis assumes
-
-- The Sig Network MPC is treated as a trusted signing system, and the components that emit and process chain events are trusted.
-- The unlinkability results hold under the assumption that the network is anonymised.
-- The proof identifies the cryptographic properties it needs from Midnight's shielded transaction and shielded computation layers and relies on them. It does not prove that those components achieve them.
-
-The analysis describes itself as a treatment of the vault contract, not of the entire system, with some arguments left informal.
+These properties are defined and argued in the [formal analysis of the ERC20 vault](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/formal-analysis/main.pdf).
