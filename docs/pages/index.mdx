@@ -1,6 +1,12 @@
 # Night Mode
 
-Midnight contracts act on foreign chains through the Sig Network MPC, bringing Midnight's privacy to applications already deployed elsewhere.
+Every app can be made private. Sig Network gives a contract on Midnight real accounts on other chains, so your users keep the apps, liquidity and assets they already use, with nobody's name on any of it.
+
+## What you can build
+
+- **A night mode for an existing app.** Put a private pool on Midnight in front of an app people already use. Users act through the pool, and the app sees one ordinary account doing ordinary things. The app does not change, and nothing is bridged or wrapped.
+- **Liquidity and assets from other chains.** A Midnight contract holds tokens on Ethereum, swaps them on Uniswap and lends them on Aave at the real price, then credits the result to shielded balances on Midnight. The [ERC20 Vault](/midnight/erc20-vault) does exactly this.
+- **Private ways in and out.** Users deposit from any wallet or exchange and withdraw to any address, while their balances and identities stay shielded on Midnight. The [Privacy Model](/privacy) says what that hides and what it cannot.
 
 The [Sig Network](https://sig.network) [Distributed MPC](https://github.com/sig-net/mpc) integration for the [Midnight Blockchain](https://midnight.network) allows contracts on Midnight to execute arbitrary transactions on foreign blockchains.
 
