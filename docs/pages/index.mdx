@@ -1,14 +1,14 @@
 # Night Mode
 
-Every app can be made private. Sig Network gives a contract on Midnight real accounts on other chains, so your users keep the apps, liquidity and assets they already use, with nobody's name on any of it.
+Night Mode lets a contract on [Midnight](https://midnight.network) drive transactions on foreign chains through the [Sig Network](https://sig.network) [Distributed MPC](https://github.com/sig-net/mpc), so applications keep Midnight's privacy while acting anywhere else.
 
-## What you can build
+## Use cases
 
-- **A night mode for an existing app.** Put a private pool on Midnight in front of an app people already use. Users act through the pool, and the app sees one ordinary account doing ordinary things. The app does not change, and nothing is bridged or wrapped.
-- **Liquidity and assets from other chains.** A Midnight contract holds tokens on Ethereum, swaps them on Uniswap and lends them on Aave at the real price, then credits the result to shielded balances on Midnight. The [ERC20 Vault](/midnight/erc20-vault) does exactly this.
-- **Private ways in and out.** Users deposit from any wallet or exchange and withdraw to any address, while their balances and identities stay shielded on Midnight. The [Privacy Model](/privacy) says what that hides and what it cannot.
+- **Making existing apps private.** Put a Midnight contract in front of an app that is already deployed on another chain. Users call your contract on Midnight, and the app only sees your contract's account.
+- **Using liquidity and assets across chains.** A Midnight contract can hold ERC20 tokens, swap them on Uniswap and lend them on Aave, and mint shielded tokens on Midnight against them. The [ERC20 Vault](/midnight/erc20-vault) example does this.
+- **Private cross chain infrastructure.** One contract on Midnight can hold an account on each chain it targets. Moving value between those chains is then a call to your contract, not a bridge transfer, and who moved it stays on Midnight.
 
-The [Sig Network](https://sig.network) [Distributed MPC](https://github.com/sig-net/mpc) integration for the [Midnight Blockchain](https://midnight.network) allows contracts on Midnight to execute arbitrary transactions on foreign blockchains.
+The [Privacy Model](/privacy) covers what is private and what is not.
 
 ## Reading Guide
 
