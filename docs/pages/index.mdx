@@ -32,13 +32,13 @@ The protocol is best understood in 5 steps:
 npm install @sig-net/midnight
 ```
 
-- **Compact module** for contract code on chain: `.compact` sources for Compact contracts to import the protocol structs and circuits directly:
+**Compact module** for contract code on chain: `.compact` sources for Compact contracts to import the protocol structs and circuits directly:
 
-  ```compact
-  import "@sig-net/midnight/src/Signet";
-  ```
+```compact
+import "@sig-net/midnight/src/Signet";
+```
 
-- **TypeScript library** for clients off chain: readers that poll the signet responder and verify the MPC's responses, key derivation and attestation crypto, output serialisation, the published per-network addresses and constant values, and typed twins of the on-chain structs and circuits.
+**TypeScript library** for clients off chain: readers that poll the signet responder and verify the MPC's responses, key derivation and attestation crypto, output serialisation, the published per-network addresses and constant values, and typed twins of the on-chain structs and circuits.
 
 [MinoCrab](https://github.com/sig-net/minocrab) is a Rust eDSL for Midnight contracts, usable instead of Compact. It is experimental.
 
