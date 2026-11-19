@@ -24,14 +24,17 @@ const SOURCES = {
 /**
  * Each entry: the source, the file in it, and the docs route the file becomes. A file with an
  * object in place of the route is split at its top-level headings, each heading's section
- * becoming the route listed for it.
+ * becoming the route listed for it. A section routed to HOME is not imported: the home page,
+ * docs/pages/index.mdx, is edited by hand, and links to that section lead there.
  */
+const HOME = '/'
+
 const PAGES = [
   [
     'midnight-integration',
     'README.md',
     {
-      'Sig Network Midnight Integration': '/',
+      'Sig Network Midnight Integration': HOME,
       'Sign Bidirectional Protocol Flow': '/midnight/protocol-flow',
       'Integrator Guide': '/midnight/integrator-guide',
       'Contributor Guide': '/midnight/contributor-guide',
@@ -107,6 +110,18 @@ const PAGES = [
   ],
 ]
 
+/** Passages left out of an imported file. Each must still be in its source, so a stale entry fails the import. */
+const OMITTED = {
+  'midnight-integration:packages/signet-midnight/README.md': [
+    `> ## 🚧 Under Construction 🚧
+>
+> This Sig Network Midnight integration is still under construction.
+> Use at your own risk and expect rapid iteration.
+
+`,
+  ],
+}
+
 const IMAGE = /\.(png|jpe?g|gif|svg|webp)$/i
 const pagesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'pages')
 
@@ -162,7 +177,14 @@ for (const [source, file, routes] of PAGES) {
   )
   if (!response.ok)
     throw new Error(`${repo} ${file}: HTTP ${String(response.status)}`)
-  const parts = partsOf(await response.text(), routes)
+  let sourceText = await response.text()
+  for (const passage of OMITTED[`${source}:${file}`] ?? []) {
+    if (!sourceText.includes(passage)) {
+      throw new Error(`${repo} ${file} no longer holds an omitted passage`)
+    }
+    sourceText = sourceText.replace(passage, '')
+  }
+  const parts = partsOf(sourceText, routes)
   const anchors = new Map()
   for (const { route, text } of parts) {
     for (const { line, code } of linesOf(text)) {
@@ -258,11 +280,9 @@ function convert(source, file, text) {
 for (const [source, file] of PAGES) {
   const { repo, commit } = SOURCES[source]
   for (const { route, text } of imported.get(`${source}:${file}`).parts) {
+    if (route === HOME) continue
     const origin = `{/* Imported from ${repo} ${file} at ${commit} by docs/scripts/import-midnight-docs.mjs. Edit it there. */}\n\n`
-    const target = join(
-      pagesDir,
-      route === '/' ? 'index.mdx' : `${route.slice(1)}.mdx`
-    )
+    const target = join(pagesDir, `${route.slice(1)}.mdx`)
     await mkdir(dirname(target), { recursive: true })
     await writeFile(target, origin + convert(source, file, text))
     console.log(`${route} <- ${repo} ${file}`)

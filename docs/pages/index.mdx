@@ -1,33 +1,47 @@
-{/* Imported from sig-net/midnight-integration README.md at 5e79dff78a027dbeea9ab20a76a7d6391dca8037 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+# Night Mode for other blockchains
 
-# Sig Network Midnight Integration
-
-> **Bringing Night Mode to other blockchains.** This integration lets a Midnight contract drive transactions on foreign chains through the Sig Network MPC, so applications keep Midnight's privacy while acting anywhere else.
-
-This project integrates with the Midnight Network.
+Midnight contracts act on foreign chains through the Sig Network MPC, bringing Midnight's privacy to applications already deployed elsewhere.
 
 The [Sig Network](https://sig.network) [Distributed MPC](https://github.com/sig-net/mpc) integration for the [Midnight Blockchain](https://midnight.network) allows contracts on Midnight to execute arbitrary transactions on foreign blockchains.
 
-> ## 🚧 Under Construction 🚧
->
-> This Integration is still Under Construction.
-> Use at your own risk and expect rapid iteration.
+## Sign Bidirectional Protocol Flow
 
-It achieves this by exposing the MPC's [sign bidirectional flow](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#sign-bidirectional-protocol-flow) to contracts on Midnight.
+This Sig Network Protocol Flow brings foreign blockchain assets and functionality to contracts on Midnight. Contracts record signature requests that the Sig Network MPC signs. dApps relay signed transactions to foreign chains and the MPC attests their execution outcomes back to Midnight. Then contracts complete cross chain interactions with in-circuit validation of the MPC foreign execution attestation.
 
-This repository contains the pieces that make that flow available on Midnight:
-- [Client-agnostic Compact and TS SDK](/midnight/packages/midnight)
-  - For Midnight Contract and dApp builders to integrate with Sig Network
-  - Located in `packages/signet-midnight`
-- [Sig Network Protocol Singleton Contract](/midnight/packages/midnight-contract)
-  - The protocol contract that integrating Midnight contracts communicate with via cross contract call
-  - Located in `packages/signet-contract`
-- [Sig Network Responder Contract](/midnight/packages/midnight-responder)
-  - The contract the MPC posts its responses to: its `respond` and `respondBidirectional` circuits, proven with MinoCrab-compiled circuits
-  - Located in `packages/signet-responder`
-- Two test caller contracts: one exercises the protocol end to end, the other is a simulator-only fixture for the chunked ledger layout
-  - Located in `packages/test-caller-contract` & `packages/test-caller-contract-20-field`
+The protocol is best understood in 5 steps:
 
-Example applications built on this integration (such as an ERC20 cross chain vault demo) live in a separate repository [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples).
+![The sign bidirectional protocol flow: five steps between a dApp, contracts on Midnight, the Sig Network MPC and a foreign blockchain](https://raw.githubusercontent.com/sig-net/midnight-integration/5e79dff78a027dbeea9ab20a76a7d6391dca8037/docs/sign-bidirectional-flow.drawio.png)
 
-Read more about the [Sign Bidirectional Protocol Flow](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#sign-bidirectional-protocol-flow), or jump straight to the [Integrator Guide](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#integrator-guide) or the [Contributor Guide](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#contributor-guide) depending on your goal. The [Prerequisites](https://github.com/sig-net/midnight-integration/tree/5e79dff78a027dbeea9ab20a76a7d6391dca8037/#prerequisites) are relevant to both.
+1. A user interacts with a dApp, which starts a cross chain interaction by calling a circuit on a contract on Midnight that has integrated with Sig Network.
+2. The MPC network, watching for events on the Singleton contract, picks up the emitted **SignBidirectionalEvent** (which carries the **SignBidirectionalEventNotification**) and honours the signature request it points to.
+3. The integrating dApp, watching for events on the Responder contract, picks up the emitted **SignatureRespondedEvent** and relays the fully signed transaction to the foreign chain.
+4. The MPC network observes the outcome of the signed transaction in final blocks of the foreign blockchain and posts an attestation thereof back to Midnight.
+5. The integrating dApp collects the execution output and its attestation and submits both back to the integrating contract, completing the cross chain interaction.
+
+## Reading Guide
+
+- Start by reading the [Sign Bidirectional Protocol Flow](/midnight/protocol-flow) to understand the fundamentals of the cross chain protocol.
+- Then go through the [Integrator Guide](/midnight/integrator-guide) to see how to wire your own applications with Sig Network to make cross chain calls.
+- Or jump straight into complete [Examples](/midnight/examples) to see applications of the protocol.
+
+## Install
+
+[`@sig-net/midnight`](/midnight/packages/midnight) is the client-agnostic protocol library for that integration. It carries everything a Midnight contract or off-chain client needs to speak the signet protocol. It does not bind to any particular contract.
+
+```sh
+npm install @sig-net/midnight
+```
+
+- **Compact module** for contract code on chain: `.compact` sources for Compact contracts to import the protocol structs and circuits directly:
+
+  ```compact
+  import "@sig-net/midnight/src/Signet";
+  ```
+
+- **TypeScript library** for clients off chain: readers that poll the signet responder and verify the MPC's responses, key derivation and attestation crypto, output serialisation, the published per-network addresses and constant values, and typed twins of the on-chain structs and circuits.
+
+## Examples
+
+| Example                              | What it demonstrates                                                                          | Flow walkthroughs                                                                                                                                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ERC20 Vault](/midnight/erc20-vault) | A Midnight vault holding, swapping (Uniswap) and lending (Aave) ERC20 tokens on an EVM chain. | [deposit](/midnight/erc20-vault/deposit), [withdraw](/midnight/erc20-vault/withdraw), [swap](/midnight/erc20-vault/swap), [supply](/midnight/erc20-vault/supply), [redeem](/midnight/erc20-vault/redeem) |

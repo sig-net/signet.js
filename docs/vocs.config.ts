@@ -44,9 +44,9 @@ export default defineConfig({
   iconUrl: `${basePath}signet-logo.png`,
   sidebar: [
     {
-      text: 'Midnight Integration',
+      text: 'Midnight',
       items: [
-        { text: 'Sig Network Midnight Integration', link: '/' },
+        { text: 'Overview', link: '/' },
         {
           text: 'Sign Bidirectional Protocol Flow',
           link: '/midnight/protocol-flow',
@@ -110,100 +110,6 @@ export default defineConfig({
       items: [
         { text: 'Contributor Guide', link: '/midnight/contributor-guide' },
         { text: 'Prerequisites', link: '/midnight/prerequisites' },
-      ],
-    },
-    {
-      text: 'Signet.js SDK Reference',
-      items: [
-        {
-          text: 'Chain Adapter Interface',
-          link: '/primitives/chain-adapter-interface',
-        },
-        {
-          text: 'Chain Adapters',
-          items: [
-            {
-              text: 'EVM Chains',
-              items: [
-                { text: 'Overview', link: '/signetjs/chain-adapters/evm' },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chain-adapters/evm/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chain-adapters/evm/finalize-transaction-signing',
-                },
-                {
-                  text: 'prepareMessageForSigning',
-                  link: '/signetjs/chain-adapters/evm/prepare-message-for-signing',
-                },
-                {
-                  text: 'finalizeMessageSigning',
-                  link: '/signetjs/chain-adapters/evm/finalize-message-signing',
-                },
-                {
-                  text: 'prepareTypedDataForSigning',
-                  link: '/signetjs/chain-adapters/evm/prepare-typed-data-for-signing',
-                },
-                {
-                  text: 'finalizeTypedDataSigning',
-                  link: '/signetjs/chain-adapters/evm/finalize-typed-data-signing',
-                },
-              ],
-            },
-            {
-              text: 'Bitcoin',
-              items: [
-                { text: 'Overview', link: '/signetjs/chain-adapters/bitcoin' },
-                {
-                  text: 'RPC Adapter',
-                  link: '/signetjs/chain-adapters/bitcoin/btc-rpc-adapter',
-                },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chain-adapters/bitcoin/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chain-adapters/bitcoin/finalize-transaction-signing',
-                },
-              ],
-            },
-            {
-              text: 'Cosmos Chains',
-              items: [
-                { text: 'Overview', link: '/signetjs/chain-adapters/cosmos' },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chain-adapters/cosmos/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chain-adapters/cosmos/finalize-transaction-signing',
-                },
-              ],
-            },
-            {
-              text: 'deriveAddressAndPublicKey',
-              link: '/signetjs/chain-adapters/derive-address-and-public-key',
-            },
-            {
-              text: 'getBalance',
-              link: '/signetjs/chain-adapters/get-balance',
-            },
-            {
-              text: 'broadcastTx',
-              link: '/signetjs/chain-adapters/broadcast-tx',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      text: 'Other Signers',
-      items: [
-        { text: 'Canton Signer (Daml Docs)', link: '/contract-api/canton' },
       ],
     },
   ],
