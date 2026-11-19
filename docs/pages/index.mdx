@@ -46,5 +46,3 @@ The protocol is best understood in 5 steps:
 3. The integrating dApp, watching for events on the Responder contract, picks up the emitted **SignatureRespondedEvent** and relays the fully signed transaction to the foreign chain.
 4. The MPC network observes the outcome of the signed transaction in final blocks of the foreign blockchain and posts an attestation thereof back to Midnight.
 5. The integrating dApp collects the execution output and its attestation and submits both back to the integrating contract, completing the cross chain interaction.
-
-![The sign bidirectional protocol flow: five steps between a dApp, contracts on Midnight, the Sig Network MPC and a foreign blockchain](https://raw.githubusercontent.com/sig-net/midnight-integration/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docs/sign-bidirectional-flow.drawio.png)
