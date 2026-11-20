@@ -1,0 +1,286 @@
+# Quickstart
+
+This quickstart builds the smallest contract that completes the [Sign Bidirectional Protocol Flow](/midnight/protocol-flow): a contract on Midnight that sends an ERC20 `transfer` from its own Ethereum account and settles on the attested result. It is the [Integrator Guide](/midnight/integrator-guide) cut down to one request and one response. Read the guide before shipping anything built from it.
+
+You need:
+
+- Node.js and the Compact compiler at the version in [Prerequisites](/midnight/prerequisites) (currently `compact update 0.36.0`).
+- A Midnight wallet funded on a public test network, and a proof server to prove with.
+- An RPC URL for Sepolia, the Ethereum network this example targets.
+
+## 1. Install the protocol library
+
+```sh
+npm install @sig-net/midnight
+```
+
+## 2. Write the contract
+
+The contract keeps its requests in a `SignBidirectionalEventMapV1`, pins the Signet signer and its own MPC response key, and has one circuit for each end of the flow: `sendErc20` stores the request and notifies the MPC, and `completeErc20` verifies the MPC's attestation and consumes the request.
+
+```compact [src/quickstart.compact]
+pragma language_version >= 0.25;
+
+import CompactStandardLibrary;
+import "@sig-net/midnight/src/Signet";
+
+// The requests this contract makes: an EVM Type 2 transaction with 2 calldata words, 0 access-list
+// entries and 0 storage keys, and a 34-byte output deserialisation schema.
+// This is ledger field 0, so its ledger-tree path is [0].
+export ledger signBidirectionalEventMap: SignBidirectionalEventMapV1<EvmType2TxParams<2, 0, 0>, 34>;
+
+export ledger lastSeen: Uint<64>;
+export ledger heightAtRequest: Map<RequestId, Uint<64>>;
+
+// The Signet singleton, set at deploy.
+sealed ledger signetSigner: SignetSigner;
+
+// This contract's MPC response key, set once by initialise.
+export ledger mpcResponseKey: Secp256k1Point;
+export ledger initialised: Counter;
+sealed ledger deployer: Bytes<32>;
+
+witness witnessDeployerSecretKey(): Bytes<32>;
+
+export pure circuit calculateDeployerCommitment(sk: Bytes<32>): Bytes<32> {
+  return upgradeFromTransient(transientHash<Vector<2, Bytes<32>>>([pad(32, "quickstart:deployer:"), sk]));
+}
+
+constructor(signetContract: SignetSigner, deployerCommitment: Bytes<32>) {
+  signetSigner = disclose(signetContract);
+  deployer = disclose(deployerCommitment);
+  lastSeen = 0;
+}
+
+export circuit initialise(responseKey: Secp256k1Point): [] {
+  assert(deployer == calculateDeployerCommitment(witnessDeployerSecretKey()), "Not the deployer");
+  assert(initialised == 0, "Already initialised");
+  assert(responseKey != default<Secp256k1Point>, "Response key must not be the identity point");
+  initialised.increment(1);
+  mpcResponseKey = disclose(responseKey);
+}
+
+// Runtime step 1: store a request for token.transfer(to, amount) on Sepolia and notify the MPC.
+export circuit sendErc20(
+  evmNonce: Uint<64>,
+  token: Bytes<20>,
+  to: Bytes<20>,
+  amount: Uint<128>,
+  gasLimit: Uint<64>,
+  maxFeePerGas: Uint<128>,
+  maxPriorityFeePerGas: Uint<128>,
+): RequestId {
+  assert(initialised == 1, "Not initialised");
+
+  const calldata = EvmCalldata<2> {
+    selector: Bytes[0xa9, 0x05, 0x9c, 0xbb], // transfer(address,uint256)
+    noWords: 2 as Uint<16>,
+    words: [evmAddressAbiWord(disclose(to)), numericAbiWord(disclose(amount))]
+  };
+  const txParams = EvmType2TxParams<2, 0, 0> {
+    chainId: 11155111, // Sepolia
+    nonce: disclose(evmNonce),
+    maxPriorityFeePerGas: disclose(maxPriorityFeePerGas),
+    maxFeePerGas: disclose(maxFeePerGas),
+    gasLimit: disclose(gasLimit),
+    to: disclose(token),
+    value: 0 as Uint<128>,
+    calldata: some<EvmCalldata<2>>(calldata),
+    accessListEntryCount: 0,
+    accessList: []
+  };
+  const request = constructSignBidirectionalEventV1<EvmType2TxParams<2, 0, 0>, 34>(
+    1 as Uint<8>,                 // keyVersion
+    kernel.self(),                // sender: this contract
+    pad(32, "quickstart"),        // path: selects the derived account that signs
+    MPCSignatureAlgorithm.ecdsa,
+    TxParamType.evmType2,
+    txParams,
+    ethereumCaip2Id(),
+    MPCDestination.unused,
+    pad(64, ""),
+    "[{\"name\":\"success\",\"type\":\"bool\"}]" as Bytes<34>
+  );
+  const requestId = disclose(calculateEvmType2RequestIdV1<2, 0, 0, 34>(request));
+
+  assert(!signBidirectionalEventMap.member(requestId), "Request already outstanding");
+  signBidirectionalEventMap.insert(requestId, disclose(request));
+  heightAtRequest.insert(requestId, lastSeen);
+
+  signetSigner.signBidirectional(
+    requestId,
+    constructSignBidirectionalEventNotificationV1(
+      kernel.self(),
+      1 as Uint<8>,                        // requestsPathDepth
+      [0, 0, 0, 0] as Vector<4, Uint<8>>,  // requestsPath, zero padded
+    ),
+  );
+  return requestId;
+}
+
+struct TransferResult {
+  success: Boolean;
+}
+
+// Runtime step 5: verify the MPC's attestation of the transfer and consume the request.
+export circuit completeErc20(
+  serializedOutput: Bytes<1>,
+  respondBidirectionalEvent: RespondBidirectionalEventV1,
+): [] {
+  assert(initialised == 1, "Not initialised");
+  const output = disclose(serializedOutput);
+  const response = disclose(respondBidirectionalEvent);
+  assert(verifyRespondBidirectionalEventV1<1>(output, response, mpcResponseKey), "Invalid attestation or output");
+  assert(response.outputKind == OutputKind.executed, "Transaction did not execute");
+
+  const requestId = response.requestId;
+  assert(signBidirectionalEventMap.member(requestId), "Request not found");
+  assert(response.blockHeight > heightAtRequest.lookup(requestId), "Response is not above request height");
+  if (response.blockHeight > lastSeen) {
+    lastSeen = response.blockHeight;
+  }
+  signBidirectionalEventMap.remove(requestId);
+  heightAtRequest.remove(requestId);
+
+  assert(deserialize<TransferResult, 1>(output).success, "Remote transfer failed");
+}
+```
+
+**NOTE:** `sendErc20` and `completeErc20` read and write `lastSeen` directly, which is the naive form the Integrator Guide warns about. Two transactions that touch it at the same time conflict. Ship the buffer and flush form in [Preventing Contention on `lastSeen`](/midnight/integrator-guide#preventing-contention-on-lastseen).
+
+**NOTE:** `completeErc20` settles a transfer that executed. A transaction that reverted, or that can never execute, is attested with an empty output: add a circuit that verifies it at width 0 and refunds, as [Handling Failure](/midnight/protocol-flow#handling-failure) describes.
+
+## 3. Compile
+
+Tell the compiler where the npm packages are with `COMPACT_PATH`:
+
+```sh
+COMPACT_PATH=node_modules compact compile src/quickstart.compact src/managed/quickstart
+```
+
+The request map is the first ledger field, so `managed/quickstart/compiler/contract-info.json` records it at `"index": 0`. That is the ledger-tree path `[0]` at depth 1 that `sendErc20` passes in its notification and that the reader below is given. If you add fields above the map, look the index up again (see [The Request Map's Ledger-Tree Path](/midnight/integrator-guide#the-request-maps-ledger-tree-path)).
+
+## 4. Deploy and initialise
+
+Deploy the contract with the Signet signer's address for your network as its first constructor argument and your deployer commitment as its second. [Networks and Addresses](/networks) lists the published addresses, and `@sig-net/midnight` exports the same values:
+
+```ts
+import {
+  deriveMidnightResponseKey,
+  getMpcRootPublicKey,
+  getResponderContractAddress,
+  getSignerContractAddress,
+  MidnightNetwork,
+} from '@sig-net/midnight'
+
+const network = MidnightNetwork.Preview
+const signerContractAddress = getSignerContractAddress(network)
+const responderContractAddress = getResponderContractAddress(network)
+const mpcRootPublicKey = getMpcRootPublicKey(network)
+```
+
+The contract's MPC response key depends on the contract's address, which only exists after deploy. Derive it and call `initialise` once:
+
+```ts
+const mpcResponseKey = deriveMidnightResponseKey(
+  mpcRootPublicKey,
+  myContractAddress
+)
+// Pass mpcResponseKey to your contract's initialise circuit.
+```
+
+The ERC20 vault's [deploy package](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/deploy) is a worked example of deploying and initialising a contract this way.
+
+## 5. Fund the contract's Ethereum account
+
+The MPC signs each request with a key derived for your contract and the request's `path`, here `pad(32, "quickstart")`. Derive that account's address, then send it the tokens to transfer and some Sepolia ETH for gas:
+
+```ts
+import { asciiPadded, bytesToHex, deriveEvmAddress } from '@sig-net/midnight'
+
+const expectedSigner = deriveEvmAddress(
+  mpcRootPublicKey,
+  myContractAddress,
+  bytesToHex(asciiPadded('quickstart', 32))
+)
+```
+
+## 6. Make the request and relay it
+
+Call `sendErc20` with the account's next nonce, the token, the recipient, the amount and the gas settings. It returns the request id. The off-chain steps go through one `SignetRequestResponseReader`, created before the request is submitted:
+
+```ts
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
+import {
+  requestIdHex,
+  signetEventSourceFromIndexer,
+  SignetRequestResponseReader,
+} from '@sig-net/midnight'
+import { JsonRpcProvider } from 'ethers'
+
+const publicDataProvider = indexerPublicDataProvider({
+  queryURL: indexerUrl,
+  subscriptionURL: indexerWsUrl,
+})
+
+const reader = new SignetRequestResponseReader({
+  requesterContractAddress: myContractAddress,
+  requesterRequestsPath: [0],
+  responderContractAddress,
+  publicDataProvider,
+  eventSource: signetEventSourceFromIndexer({ queryUrl: indexerUrl }),
+  responderEventsFromBlock: (await publicDataProvider.queryBlock())?.height,
+})
+
+// The id sendErc20 returned, as the hex the reader takes.
+const requestId = requestIdHex(returnedRequestId)
+
+// Poll until the MPC's signature is posted, then broadcast. The MPC never broadcasts.
+const signedTx = await reader.getSignedEvmTransaction(requestId, expectedSigner)
+if (signedTx === undefined)
+  throw new Error('no valid response posted yet, poll again')
+await new JsonRpcProvider(sepoliaRpcUrl).broadcastTransaction(
+  signedTx.serialized
+)
+```
+
+## 7. Complete on Midnight
+
+Once the transaction is in a final block, the MPC attests its outcome. Obtain the serialised output the MPC attested, from your own node or from the MPC's output cache (see [Obtaining the output](/midnight/protocol-flow#obtaining-the-output-your-own-node-or-the-mpc-cache)), then poll for the attestation of it:
+
+```ts
+import {
+  MpcOutputCacheReader,
+  respondBidirectionalEventToCircuitInput,
+} from '@sig-net/midnight'
+
+const cache = new MpcOutputCacheReader({
+  networkId: network,
+  signerContractAddress,
+})
+const serializedOutput = await cache.fetchSerializedOutput(requestId)
+if (serializedOutput === undefined)
+  throw new Error('output not cached yet, poll again')
+
+const respondBidirectionalEvent =
+  await reader.getVerifiedRespondBidirectionalEvent(
+    requestId,
+    serializedOutput,
+    mpcResponseKey
+  )
+if (respondBidirectionalEvent === undefined)
+  throw new Error('no attestation posted yet, poll again')
+
+const circuitInput = respondBidirectionalEventToCircuitInput(
+  respondBidirectionalEvent
+)
+// Call completeErc20(serializedOutput, circuitInput) on your contract.
+```
+
+`completeErc20` checks the output against the attested width and hash, verifies the MPC's signature against the pinned response key, consumes the request and asserts that the transfer returned `true`. The serialised output is untrusted until that check: a wrong or forged output merely fails to verify.
+
+## Where to go next
+
+- The [Integrator Guide](/midnight/integrator-guide) explains each setup and runtime step, and the contention pattern a deployed contract needs.
+- The [ERC20 Vault](/midnight/erc20-vault) is a complete application: deposits, withdrawals, swaps and lending, with per-user accounts.
+- [Building the dApp](/building-the-dapp) covers the application around the contract.

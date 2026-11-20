@@ -1,0 +1,29 @@
+# Privacy Model
+
+An application built on this integration starts its actions on Midnight and executes them on a public chain. That split decides what it can hide. The points below are stated for the [ERC20 Vault](/midnight/erc20-vault), and apply to any contract built the same way.
+
+## What is private
+
+- **Who is acting.** A user withdraws, swaps, supplies or redeems from Midnight without revealing their identity. The public chain sees your contract's account act, not the user behind the action.
+- **Which actions belong together.** Each withdraw, swap, supply and redeem carries a one-time authentication tag, so the protocol's messages do not tie two of a user's actions to each other, or to the shielded account that made them.
+- **What a user holds.** Balances are shielded tokens on Midnight.
+
+The protocol's messages give an observer no help beyond what the public amounts already reveal.
+
+## What is not private
+
+- **Amounts.** Every action executes on the public chain, so its amount is public even when the identity behind it is not.
+- **Timing and order.** A deposit of 5 USD followed at once by a withdrawal of 5 USD to a fresh Ethereum account is still linked, by the amount and the timing.
+- **The tokens involved.** For a swap, supply or redeem, a user hides only among the people transacting in those particular tokens.
+- **Ethereum accounts.** A withdrawal to an account used before is connected to that account's earlier activity. A withdrawal to the account that funded the deposit links the two.
+- **A user's deposits to each other.** The vault gives each user one fixed identity commitment and one derived deposit account, so all of that user's deposits are linkable, even when they come from different Ethereum accounts.
+
+## What this means when you build
+
+- **Choose how paths are derived.** A fixed path per user is a design choice. It is convenient, since the user funds a single derived account, and it is what makes that user's deposits linkable. A contract that derives a fresh path for each deposit trades the convenience back for privacy (see [Derived Keys](/midnight/protocol-flow#derived-keys)).
+- **Withdraw to fresh accounts.** A withdrawal is unlinkable only when it pays an Ethereum account with no history. Make that the default in your interface.
+- **Do not let amounts and timing identify users.** Round amounts, common denominations and a delay between deposit and withdrawal all widen the set a user hides in. An interface that encourages depositing and withdrawing the same amount straight away undoes the rest.
+- **Keep each user's shielded coins consolidated.** The number of coins collected to pay for an action leaks information about who is paying. Pay from one coin and return a change coin.
+- **Protect the user's secret.** Someone who learns it can link all of that user's previous activity, and can steal at most one pending request. A backend that proves calls for the user sees it (see [Building the dApp](/building-the-dapp#who-holds-what)).
+
+These properties are defined and argued in the [formal analysis of the ERC20 vault](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/docs/formal-analysis/main.pdf).

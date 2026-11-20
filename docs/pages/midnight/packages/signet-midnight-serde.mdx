@@ -1,0 +1,66 @@
+{/* Imported from sig-net/midnight-integration packages/midnight-serde-rs/README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# signet-midnight-serde
+
+A thin wrapper around the real Rust `borsh` crate, pinned to 1.8.1. Values use native Rust types and Borsh derives. Optional zero padding supports Midnight fixed byte containers.
+
+## Use
+
+```rust
+use signet_midnight_serde::{BorshDeserialize, BorshSerialize, deserialize, serialize};
+
+#[derive(Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+#[borsh(crate = "signet_midnight_serde::borsh")]
+struct ResultValue {
+    ok: bool,
+    amount: u128,
+}
+
+let result = ResultValue { ok: true, amount: 4242 };
+let bytes = serialize(&result, Some(128)).unwrap();
+let decoded: ResultValue = deserialize(&bytes).unwrap();
+assert_eq!(decoded, result);
+```
+
+`serialize(&value, length)` delegates to `borsh::to_vec` and optionally extends the result with zeros. A total length smaller than the encoding returns an error. `deserialize::<T>(&bytes)` uses `T::deserialize_reader`, consuming the value prefix and leaving any trailing bytes unread. The crate re-exports Borsh and its derive traits.
+
+Use `[T; N]` for fixed arrays. A `Vec<T>` has a length prefix. Native Rust `Option<T>` and payload enums retain their standard Borsh representation. The wrapper accepts any native Borsh type and has no Compact compatibility gate or runtime descriptor system.
+
+## Compact-compatible types
+
+These are caller responsibilities, documented here without a runtime Compact compatibility gate. Native Borsh also accepts types outside this subset. Use the following representations to obtain bytes compatible with Compact's standard-library `serialize<T, N>` and `deserialize<T, N>` on valid values:
+
+| Compact type | Native Borsh representation | Conditions |
+| --- | --- | --- |
+| `Boolean` | Boolean | Use canonical values and encodings 0 or 1. |
+| `Uint<8>`, `Uint<16>`, `Uint<32>`, `Uint<64>`, `Uint<128>` | `u8`, `u16`, `u32`, `u64`, `u128` | Values must fit the unsigned width. |
+| Other sized or bounded uint | Unsigned integer of exactly the same byte width | That width must be 1, 2, 4, 8 or 16. The value must also satisfy Compact's narrower bound. For example, `Uint<12>` uses `u16` but values must be below 4096. |
+| `Bytes<n>` | Fixed byte array | Exact length. For interoperability with borsh-js 2.0.0, use positive lengths. |
+| `Vector<n, T>` | Fixed array | Exact length, positive for cross-language interoperability, and compatible element types. |
+| Struct or tuple | Fields in the same order | Every member must satisfy this table recursively. |
+| Enum with 2 to 256 variants | Payload-free enum with matching ordinal | Same variant order. |
+| `Maybe<T>` | Struct with `is_some: bool`, then `value: T` | Always include the value arm, including when absent. |
+| `Either<A, B>` | Struct with `is_left: bool`, then `left: A`, then `right: B` | Always include both arms. |
+
+The byte layout and the value constraints are separate contracts. The wrappers do not impose Compact integer bounds, field moduli or an allowlist. They use native Borsh behaviour. A successful Borsh round trip does not prove that Compact accepts the value or that the complete bytes are canonical for a chosen `N`.
+
+## Types and behaviours that need care
+
+- `Uint<24>`, `Uint<40>`, `Uint<248>` and `Field` have no matching native Borsh integer. Do not substitute a wider or narrower integer. Explicit fixed byte arrays require application-owned numeric conversions and validation.
+- `Uint<0..1>` and a singleton Compact enum occupy zero bytes. Borsh integers and enum tags do not. There is no automatic singleton conversion here.
+- Borsh dynamic arrays and strings include a four-byte length. Compact vectors and byte buffers are fixed-size. Use fixed arrays for direct compatibility.
+- Native Borsh options and payload enums differ from Compact `Maybe` and `Either`. In particular, an absent Borsh `Option<u64>` is one byte, while Compact `Maybe<Uint<64>>` occupies nine bytes.
+- Signed integers, floats, maps and sets have native Borsh meanings, but this package makes no claim that they correspond to Compact types.
+- Compact `serialize<T, N>` pads to `N`. Pass the optional total output length to the wrapper when padding is needed. The decoding wrapper reads the Borsh value prefix and accepts trailing bytes. It does not validate padding.
+- borsh-js 2.0.0 treats fixed arrays with `len: 0` as dynamic arrays and adds a four-byte prefix. Rust Borsh fixed empty arrays occupy zero bytes. This is an implementation difference, not the fixed-array rule of the Borsh format.
+- borsh-js 2.0.0 accepts non-zero Boolean bytes as true and can silently truncate overflowing integers. Rust's native Boolean decoder rejects byte 2. Do not use malformed-input behaviour as a cross-language contract.
+
+Rust callers must perform checked conversion of wider external integers before constructing a Borsh value. Use a fallible conversion such as `u128::try_from` when the source type implements it, or the source library's checked conversion API. A narrowing `as` cast can discard high bits before this crate sees the value. A native `u128` corresponds to Compact `Uint<128>`. Narrower Compact bounds remain the caller's responsibility.
+
+## Evidence and references
+
+The [conformance kit](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/midnight-serde-conformance/README.md) compares native Borsh encodings with compiler-generated Compact fixtures for the documented subset. It also records examples of incompatibility. These tests execute generated JavaScript, not proof verification, and do not establish equivalence for the entire Compact type system.
+
+- [Borsh specification](https://borsh.io/#specification)
+- [borsh-js](https://github.com/near/borsh-js)
+- [Rust Borsh](https://docs.rs/borsh/1.8.1/borsh/)

@@ -1,36 +1,54 @@
-## Introduction
+# Night Mode
 
-Managing multiple accounts across different blockchains is a headache. Every chain has its own wallets, private keys, and authentication systems, making cross-chain interactions complex and fragmented. But what if a single abstract account could seamlessly control multiple accounts across different chains—without compromising security? That's now possible through Chain Signatures.
+Night Mode lets a contract on [Midnight](https://midnight.network) drive transactions on foreign chains through the [Sig Network](https://sig.network) [Distributed MPC](https://github.com/sig-net/mpc), so applications keep Midnight's privacy while acting anywhere else.
 
-### What Are Chain Signatures?
+## Use cases
 
-Chain Signatures are programmable digital signatures that enable cross-chain control, allowing one account on one blockchain to securely manage accounts and assets on entirely different chains.
-The system:
+- **Making existing apps private.** Put a Midnight contract in front of an app that is already deployed on another chain. Users call your contract on Midnight, and the app only sees your contract's account.
+- **Using liquidity and assets across chains.** A Midnight contract can hold ERC20 tokens, swap them on Uniswap and lend them on Aave, and mint shielded tokens on Midnight against them. The [ERC20 Vault](/midnight/erc20-vault) example does this.
+- **Private cross chain infrastructure.** One contract on Midnight can hold an account on each chain it targets, so it can swap and lend across chains from one place. Who is behind each action stays on Midnight.
 
-- **Derives keys** from a single base key.
-- Allows third parties (e.g., dApps, wallets, or protocols) to **request signatures** on-chain.
-- Introduces **flexible usage controls**, such as daily spending limits or rate limits, by combining these keys with custom on-chain logic.
+The [Privacy Model](/privacy) covers what is private and what is not.
 
-### Benefits & Use Cases:
+## Reading Guide
 
-- **One Identity, Many Chains**: Instead of juggling multiple wallets, a single signature from your Ethereum account could authorize actions on any other supported EVM or non-EVM chain, without needing to manage separate private keys.
-- **Seamless Cross-Chain Transactions**: Move assets or execute smart contract functions across different chains, without relying on third-party bridges or centralized custodians.
-- **Usage Controls**: rate or time-based restrictions can be enforced by the on-chain contract that manages key usage (e.g., "this key can only send up to 1 ETH per day").
-- **Recovery or Fallback Conditions**: Instead of storing private keys in a single hardware device, you can use a multi-party computation (MPC) setup that offers user-friendly ways to recover accounts.
-- **Signs the Arbitrary State of a Foreign Chain**: Gives your smart contract awareness of whether a transaction it signed went through so that it can perform actions accordingly. For example, it allows for a smart contract to keep track of local chain assets based on the foreign chain's state.
+- Start with the [Quickstart](/quickstart) to make one cross chain call from a contract of your own.
+- Read the [Sign Bidirectional Protocol Flow](/midnight/protocol-flow) to understand the fundamentals of the cross chain protocol.
+- Then go through the [Integrator Guide](/midnight/integrator-guide) to see how to wire your own applications with Sig Network to make cross chain calls.
+- Or jump straight into complete [Examples](/midnight/examples) to see applications of the protocol.
 
-## How It Works?
+## Install
 
-### Contract Background
+[`@sig-net/midnight`](/midnight/packages/midnight) is the client-agnostic protocol library for that integration. It carries everything a Midnight contract or off-chain client needs to speak the signet protocol. It does not bind to any particular contract.
 
-The **ChainSignatures** contract:
+```sh
+npm install @sig-net/midnight
+```
 
-- Holds a base public key (`publicKey`), expressed in affine coordinates on the secp256k1 curve.
-- Derives new public keys for each `(user, path)` combination by computing an integer `epsilon` (based on a `path` string and user’s address) and performing an EC point addition:
+**Compact module** for contract code on chain: `.compact` sources for Compact contracts to import the protocol structs and circuits directly:
 
-  ```
-  DerivedPubKey = BasePubKey + (epsilon × G)
-  ```
+```compact
+import "@sig-net/midnight/src/Signet";
+```
 
-- Allows a user to request a signature on a 32-byte payload by calling `sign(...)`. A minimal deposit may be required to discourage spam; any unused deposit is refunded once the request is completed.
-- Awaits the **MPC network** to compute the actual ECDSA signature offline, then call `respond(...)` with that signature. The contract then emits an event with the signature, and refunds the deposit.
+**TypeScript library** for clients off chain: readers that poll the signet responder and verify the MPC's responses, key derivation and attestation crypto, output serialisation, the published per-network addresses and constant values, and typed twins of the on-chain structs and circuits.
+
+[MinoCrab](https://github.com/sig-net/minocrab) is a Rust eDSL for Midnight contracts, usable instead of Compact. It is experimental.
+
+## Examples
+
+| Example                              | What it demonstrates                                                                          | Flow walkthroughs                                                                                                                                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ERC20 Vault](/midnight/erc20-vault) | A Midnight vault holding, swapping (Uniswap) and lending (Aave) ERC20 tokens on an EVM chain. | [deposit](/midnight/erc20-vault/deposit), [withdraw](/midnight/erc20-vault/withdraw), [swap](/midnight/erc20-vault/swap), [supply](/midnight/erc20-vault/supply), [redeem](/midnight/erc20-vault/redeem) |
+
+## Sign Bidirectional Protocol Flow
+
+This Sig Network Protocol Flow brings foreign blockchain assets and functionality to contracts on Midnight. Contracts record signature requests that the Sig Network MPC signs. dApps relay signed transactions to foreign chains and the MPC attests their execution outcomes back to Midnight. Then contracts complete cross chain interactions with in-circuit validation of the MPC foreign execution attestation.
+
+The protocol is best understood in 5 steps:
+
+1. A user interacts with a dApp, which starts a cross chain interaction by calling a circuit on a contract on Midnight that has integrated with Sig Network.
+2. The MPC network, watching for events on the Signer contract, picks up the emitted **SignBidirectionalEvent** (which carries the **SignBidirectionalEventNotification**) and honours the signature request it points to.
+3. The integrating dApp, watching for events on the Responder contract, picks up the emitted **SignatureRespondedEvent** and relays the fully signed transaction to the foreign chain.
+4. The MPC network observes the outcome of the signed transaction in final blocks of the foreign blockchain and posts an attestation thereof back to Midnight.
+5. The integrating dApp collects the execution output and its attestation and submits both back to the integrating contract, completing the cross chain interaction.

@@ -1,0 +1,52 @@
+# Networks and Addresses
+
+The Signet signer, the Signet responder and the MPC root public key of each Midnight network, as `@sig-net/midnight` 0.27.0-rc.3 publishes them. Read them from the package rather than copying them:
+
+```ts
+import {
+  getMpcOutputCacheUrl,
+  getMpcRootPublicKey,
+  getResponderContractAddress,
+  getSignerContractAddress,
+  MidnightNetwork,
+} from '@sig-net/midnight'
+
+const signerContractAddress = getSignerContractAddress(MidnightNetwork.Preview)
+const responderContractAddress = getResponderContractAddress(
+  MidnightNetwork.Preview
+)
+const mpcRootPublicKey = getMpcRootPublicKey(MidnightNetwork.Preview)
+const mpcOutputCacheUrl = getMpcOutputCacheUrl(MidnightNetwork.Preview)
+```
+
+Each getter throws for a network with no published value yet.
+
+## Preview
+
+Public test network for early and breaking changes.
+
+|                     |                                                                                                                                        |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Signet signer       | `2b0f9ef9fe7e6d79628a12d245ae0d7efaaaeeca360d9f5f3e13214a5c325013`                                                                     |
+| Signet responder    | `1616a3cf33ffc2c4678323150374b89a18807335bcbabd31621c56e0d3c0d203`                                                                     |
+| MPC root public key | `0x04cb41bab8bc97121f4902514ca57a284f167b9239ecb8176831d1ef0fede87c61ca3e59da1c194aa90108098a9e5cdc55d3b3297cdefbc085ffafd0f2c34ae61a` |
+| MPC output cache    | `https://storage.googleapis.com/midnight-cache-storage-dev/v1`                                                                         |
+
+## Preprod
+
+Public test network that mirrors mainnet config.
+
+|                     |                                                                                                                                        |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Signet signer       | `c423fca48329307ba00383e8c40cf1b3a83a7728a2b6721e863cfa16d25fb3ec`                                                                     |
+| Signet responder    | `627ef19bb1db09b4261e31a4f87a6b299581c3d635c409bad9ac4547370ef4d5`                                                                     |
+| MPC root public key | `0x047dd8ecafa5d9c921485b6ac33476870e98c3378e395f3c8fae92ce4943d8432847f591ab25ca454effb522ec2eaf04b7e1c83ba65ae731ea98dd52eb7d458dd4` |
+| MPC output cache    | `https://storage.googleapis.com/midnight-cache-storage-testnet/v1`                                                                     |
+
+## Mainnet
+
+The Signet signer and responder addresses are not published yet.
+
+## Local stack
+
+A local stack has no fixed values: its setup deploys a fresh signer and responder and generates a fresh MPC root key. See the [Contributor Guide](/midnight/contributor-guide).

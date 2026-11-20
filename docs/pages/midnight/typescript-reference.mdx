@@ -1,0 +1,2821 @@
+{/* Generated from sig-net/midnight-integration packages/signet-midnight/src at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit the TSDoc comments there. */}
+
+# TypeScript Reference
+
+Every export of `@sig-net/midnight`, with the declaration and the comment written beside it in the source.
+
+## `abi-serde.ts`
+
+### `EvmSchemaField`
+
+One field of an outputDeserializationSchema: `type` is an ABI type string
+`ethers.ParamType` accepts. `deserializeEvmOutput` decodes every
+such type, while the respond side (`deriveRespondSchema`) accepts
+only the `EvmOutputTypeKind` subset, matched on the raw string.
+
+```ts
+interface EvmSchemaField {
+  name: string;
+  type: string;
+}
+```
+
+### `EvmSchemaInput`
+
+Any form an outputDeserializationSchema arrives in: parsed, JSON text, or NUL-padded raw bytes.
+
+```ts
+type EvmSchemaInput = readonly EvmSchemaField[] | string | Uint8Array;
+```
+
+### `AbiDecodedValue`
+
+Decoded output values, keyed by schema field name. Numerics are bigint,
+bools boolean, address/bytesN/bytes/string are the forms ethers produces
+(hex or text strings) or Uint8Array, arrays are plain arrays.
+`serializeRespondOutput` additionally accepts plain numbers and
+numeric strings for `uint256`, the forms indexer JSON typically yields.
+
+```ts
+type AbiDecodedValue = bigint | boolean | number | string | Uint8Array | AbiDecodedValue[];
+```
+
+### `AbiDecodedOutput`
+
+Decoded output values keyed by schema field name (see `AbiDecodedValue`).
+
+```ts
+type AbiDecodedOutput = Record<string, AbiDecodedValue>;
+```
+
+### `deserializeEvmOutput`
+
+Decode a raw EVM call result (eth_call return data / debug_trace output)
+into named values, driven by the request's outputDeserializationSchema.
+The decode-side counterpart of `serializeRespondOutput`. Type
+validation is FULLY delegated to ethers: this function checks the schema's
+shape only, so it decodes ABI types the respond side refuses. An empty
+schema decodes to an empty object. Returns a plain object (never an
+ethers `Result`), so it survives JSON round-trips and structural
+comparison.
+
+- **param** `schema`: The outputDeserializationSchema: parsed, JSON text, or the raw NUL-padded on-chain bytes.
+- **param** `callResult`: The ABI-encoded return data (hex string or bytes).
+- **returns**: The decoded values keyed by schema field name, empty for an empty schema.
+
+```ts
+function deserializeEvmOutput(
+  schema: EvmSchemaInput,
+  callResult: ethers.BytesLike,
+): AbiDecodedOutput
+```
+
+### `EvmOutputTypeKind`
+
+The ABI output types the MPC attests, and what each maps to. The respond
+bytes are the Borsh serialisation of a struct with one member per output
+field, in schema order, typed by this mapping:
+
+- `EvmOutputTypeKind.Bool`: ABI `bool`, Borsh `bool`, Compact `Boolean` (1 byte).
+- `EvmOutputTypeKind.Uint256`: ABI `uint256`, Borsh `[u8; 32]`
+  holding the value LITTLE-endian, the byte order of every Borsh and
+  Compact integer, Compact `Bytes<32>` (32 bytes). A circuit that wants a
+  number narrows it with `checkedTruncationU128`, which aborts above
+  2^128 - 1. The ABI wire word is big-endian: the MPC reverses it once,
+  here, so no circuit has to.
+- `EvmOutputTypeKind.Address`: ABI `address`, Borsh `[u8; 20]`
+  holding the address bytes, Compact `Bytes<20>` (20 bytes).
+- `EvmOutputTypeKind.FixedBytes`: ABI `bytes1` to `bytes32`, Borsh
+  `[u8; N]`, Compact `Bytes<N>` (N bytes).
+
+Every other ABI type is unsupported: the MPC drops a request whose output
+schema names one, and `deriveRespondSchema` throws on it.
+
+```ts
+enum EvmOutputTypeKind {
+  Bool = "bool",
+  Uint256 = "uint256",
+  Address = "address",
+  FixedBytes = "bytesN",
+}
+```
+
+### `unsupportedEvmOutputFields`
+
+The fields of an outputDeserializationSchema whose ABI type is outside the
+supported subset (`EvmOutputTypeKind`). The check itself never
+throws on an unsupported type: an empty result means the output types do
+not stop the MPC from admitting the request, a non-empty one means it drops it.
+
+- **param** `schema`: The outputDeserializationSchema: parsed, JSON text, or the raw NUL-padded on-chain bytes.
+- **returns**: The unsupported fields in schema order, empty when every field is supported.
+- **throws**: If the schema is malformed: text or bytes not in canonical form, a field name that is not a unique Solidity identifier (or is `__proto__`), or a type that is not a valid ABI type string.
+
+```ts
+function unsupportedEvmOutputFields(schema: EvmSchemaInput): EvmSchemaField[]
+```
+
+### `deriveRespondSchema`
+
+The Borsh schema the respond bytes of an executed call are serialised
+with: a struct with one member per output field, in schema order, each
+typed by `EvmOutputTypeKind`. An empty output schema derives an
+empty struct, which serialises to zero bytes. Borsh writes struct members
+in the struct object's key order, which equals schema order because field
+names are Solidity identifiers (see `parseSchemaShape`).
+
+- **param** `schema`: The outputDeserializationSchema: parsed, JSON text, or the raw NUL-padded on-chain bytes.
+- **returns**: The derived Borsh struct schema.
+- **throws**: If the schema is malformed or names an unsupported ABI type.
+
+```ts
+function deriveRespondSchema(schema: EvmSchemaInput): Schema
+```
+
+### `respondOutputWidth`
+
+The byte width of the respond bytes an output schema derives: the sum of
+its fields' widths under `EvmOutputTypeKind`, what a settle circuit
+declares as its `Bytes<N>` output argument.
+
+- **param** `schema`: The outputDeserializationSchema: parsed, JSON text, or the raw NUL-padded on-chain bytes.
+- **returns**: The exact serialised width, 0 for an empty schema.
+- **throws**: If the schema is malformed or names an unsupported ABI type.
+
+```ts
+function respondOutputWidth(schema: EvmSchemaInput): number
+```
+
+### `serializeRespondOutput`
+
+Serialise ABI-decoded output into the respond bytes the MPC attests: the
+Borsh encoding of `deriveRespondSchema`'s struct over the output's
+values. A `uint256` is carried whole as 32 little-endian bytes, so no
+value is narrowed off chain: a circuit that wants a number narrows the
+`Bytes<32>` with `checkedTruncationU128`.
+
+- **param** `schema`: The outputDeserializationSchema: parsed, JSON text, or the raw NUL-padded on-chain bytes.
+- **param** `output`: The decoded values keyed by field name, as `deserializeEvmOutput` returns them.
+- **returns**: The unpadded respond bytes, `respondOutputWidth` long.
+- **throws**: If the schema is malformed or names an unsupported type, a field is missing from `output`, or a value is outside its type.
+
+```ts
+function serializeRespondOutput(
+  schema: EvmSchemaInput,
+  output: AbiDecodedOutput,
+): Uint8Array
+```
+
+### `isEvmContractCall`
+
+Whether an EVM transaction is a contract call, decided over its input
+bytes exactly as the MPC decides it (`is_contract_call` in its
+`chain-ethereum/src/event_parsing.rs`): more than two bytes of input, so a
+one- or two-byte input is NOT a contract call. The answer selects the
+branch of `executedEvmRespondOutput`.
+
+Pass the signed transaction's `data`, or, from the request record alone,
+`assembleCalldata(request.txParams.calldata)`, which yields the same bytes
+(`"0x"` for a request without calldata).
+
+- **param** `input`: The transaction's input bytes (hex string or bytes).
+- **returns**: True when the MPC treats the transaction as a contract call.
+- **throws**: If `input` is neither bytes nor valid 0x hex.
+
+```ts
+function isEvmContractCall(input: ethers.BytesLike): boolean
+```
+
+### `EvmTraceOutputKind`
+
+How a `debug_traceTransaction` (callTracer) read of a transaction's top
+call frame came back: the MPC's `TraceOutput`. Carried by
+`EvmTraceOutput`.
+
+```ts
+enum EvmTraceOutputKind {
+  /** The transaction was not traced: the MPC traces contract calls only. */
+  NotTraced = "NotTraced",
+  /** The top call frame carries a string `output` field: the return data, possibly empty (`0x`). */
+  Output = "Output",
+  /** The top call frame carries no string `output` field. */
+  NoReturnData = "NoReturnData",
+}
+```
+
+### `EvmTraceOutput`
+
+The traced return data of an EVM transaction, as the MPC models it: a top
+call frame's string `output` field (even `0x`) is
+`EvmTraceOutputKind.Output`, an absent or non-string one is
+`EvmTraceOutputKind.NoReturnData`. `evmTraceOutputFromCallFrame`
+reads it off a frame.
+
+```ts
+type EvmTraceOutput =
+  | {
+      /** The frame carried a string `output` field. */
+      readonly kind: EvmTraceOutputKind.Output;
+      /** The frame's `output`: the ABI-encoded return data (hex string or bytes). */
+      readonly returnData: ethers.BytesLike;
+    }
+  | {
+      /** The frame carried no string `output` field. */
+      readonly kind: EvmTraceOutputKind.NoReturnData;
+    }
+  | {
+      /** No trace was taken. */
+      readonly kind: EvmTraceOutputKind.NotTraced;
+    };
+```
+
+### `executedEvmRespondOutput`
+
+The exact respond output the MPC attests for an EVM transaction that
+executed (the payload of an `OutputKind.executed` attestation), derived
+from the request's outputDeserializationSchema alone. The schema and the
+execution's return data MUST agree: an empty schema declares that the
+execution returns nothing, a non-empty schema that it returns data.
+
+- Not a contract call (a plain transfer): there is no return data, so the
+  schema must be empty and the output is EMPTY.
+- A contract call whose trace carries no return data, or empty return
+  data (`0x`): the schema must be empty and the output is EMPTY.
+- A contract call that returned data: the schema must be non-empty, and
+  the output is the return data decoded by `deserializeEvmOutput`
+  and serialised by `serializeRespondOutput`.
+
+The schema's types are checked on every path, a plain transfer included,
+so a request the MPC should have dropped never attests anything. A failed
+or unviable execution is attested over an empty output instead, which
+needs no call. An empty output under `executed` is therefore ordinary for
+an empty schema: its settle circuit verifies at width 0 and must route on
+the verified `outputKind`, never on the width.
+
+- **param** `schema`: The request's outputDeserializationSchema (a request record's field satisfies this).
+- **param** `isContractCall`: Whether the transaction is a contract call, as `isEvmContractCall` decides it.
+- **param** `trace`: The transaction's traced return data (`NotTraced` for an untraced plain transfer).
+- **returns**: The respond bytes, unpadded, empty for an empty schema.
+- **throws**: Exactly where the MPC refuses to attest an execution: a malformed schema or an unsupported output type, a contract call not traced, return data under an empty schema, no or empty return data under a non-empty schema, return data that is not canonical ABI (`checkCanonicalReturnData`) or that the schema cannot decode, and every `serializeRespondOutput` rejection.
+
+```ts
+function executedEvmRespondOutput(
+  schema: EvmSchemaInput,
+  isContractCall: boolean,
+  trace: EvmTraceOutput,
+): Uint8Array
+```
+
+### `JsonObject`
+
+A parsed JSON object.
+
+```ts
+interface JsonObject {
+  readonly [key: string]: JsonValue;
+}
+```
+
+### `JsonValue`
+
+Any parsed JSON value: the shape of a JSON-RPC `result`.
+
+```ts
+type JsonValue = null | boolean | number | string | readonly JsonValue[] | JsonObject;
+```
+
+### `evmTraceOutputFromCallFrame`
+
+The `EvmTraceOutput` of a `debug_traceTransaction` callTracer top
+call frame, read exactly as the MPC reads it (`trace_output_to_bytes` in
+its `chain-ethereum/src/rpc.rs`):
+
+- The frame must be a JSON object with a `type` field (of any value).
+- A non-empty string `error` refuses the frame, naming a non-empty string
+  `revertReason` beside it. Any other `error` is ignored.
+- A string `output` is `EvmTraceOutputKind.Output`, its hex decoded
+  after one optional lowercase `0x` prefix (`0x` and `""` are empty return
+  data). An absent or non-string `output` is
+  `EvmTraceOutputKind.NoReturnData`.
+
+- **param** `frame`: The JSON-RPC `result` of `debug_traceTransaction` with the callTracer.
+- **returns**: The frame's traced return data, for `executedEvmRespondOutput`.
+- **throws**: If the frame is not an object, has no `type`, reports an `error`, or carries an `output` that is not even-length hex.
+
+```ts
+function evmTraceOutputFromCallFrame(frame: JsonValue): EvmTraceOutput
+```
+
+### `evmTraceOutputFromTronReceipt`
+
+The `EvmTraceOutput` of a solidified Tron receipt, the JSON body of
+`/walletsolidity/gettransactioninfobyid`, read exactly as the MPC reads it
+(`TronReceipt::execution_outcome` in its `chain-tron/src/types.rs`). The
+Tron twin of `evmTraceOutputFromCallFrame`: pass the result to
+`executedEvmRespondOutput` with the request's output schema and
+`isEvmContractCall(assembleCalldata(request.txParams.calldata))` to rebuild
+the exact output the MPC attests for the executed call.
+
+- The receipt must be a JSON object with a string `id` (a pending
+  transaction answers `{}`).
+- Its verdict is the top-level `result`, else `receipt.result`: `SUCCESS`
+  (or Tron's `SUCESS`) reads on; a failure member (`REVERT`,
+  `OUT_OF_ENERGY`, ...) refuses, as the MPC attests `failed` over an empty
+  output instead; any other value refuses as unclassifiable.
+- Every `contractResult` element must be hex (`0x` optional). The first
+  element is the top call's return data, `EvmTraceOutputKind.Output`
+  (an empty string is empty return data). An absent or empty
+  `contractResult` is `EvmTraceOutputKind.NoReturnData`.
+
+- **param** `receipt`: The JSON body of `/walletsolidity/gettransactioninfobyid`.
+- **returns**: The receipt's return data, for `executedEvmRespondOutput`.
+- **throws**: If the receipt is not an object, has no `id`, reports a failed or unclassifiable result, or carries a `contractResult` that is not an array of hex strings.
+
+```ts
+function evmTraceOutputFromTronReceipt(receipt: JsonValue): EvmTraceOutput
+```
+
+### `canonicalSchemaText`
+
+The canonical text of an output schema: `JSON.stringify` of its fields
+reduced to `{name, type}` in schema order, with no whitespace. A schema's
+on-chain bytes must be exactly this text followed by NUL padding, so one
+schema has exactly one byte form. Write a contract's schema literal with
+this function's output.
+
+- **param** `fields`: The schema's fields in order.
+- **returns**: The canonical JSON text, `[]` for an empty schema.
+
+```ts
+function canonicalSchemaText(fields: readonly EvmSchemaField[]): string
+```
+
+## `byte-codecs.ts`
+
+### `bytesToHex`
+
+Render bytes as a lowercase hex string, no `0x` prefix.
+
+- **param** `bytes`: The bytes to render.
+- **returns**: Lowercase hex, two chars per byte.
+
+```ts
+function bytesToHex(bytes: Uint8Array): string
+```
+
+### `stripHexPrefix`
+
+Strip an optional `0x`/`0X` prefix from a hex string.
+
+- **param** `hex`: A hex string, with or without a `0x` prefix.
+- **returns**: The bare hex digits.
+
+```ts
+function stripHexPrefix(hex: string): string
+```
+
+### `hexToBytes`
+
+Decode a hex string into bytes: the inverse of `bytesToHex`.
+
+- **param** `hex`: An even number of hex digits, with or without a `0x` prefix.
+- **returns**: The decoded bytes.
+- **throws**: If the digits are odd-length or not all hex: lenient parsing would return plausible-looking wrong bytes.
+
+```ts
+function hexToBytes(hex: string): Uint8Array
+```
+
+### `BLS_ORDER`
+
+BLS12-381 scalar field order (the Compact `Field` type modulus).
+
+```ts
+const BLS_ORDER =
+  52435875175126190479447740508185965837690552500527637822603658699938581184513n;
+```
+
+### `bytesToBigint`
+
+Little-endian bytes to a bigint: the byte order Compact's
+`Bytes<32> as Field` / `as Secp256k1Scalar` casts read.
+
+- **param** `bytes`: Little-endian byte array.
+- **returns**: The decoded non-negative integer.
+
+```ts
+function bytesToBigint(bytes: Uint8Array): bigint
+```
+
+### `bigintToBytes32`
+
+A bigint to exactly 32 little-endian bytes: the inverse of
+`bytesToBigint`. Non-negative values encode raw (the full 32-byte
+range, so secp256k1 scalars above `BLS_ORDER` fit). Negative values
+are interpreted in the BLS scalar field, so their domain is
+`[-BLS_ORDER, 0)`.
+
+- **param** `n`: The integer to encode.
+- **returns**: The 32-byte little-endian encoding.
+- **throws**: If the value is below `-BLS_ORDER` or does not fit 32 bytes.
+
+```ts
+function bigintToBytes32(n: bigint): Uint8Array
+```
+
+### `bytesToBigintBE`
+
+Big-endian (SEC1) bytes to a bigint: the byte order stored signatures use.
+
+- **param** `bytes`: Big-endian byte array.
+- **returns**: The decoded non-negative integer.
+
+```ts
+function bytesToBigintBE(bytes: Uint8Array): bigint
+```
+
+### `bigintToBytes32BE`
+
+A bigint to exactly 32 big-endian (SEC1) bytes: the inverse of
+`bytesToBigintBE`.
+
+- **param** `value`: The non-negative integer to encode.
+- **returns**: The 32-byte big-endian encoding.
+- **throws**: If the value is negative or does not fit 32 bytes.
+
+```ts
+function bigintToBytes32BE(value: bigint): Uint8Array
+```
+
+## `constants.ts`
+
+### `EXECUTION_DEST_BYTES`
+
+Width of `SignBidirectionalEvent.executionDest` (`Bytes<64>`): a zero-padded
+CAIP-2 id, at most 41 bytes.
+
+```ts
+const EXECUTION_DEST_BYTES = 64;
+```
+
+### `MPC_PARAMS_BYTES`
+
+Width of `SignBidirectionalEvent.params` (`Bytes<64>`).
+
+```ts
+const MPC_PARAMS_BYTES = 64;
+```
+
+### `SELECTOR_BYTES`
+
+Width of `EvmCalldata.selector` (`Bytes<4>`): the literal first 4 calldata bytes.
+
+```ts
+const SELECTOR_BYTES = 4;
+```
+
+### `SIGNET_DEFAULT_KEY_VERSION`
+
+Default MPC key version (`keyVersion` field value). `constructSignBidirectionalEventV1`
+requires `keyVersion >= 1`.
+
+```ts
+const SIGNET_DEFAULT_KEY_VERSION = 1n;
+```
+
+### `asciiPadded`
+
+Encode text as zero-padded ASCII bytes, the Compact `pad(N, "text")`
+convention every string-ish field of the request structs uses.
+`asciiUnpadded` is the inverse.
+
+- **param** `text`: The ASCII text to encode.
+- **param** `length`: The fixed field width in bytes.
+- **returns**: `text`'s bytes followed by zero padding to exactly `length`.
+- **throws**: If the encoded text does not fit in `length` bytes.
+
+```ts
+function asciiPadded(text: string, length: number): Uint8Array
+```
+
+### `asciiUnpadded`
+
+Decode a zero-padded text field: the inverse of `asciiPadded` and of
+the Compact `pad(N, "text")` convention. Only the TRAILING zero bytes are
+padding: a zero byte inside the text is kept.
+
+- **param** `bytes`: The padded field bytes.
+- **returns**: The text without its padding.
+
+```ts
+function asciiUnpadded(bytes: Uint8Array): string
+```
+
+### `MidnightNetwork`
+
+A named Midnight network: the single source of the network names shared
+across the `@sig-net/midnight*` packages.
+
+```ts
+enum MidnightNetwork {
+  /** Local standalone stack (Docker node, indexer and proof server on localhost). */
+  Undeployed = "undeployed",
+  /** Public test network for early and breaking changes (bleeding-edge ledger). */
+  Preview = "preview",
+  /** Public test network that mirrors mainnet config: the final staging step. */
+  Preprod = "preprod",
+  /** Production network (live, real value). */
+  Mainnet = "mainnet",
+}
+```
+
+### `DeployedNetwork`
+
+A public, long-lived Midnight network: every named network except the
+local standalone stack. Only these have fixed protocol counterparty
+values published in this package (see `getMpcRootPublicKey`,
+`getSignerContractAddress` and `getResponderContractAddress`).
+
+```ts
+type DeployedNetwork = Exclude<MidnightNetwork, MidnightNetwork.Undeployed>;
+```
+
+### `getMpcRootPublicKey`
+
+The MPC root public key of a deployed Midnight network, as `0x04…`
+uncompressed SEC1 hex (the canonical spelling of
+`normaliseSecp256k1PublicKey`): the `mpcRootPublicKey` every client key
+derivation starts from (see `deriveEvmAddress`). A local standalone stack
+has no fixed key: its setup generates a fresh `MPC_ROOT_KEY` per stack.
+
+- **param** `networkId`: The deployed network to look up.
+- **returns**: The network's MPC root public key.
+
+```ts
+function getMpcRootPublicKey(networkId: DeployedNetwork): string
+```
+
+### `getSignerContractAddress`
+
+The address of the signet signer on a deployed
+Midnight network: the contract a requester contract seals at deploy and
+notifies of its requests. A local standalone stack has no fixed address:
+each stack deploys its own signet signer.
+
+- **param** `networkId`: The deployed network to look up.
+- **returns**: The network's signet signer address.
+- **throws**: When the signet signer's address is not yet published in this package.
+
+```ts
+function getSignerContractAddress(networkId: DeployedNetwork): string
+```
+
+### `getResponderContractAddress`
+
+The address of the signet responder contract on a deployed Midnight
+network: the contract the MPC posts its responses to, and the
+`responderContractAddress` a `SignetRequestResponseReader` polls. A local
+standalone stack has no fixed address: each stack deploys its own
+responder.
+
+- **param** `networkId`: The deployed network to look up.
+- **returns**: The network's responder contract address.
+- **throws**: When the responder's address is not yet published in this package.
+
+```ts
+function getResponderContractAddress(networkId: DeployedNetwork): string
+```
+
+### `getMpcOutputCacheUrl`
+
+The public URL of the MPC's output cache on a deployed Midnight network,
+down to the MPC's object prefix: the `cacheUrl` an `MpcOutputCacheReader`
+defaults to. A local standalone stack has no published cache: its
+responder serves its own.
+
+- **param** `networkId`: The deployed network to look up.
+- **returns**: The network's output cache URL.
+
+```ts
+function getMpcOutputCacheUrl(networkId: DeployedNetwork): string
+```
+
+## `epsilon-derivation.ts`
+
+### `EPSILON_DERIVATION_PREFIX`
+
+Domain prefix of the sig-net v2.0.0 epsilon derivation scheme. The full
+derivation string is `<prefix>:midnight:mainnet:<requester>:<path>`
+(colon-separated), matching `caip2_derivation_path` in the MPC's
+`signet-crypto/src/kdf.rs`.
+
+```ts
+const EPSILON_DERIVATION_PREFIX = "sig.network v2.0.0 epsilon derivation";
+```
+
+### `MIDNIGHT_CAIP2_ID`
+
+CAIP-2 chain id component of every Midnight derivation string. The MPC
+renders `Chain::Midnight` as this one literal for every Midnight network
+(sig-net/mpc signet-primitives/src/chain.rs), so it never varies with the
+network a contract is deployed on.
+
+```ts
+const MIDNIGHT_CAIP2_ID = "midnight:mainnet";
+```
+
+### `MIDNIGHT_RESPOND_BIDIRECTIONAL_PATH`
+
+The FIXED derivation path of the MPC's respond-bidirectional RESPONSE key
+for Midnight client contracts. It enters the derivation string verbatim,
+mirroring the real MPC's per-chain `<chain> response key` convention
+(sig-net/mpc chain-signatures/node/src/respond_bidirectional.rs). The
+response key is derived PER CLIENT CONTRACT from (the client contract's
+own address, this path): it is not the MPC root key and not the key that
+signs the requested transaction. Client contracts store the key itself
+with a one-shot `initialise` circuit after deploy and verify
+RespondBidirectionalEvents against it.
+
+```ts
+const MIDNIGHT_RESPOND_BIDIRECTIONAL_PATH = "midnight response key";
+```
+
+### `SignBidirectionalEventKeySelector`
+
+The two fields of a request record that, with the root key of its
+`keyVersion`, select its request signing key. The record's tx-params
+decomposition plays no part, so a record over any decomposition satisfies
+it.
+
+```ts
+type SignBidirectionalEventKeySelector = Pick<SignBidirectionalEvent, "sender" | "path">;
+```
+
+### `deriveMidnightRequestSigningKey`
+
+Derive the REQUEST SIGNING key: the public key the MPC network signs a
+Midnight contract's requested transactions with, using the sig-net v2.0.0
+epsilon scheme:
+`epsilon = keccak256("<prefix>:midnight:mainnet:<requester>:<path>")` and
+`derivedPubKey = mpcRootPubKey + epsilon * G` on secp256k1. The MPC
+treats `path` as an opaque string. For a request record already in hand,
+`deriveSignBidirectionalEventSigningKey` renders the two record
+fields itself.
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key, in any spelling `parseSecp256k1PublicKey` accepts (SEC1 hex or NEAR `secp256k1:<base58>`).
+- **param** `contractAddress`: The Midnight contract address the request originates from (`0x` prefix optional, case-insensitive: it enters the derivation string through `normaliseRequesterAddress`).
+- **param** `path`: The derivation path string. For a key derived from an on-ledger request record, this is the MPC's rendering of the record's `path: Bytes<32>`: the lowercase hex of the FULL 32 bytes, no `0x` prefix and no trimming (`bytesToHex` of the raw bytes), so `0xab..00` and `0xab..` derive different keys.
+- **returns**: The request signing public key as a Compact-runtime `Secp256k1Point`.
+
+```ts
+function deriveMidnightRequestSigningKey(
+  mpcSecp256k1PublicKey: string,
+  contractAddress: string,
+  path: string,
+): Secp256k1Point
+```
+
+### `deriveEvmAddress`
+
+Derive the EVM address of the request signing key (see
+`deriveMidnightRequestSigningKey`): the account the MPC network
+signs from for a given Midnight contract and derivation path.
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key, in any spelling `parseSecp256k1PublicKey` accepts (SEC1 hex or NEAR `secp256k1:<base58>`).
+- **param** `contractAddress`: The Midnight contract address the request originates from (`0x` prefix optional, case-insensitive: it enters the derivation string through `normaliseRequesterAddress`).
+- **param** `path`: The derivation path string. For an account derived from an on-ledger request record, this is the MPC's rendering of the record's `path: Bytes<32>`: the lowercase hex of the FULL 32 bytes, no `0x` prefix and no trimming (`bytesToHex` of the raw bytes), so `0xab..00` and `0xab..` derive different accounts.
+- **returns**: The derived EVM address as a 0x-prefixed EIP-55 checksummed string.
+
+```ts
+function deriveEvmAddress(
+  mpcSecp256k1PublicKey: string,
+  contractAddress: string,
+  path: string,
+): string
+```
+
+### `deriveSignBidirectionalEventSigningKey`
+
+Derive the request signing key of an on-ledger request record: the public
+key the MPC signs THAT request's transaction with. Owns the MPC's
+rendering of the record into the derivation string: the requester is the
+record's `sender`, and the path is the lowercase hex of its FULL 32
+`path` bytes.
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key of the record's `keyVersion`, in any spelling `parseSecp256k1PublicKey` accepts (SEC1 hex or NEAR `secp256k1:<base58>`).
+- **param** `request`: The on-ledger request record, or its `sender` and `path`.
+- **returns**: The request signing public key as a Compact-runtime `Secp256k1Point`.
+
+```ts
+function deriveSignBidirectionalEventSigningKey(
+  mpcSecp256k1PublicKey: string,
+  request: SignBidirectionalEventKeySelector,
+): Secp256k1Point
+```
+
+### `deriveSignBidirectionalEventSignerEvmAddress`
+
+Derive the EVM address of an on-ledger request record's request signing
+key (see `deriveSignBidirectionalEventSigningKey`): the signer a
+signature response (SignatureRespondedEvent) to that request must recover
+to.
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key of the record's `keyVersion`, in any spelling `parseSecp256k1PublicKey` accepts (SEC1 hex or NEAR `secp256k1:<base58>`).
+- **param** `request`: The on-ledger request record, or its `sender` and `path`.
+- **returns**: The derived EVM address as a 0x-prefixed EIP-55 checksummed string.
+
+```ts
+function deriveSignBidirectionalEventSignerEvmAddress(
+  mpcSecp256k1PublicKey: string,
+  request: SignBidirectionalEventKeySelector,
+): string
+```
+
+### `deriveEpsilon`
+
+The epsilon scalar of the sig-net v2.0.0 derivation scheme:
+`keccak256("<prefix>:midnight:mainnet:<requester>:<path>")` reduced mod
+the secp256k1 curve order, the chain id fixed to
+`MIDNIGHT_CAIP2_ID`. Child keys are `root + epsilon` (secret side) and
+`rootPubKey + epsilon * G` (public side).
+
+- **param** `requester`: The requester component of the derivation string, verbatim (no normalisation: callers must agree on the exact rendering).
+- **param** `path`: The derivation path string.
+- **returns**: The epsilon scalar, in `[0, n)`.
+
+```ts
+function deriveEpsilon(requester: string, path: string): bigint
+```
+
+### `deriveMidnightResponseKey`
+
+Derive the MPC's respond-bidirectional RESPONSE key for one client
+contract, public side: what the client pins via its `initialise` circuit
+and what response verification checks against. See
+`MIDNIGHT_RESPOND_BIDIRECTIONAL_PATH` for the scheme.
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key, in any spelling `parseSecp256k1PublicKey` accepts (SEC1 hex or NEAR `secp256k1:<base58>`).
+- **param** `clientContractAddress`: The client contract's Midnight address (`0x` prefix optional, case-insensitive).
+- **returns**: The response public key as a Compact-runtime `Secp256k1Point`.
+
+```ts
+function deriveMidnightResponseKey(
+  mpcSecp256k1PublicKey: string,
+  clientContractAddress: string,
+): Secp256k1Point
+```
+
+## `mpc-output-cache.ts`
+
+### `MpcOutputCacheConfig`
+
+Where the MPC's output cache lives and which of its namespaces to read.
+
+```ts
+interface MpcOutputCacheConfig {
+  /**
+   * The cache's public URL down to the MPC's configured object prefix, e.g.
+   * `https://storage.googleapis.com/<bucket>/<prefix>`. A trailing slash is
+   * tolerated. Defaults to the cache this package publishes for `networkId`
+   * ({@link getMpcOutputCacheUrl}), so the local standalone stack, which
+   * has none, must pass it.
+   */
+  readonly cacheUrl?: string;
+  /** The Midnight network id the MPC serves: the path segment after the prefix. */
+  readonly networkId: string;
+  /** The signet signer the MPC publishes through, 64 hex chars: the segment after the network. */
+  readonly signerContractAddress: string;
+}
+```
+
+### `MpcOutputCacheReader`
+
+Reads attested serialised outputs out of the MPC's output cache. The MPC
+writes a request's bytes to
+`<prefix>/<networkId>/<signerContractAddress>/<requestId>.bin` before it
+posts the matching attestation, so once an attestation is on chain a
+missing object means the cache write was lost or the deployment provides
+no cache, and an object found before any attestation is still unverified.
+
+```ts
+class MpcOutputCacheReader
+```
+
+#### `MpcOutputCacheReader.constructor`
+
+- **param** `config`: The cache location and the namespace to read.
+- **throws**: When `cacheUrl` is omitted for a network this package publishes no cache for.
+
+```ts
+constructor(config: MpcOutputCacheConfig)
+```
+
+#### `MpcOutputCacheReader.objectUrl`
+
+The URL of the object holding `requestId`'s attested output.
+
+- **param** `requestId`: The request whose output object to locate.
+- **returns**: The object's public URL.
+
+```ts
+objectUrl(requestId: RequestIdHex): string
+```
+
+#### `MpcOutputCacheReader.fetchSerializedOutput`
+
+Download the serialised output the MPC cached for `requestId`, verbatim.
+UNTRUSTED: verify the returned bytes against a verified attestation.
+
+- **param** `requestId`: The request whose attested output to fetch.
+- **returns**: The cached bytes, or `undefined` when the cache holds no object for the request (the MPC has not written it yet, or does not provide a cache).
+- **throws**: If the cache cannot be reached or answers with a status that is neither 2xx nor 404.
+
+```ts
+async fetchSerializedOutput(requestId: RequestIdHex): Promise<Uint8Array | undefined>
+```
+
+## `raw-contract-state.ts`
+
+### `RawContractState`
+
+What the indexer / simulator hands us: a bare `StateValue`, or anything
+wrapping one under `.state` (e.g. `ChargedState`, a decoded
+`queryContractState(address)` read's `data`).
+
+```ts
+type RawContractState = StateValue | { state: StateValue };
+```
+
+### `signetFieldNodeByPath`
+
+Follow a resolved ledger-tree path to its node in raw state: the
+MPC-perspective primitive, given only a contract's raw state and the path
+a notification carries. The path is the value compactc records for a
+field in the client's own `contract-info.json` (`"index"`): a
+single-element path (`[4]`) for a flat contract's field, a longer one
+(`[1, 14]`) once the compiler stores fields in a chunk tree.
+
+- **param** `raw`: Raw contract state from the indexer or simulator.
+- **param** `path`: Resolved chunk-tree path in declaration order.
+- **returns**: The `StateValue` node at the end of the path.
+- **throws**: If `path` is empty, steps into a non-array, an index is out of range, or the runtime binding misreports a node as an array.
+
+```ts
+function signetFieldNodeByPath(raw: RawContractState, path: readonly number[]): StateValue
+```
+
+## `signature-requests-state-reader.ts`
+
+### `SignetRequestsLedger`
+
+The decoded signet ledger field of a requesting contract: its request index.
+
+```ts
+interface SignetRequestsLedger {
+  /** The request index, keyed by hex request id. */
+  requestsIndex: SignBidirectionalEventIndex;
+}
+```
+
+### `readSignetRequestsLedgerFromState`
+
+MPC-style read: parse the signet request index out of raw contract state
+by its caller-supplied field position. A contract chooses its own layout, so
+the caller must know where the field sits.
+
+Records are decoded, not verified against the ids they are filed under:
+`lookupSignetRequestAt` is the verified lookup.
+
+- **param** `raw`: Raw contract state, e.g. a decoded `queryContractState(address)` read's `data` from the indexer or `ctx.currentQueryContext.state` from the simulator.
+- **param** `requestsIndexPath`: Resolved ledger-tree path of the request index.
+- **returns**: The decoded `SignetRequestsLedger`.
+- **throws**: If the field is missing, has the wrong state-value shape, or a record is not a decodable evmType2 or Tron request record.
+
+```ts
+function readSignetRequestsLedgerFromState(
+  raw: RawContractState,
+  requestsIndexPath: readonly number[],
+): SignetRequestsLedger
+```
+
+### `lookupSignetRequestAt`
+
+Look up ONE request by id in a contract's request index at an arbitrary
+ledger field: the single-record sibling of
+`readSignetRequestsLedgerFromState` and the discovery primitive of
+the event-based feed. The recompute-and-drop gate: the decode never sees
+the id, so the final recompute is the only thing binding a record's
+contents to the key it was filed under, and a mismatch (a spoofed or
+wrongly filed record) is dropped. Every non-membership case returns
+`undefined` rather than throwing, and the caller MUST drop such a pointer.
+
+- **param** `raw`: Raw contract state, e.g. a decoded `queryContractState(address)` read's `data`.
+- **param** `requestsPath`: Resolved ledger-tree path of the request index in `raw`, as the notification carries it.
+- **param** `requestId`: The request id to look up.
+- **returns**: The stored, id-verified request record, or `undefined` when it is not a member.
+
+```ts
+function lookupSignetRequestAt(
+  raw: RawContractState,
+  requestsPath: readonly number[],
+  requestId: RequestIdHex,
+): AnySignBidirectionalEvent | undefined
+```
+
+## `signature-response-verification.ts`
+
+### `recoverEvmSignatureResponseSigner`
+
+Recover the address that produced a response signature, over the signing
+digest of the evmType2 transaction the request describes.
+
+- **param** `request`: The on-ledger evmType2 request record the response answers.
+- **param** `response`: The posted signature record answering it.
+- **returns**: The checksummed recovered signer address.
+- **throws**: If the request is not an evmType2 record, the response is not a decodable signature, or the request record is malformed (see `signBidirectionalEventToUnsignedEvmTransaction`).
+
+```ts
+function recoverEvmSignatureResponseSigner(
+  request: SignBidirectionalEvent,
+  response: SignatureRespondedEvent,
+): string
+```
+
+### `recoverTronSignatureResponseSigner`
+
+- **param** `request`: The on-ledger Tron request record the response answers
+- **param** `response`: The posted signature record answering it
+- **param** `mpcRootPublicKey`: The MPC root public key of the record's `keyVersion`; the transaction owner is derived from it and the record's `sender` and `path`
+- **returns**: The recovered signer as a base58 Tron address
+- **throws**: If the request is not a Tron record, the record does not assemble, the key does not parse or the response is not a decodable signature
+
+```ts
+function recoverTronSignatureResponseSigner(
+  request: SignBidirectionalEvent<TronTxParams>,
+  response: SignatureRespondedEvent,
+  mpcRootPublicKey: string,
+): string
+```
+
+### `verifyEvmSignatureRespondedEvent`
+
+Verify a posted response against its evmType2 request: does the signature
+recover to `expectedSigner`? A malformed or wrongly-signed response is
+simply not valid.
+
+- **param** `request`: The on-ledger evmType2 request record the response answers.
+- **param** `response`: The posted signature record answering it.
+- **param** `expectedSigner`: The EVM address (any case, 0x hex) that must have signed.
+- **returns**: `true` iff the response is a valid signature by `expectedSigner`.
+- **throws**: If the request is not an evmType2 record, the record does not assemble, or `expectedSigner` is not an EVM address.
+
+```ts
+function verifyEvmSignatureRespondedEvent(
+  request: SignBidirectionalEvent,
+  response: SignatureRespondedEvent,
+  expectedSigner: string,
+): boolean
+```
+
+### `verifyTronSignatureRespondedEvent`
+
+- **param** `request`: The on-ledger Tron request record the response answers
+- **param** `response`: The posted signature record answering it
+- **param** `mpcRootPublicKey`: The MPC root public key of the record's `keyVersion`; the expected owner is derived from it and the record's `sender` and `path`
+- **returns**: `true` iff the response is a valid signature by the derived owner
+- **throws**: If the request is not a Tron record, the record does not assemble or the key does not parse
+
+```ts
+function verifyTronSignatureRespondedEvent(
+  request: SignBidirectionalEvent<TronTxParams>,
+  response: SignatureRespondedEvent,
+  mpcRootPublicKey: string,
+): boolean
+```
+
+## `signet-contract-events.ts`
+
+### `SignetEventName`
+
+The event names the signet contracts emit, exactly as their `emit`
+literals spell them (the on-wire name is this string NUL-padded to
+`SIGNET_EVENT_NAME_LENGTH` bytes, see `decodeSignetEventName`).
+
+```ts
+enum SignetEventName {
+  /** A client's cross-contract signature-request notification. */
+  SignBidirectionalEvent = "SignBidirectionalEvent",
+  /** The MPC's signature response to a request. */
+  SignatureRespondedEvent = "SignatureRespondedEvent",
+  /** The MPC's respond-bidirectional attestation of a foreign execution. */
+  RespondBidirectionalEvent = "RespondBidirectionalEvent",
+}
+```
+
+### `SIGNET_EVENT_NAME_LENGTH`
+
+Byte width of a signet event's name (Compact `pad(32, ...)`).
+
+```ts
+const SIGNET_EVENT_NAME_LENGTH = 32;
+```
+
+### `SIGNET_EVENT_PAYLOAD_LENGTH`
+
+Byte width of every signet event's packed payload.
+
+```ts
+const SIGNET_EVENT_PAYLOAD_LENGTH = 256;
+```
+
+### `SignetMiscEvent`
+
+A signet contract event in decoded form: the NUL-trimmed name and the full
+re-padded `SIGNET_EVENT_PAYLOAD_LENGTH`-byte payload. The one shape
+every source normalises to before the per-event payload decoders run.
+
+```ts
+interface SignetMiscEvent {
+  /** The event name, NUL padding stripped (compare to {@link SignetEventName}). */
+  name: string;
+  /** The packed payload, re-padded to {@link SIGNET_EVENT_PAYLOAD_LENGTH} bytes. */
+  payload: Uint8Array;
+}
+```
+
+### `IndexedSignetMiscEvent`
+
+A `SignetMiscEvent` read through the indexer, carrying the indexer's
+event cursor and where on chain the event was emitted, so a consumer can
+dedup, resume, show progress against the tip, say when the event happened
+and link it to its transaction. The simulator path
+(`decodeSignetLogEvents`) has none of this and yields plain
+`SignetMiscEvent`s.
+
+```ts
+interface IndexedSignetMiscEvent extends SignetMiscEvent {
+  /** The indexer's global event cursor, ascending in emission order. */
+  id: number;
+  /** The highest event id the indexer knew when the event's page was served. */
+  maxId: number;
+  /** Indexer row id of the emitting transaction. For the chain's id see {@link transactionHash}. */
+  transactionId: number;
+  /** Hash of the emitting transaction, lowercase hex, no `0x` prefix. */
+  transactionHash: string;
+  /** Height of the block holding the emitting transaction. */
+  blockHeight: number;
+  /** Hash of that block, lowercase hex, no `0x` prefix. */
+  blockHash: string;
+  /** When that block was produced. */
+  blockTimestamp: Date;
+}
+```
+
+### `SignetEventStreamOptions`
+
+Bounds on a `SignetEventSource.streamSignetEvents` walk.
+
+```ts
+interface SignetEventStreamOptions {
+  /**
+   * Inclusive lowest Midnight block height to read events from. Omit to
+   * read the whole history. Events below it are not seen at all, so it must
+   * not exceed the block of the oldest request whose responses are wanted.
+   */
+  readonly fromBlock?: number;
+  /**
+   * Inclusive highest Midnight block height to read events up to. Omit to
+   * read to the tip. With `fromBlock` it cuts one slice of the history, so
+   * a consumer can read the newest slice first and extend backwards.
+   */
+  readonly toBlock?: number;
+}
+```
+
+### `SignetEventSource`
+
+Source of a signet contract's emitted events, the event-side sibling of
+`SignetPublicStateSource`. Structural, so tests can stub it with a stream
+over fixtures. Read a live indexer with `signetEventSourceFromIndexer`,
+which yields `IndexedSignetMiscEvent`s.
+
+```ts
+interface SignetEventSource<TEvent extends SignetMiscEvent = SignetMiscEvent> {
+  /**
+   * Stream every signet event the contract has emitted so far, oldest
+   * first. Events arrive one indexer page at a time: a page's events are
+   * yielded before the next page is requested, so a consumer sees progress
+   * per page, and leaving the `for await` loop early stops further requests.
+   *
+   * @param contractAddress - The signet signer or responder to read events of.
+   * @param options - Bounds on the walk, see {@link SignetEventStreamOptions}.
+   * @returns The decoded events, oldest first.
+   */
+  streamSignetEvents(
+    contractAddress: string,
+    options?: SignetEventStreamOptions,
+  ): AsyncIterable<TEvent>;
+}
+```
+
+### `isSignetEventNamed`
+
+Whether a decoded event carries `name`.
+
+A decoded event's `name` comes from arbitrary on-chain bytes, so it is a
+plain string and NOT the enum. Comparing the two directly is what
+`no-unsafe-enum-comparison` exists to catch, and it is right to: the
+widening belongs here, once, rather than at every call site.
+
+- **param** `event`: The decoded signet event.
+- **param** `event.name`: Its decoded, NUL-stripped event name.
+- **param** `name`: The event name to match.
+- **returns**: Whether the event's decoded name equals `name`.
+
+```ts
+function isSignetEventNamed(event: { name: string }, name: SignetEventName): boolean
+```
+
+### `decodeSignetEventName`
+
+Decode a fixed-width event name: the inverse of the contract's
+`pad(32, "...")`.
+
+- **param** `name`: The padded name bytes.
+- **returns**: The trimmed name string.
+
+```ts
+function decodeSignetEventName(name: Uint8Array): string
+```
+
+### `decodeSignetLogEvents`
+
+Decode the simulator's circuit-execution log into signet events. For
+simulator tests. The indexer-path counterpart is
+`signetEventSourceFromIndexer`.
+
+- **param** `events`: The `context.events` of a `CircuitResults`.
+- **param** `contractAddress`: Optional filter: only events this contract emitted.
+- **returns**: The decoded events, in emission order.
+- **throws**: When a `misc` event is not a single bytes atom of the signet name ++ payload width.
+
+```ts
+function decodeSignetLogEvents(
+  events: readonly LogEvent[],
+  contractAddress?: string,
+): SignetMiscEvent[]
+```
+
+### `SignetIndexerConfig`
+
+Where `signetEventSourceFromIndexer` reads a signet contract's events from.
+
+```ts
+interface SignetIndexerConfig {
+  /** The indexer's GraphQL query endpoint over HTTP, e.g. `https://<indexer>/api/v4/graphql`. */
+  readonly queryUrl: string;
+}
+```
+
+### `signetEventSourceFromIndexer`
+
+Read a signet contract's events from a Midnight indexer. The stream
+pages the indexer by offset and pins its end to the tip (`maxId`) of the
+first page, so the walk is a point-in-time snapshot that ends even while
+the contract keeps emitting: rows past that tip are dropped. The contract
+address is parsed with `contractAddressFromHex` before the first
+request, so a malformed one fails without a round trip, and a `0x`
+prefixed one reaches the indexer as the bare hex it expects.
+
+- **param** `config`: Where the indexer is.
+- **returns**: The event source.
+
+```ts
+function signetEventSourceFromIndexer(
+  config: SignetIndexerConfig,
+): SignetEventSource<IndexedSignetMiscEvent>
+```
+
+### `AffinePoint`
+
+A curve point in affine coordinates (Compact `AffinePoint`), SEC1
+big-endian, the same shape the sig-net EVM and Solana signer contracts
+expose.
+
+```ts
+interface AffinePoint {
+  /** The x coordinate, 32 big-endian bytes. */
+  x: Uint8Array;
+  /** The y coordinate, 32 big-endian bytes. */
+  y: Uint8Array;
+}
+```
+
+### `MpcSignature`
+
+The MPC's canonical ECDSA signature as both respond events carry it
+(Compact `Signature`, matching the MPC's own
+`Signature { big_r, s, recovery_id }` and the EVM/Solana signer
+contracts). Emitted UNVERIFIED. Decode to an ethers signature with
+`signatureRespondedEventToSignature`. Tests mint records with the
+`@sig-net/midnight/testing` entry point's `ecdsaSignatureToMpcSignature`.
+
+```ts
+interface MpcSignature {
+  /** The signature's nonce point R. */
+  bigR: AffinePoint;
+  /** Signature scalar s, 32 big-endian bytes. */
+  s: Uint8Array;
+  /** Recovery flag matching the supplied signature scalar: 0 or 1. */
+  recoveryId: bigint;
+}
+```
+
+### `SignatureRespondedEvent`
+
+The MPC's signature over the requested EVM transaction (Compact
+`SignatureRespondedEventV1`). Emitted UNVERIFIED: authenticity comes from
+`SignetRequestResponseReader.getVerifiedSignatureRespondedEvent`.
+
+```ts
+interface SignatureRespondedEvent {
+  /** The request this signature answers, 32 bytes. Routing data only. */
+  requestId: Uint8Array;
+  /** The requested signature over the transaction the request describes. */
+  signature: MpcSignature;
+}
+```
+
+### `RespondBidirectionalEvent`
+
+The MPC's respond-bidirectional attestation of a request's remote EVM
+execution (Compact `RespondBidirectionalEventV1`, in declaration order): the
+ECDSA signature over the attestation digest
+(`calculateSignetAttestationDigest`) with everything that digest is
+computed from, the output's length and hash standing in for the output,
+which travels off chain. Emitted UNVERIFIED: verify in-circuit via
+`verifyRespondBidirectionalEventV1` or off chain via
+`verifyRespondBidirectionalEvent` (with the output) or
+`verifyRespondBidirectionalAttestation` (without it). Mint one with the
+`@sig-net/midnight/testing` entry point's `attestRespondBidirectional`.
+
+```ts
+interface RespondBidirectionalEvent {
+  /**
+   * The request this attestation answers, 32 bytes. Routing data: a
+   * verifier hashes the id the client presents.
+   */
+  requestId: Uint8Array;
+  /**
+   * Height of the finalised target-chain block holding the transaction the
+   * outcome describes (the requested transaction for executed and failed,
+   * the transaction that used up its replay protection for unviable), in the
+   * target chain's own numbering (a slot on Solana). Compact `Uint<64>`,
+   * signed into the digest.
+   */
+  blockHeight: bigint;
+  /** The MPC's verdict on the execution, signed into the digest. */
+  outputKind: OutputKind;
+  /**
+   * Byte width of the serialised output, 0 for a failed or unviable
+   * execution, signed into the digest. Compact `Uint<64>`.
+   */
+  serializedOutputLength: bigint;
+  /**
+   * The 32-byte `calculateAttestedOutputHash` of the serialised output,
+   * signed into the digest.
+   */
+  outputHash: Uint8Array;
+  /**
+   * The attestation digest the signature is over, 32 bytes. A verifier
+   * recomputes it from the fields above.
+   */
+  digest: Uint8Array;
+  /** ECDSA signature over the attestation digest. */
+  signature: MpcSignature;
+}
+```
+
+### `SignetEventPost`
+
+A decoded signet event payload: the request id the emitting circuit
+disclosed beside the posted record. The id is UNAUTHENTICATED routing
+data: it scopes reads to one request and proves nothing. Each record
+type's own doc names its authenticity check.
+
+```ts
+interface SignetEventPost<TRecord> {
+  /** The request id the post declares it concerns, 32 bytes. Routing data only. */
+  requestId: Uint8Array;
+  /** The posted record, verbatim. */
+  event: TRecord;
+}
+```
+
+### `decodeSignatureRespondedEventPayload`
+
+Decode a `SignetEventName.SignatureRespondedEvent` payload: the
+decode twin of the `respond` circuit's emit literal.
+
+- **param** `payload`: The event's payload.
+- **returns**: The decoded post: declared request id plus record.
+- **throws**: When the payload is too short to hold the packed leaves.
+
+```ts
+function decodeSignatureRespondedEventPayload(
+  payload: Uint8Array,
+): SignetEventPost<SignatureRespondedEvent>
+```
+
+### `decodeRespondBidirectionalEventPayload`
+
+Decode a `SignetEventName.RespondBidirectionalEvent` payload: the
+decode twin of the `respondBidirectional` circuit's emit literal. The two
+`Uint<64>` leaves are 8 little-endian bytes each, the byte order of
+Compact's `Uint<64>` to `Bytes<8>` cast.
+
+- **param** `payload`: The event's payload.
+- **returns**: The decoded post: declared request id plus record.
+- **throws**: When the payload is too short to hold the packed leaves or its output kind byte names no variant.
+
+```ts
+function decodeRespondBidirectionalEventPayload(
+  payload: Uint8Array,
+): SignetEventPost<RespondBidirectionalEvent>
+```
+
+### `SignBidirectionalNotificationRecord`
+
+Raw twin of the Compact `SignBidirectionalEventNotification` struct as the
+`signBidirectional` circuit emits it: the version tag plus the still-packed
+128-byte payload. Decode the payload with
+`decodeSignBidirectionalNotification`.
+
+```ts
+interface SignBidirectionalNotificationRecord {
+  /** Payload layout tag (Compact `Uint<8>`): 1 = the V1 layout. */
+  version: bigint;
+  /** The packed payload bytes, exactly as the registering circuit built them. */
+  payload: Uint8Array;
+}
+```
+
+### `decodeSignBidirectionalEventNotificationPayload`
+
+Decode a `SignetEventName.SignBidirectionalEvent` payload into the
+declared request id and the raw notification record: the decode twin of
+the `signBidirectional` circuit's emit literal
+(version (1) ++ requestId (32) ++ notification payload (128)).
+
+- **param** `payload`: The event's payload.
+- **returns**: The decoded post: declared request id plus raw notification record.
+- **throws**: When the payload is too short to hold the record.
+
+```ts
+function decodeSignBidirectionalEventNotificationPayload(
+  payload: Uint8Array,
+): SignetEventPost<SignBidirectionalNotificationRecord>
+```
+
+### `SignBidirectionalNotification`
+
+A decoded V1 notification: the flat pointer a client emitted to tell the
+MPC a request was stored, and WHERE to read the authenticated copy
+(resolve with `lookupSignetRequestAt`). The fields themselves confer no
+authority.
+
+```ts
+interface SignBidirectionalNotification {
+  /**
+   * Payload layout tag, the literal of the one layout this decoder produces.
+   * A second layout joins as its own interface with its own literal, making
+   * the decoded notification a union discriminated on `version`, so every
+   * consumer gets a compile error where it must handle the new layout. Keep
+   * this a literal: widening it to `number` gives that error away.
+   */
+  version: 1;
+  /**
+   * Address of the contract whose request map holds the request, rendered
+   * as lowercase hex, no `0x` prefix: directly usable as a
+   * `queryContractState` argument.
+   */
+  callerAddress: string;
+  /**
+   * Resolved ledger-tree path of the `SignBidirectionalEventMapV1` in
+   * {@link callerAddress}, as compactc records it in that contract's
+   * `contract-info.json` (`"index"`): `[4]` for a flat contract's field 4,
+   * `[1, 14]` once chunking applies. Followed node for node by
+   * `signetFieldNodeByPath`.
+   */
+  requestsPath: number[];
+}
+```
+
+### `decodeSignBidirectionalNotification`
+
+Unpack a `SignBidirectionalNotificationRecord`'s payload by the
+fixed V1 offsets: the decode twin of the compiled
+`constructSignBidirectionalEventNotificationV1` circuit (the pack↔decode
+lockstep is pinned by a unit test round-tripping through the real
+circuit). V1 layout:
+callerAddress (32) ++ requestsPathDepth (1) ++ requestsPath (4) ++ zero
+padding (91), where only the first `requestsPathDepth` path bytes are
+meaningful. Fails closed on an unrecognised `version`.
+
+- **param** `record`: The raw notification record.
+- **returns**: The decoded notification, its `requestsPath` trimmed to the declared depth.
+- **throws**: If the record's `version` is not one this decoder understands, or its `requestsPathDepth` is zero or exceeds `MAX_LEDGER_PATH_DEPTH`.
+
+```ts
+function decodeSignBidirectionalNotification(
+  record: SignBidirectionalNotificationRecord,
+): SignBidirectionalNotification
+```
+
+### `SignetEventRecords`
+
+The decoded record each signet event kind posts, keyed by the event's
+name: what `DecodedSignetEventNamed` carries as `record`.
+
+```ts
+interface SignetEventRecords {
+  /** The flat pointer to the stored request (the notification fully decoded). */
+  [SignetEventName.SignBidirectionalEvent]: SignBidirectionalNotification;
+  /** The MPC's signature over the requested transaction. */
+  [SignetEventName.SignatureRespondedEvent]: SignatureRespondedEvent;
+  /** The MPC's attestation of the foreign execution. */
+  [SignetEventName.RespondBidirectionalEvent]: RespondBidirectionalEvent;
+}
+```
+
+### `DecodedSignetEventNamed`
+
+A signet event of kind `TName` in decoded form: a discriminated union over
+`name`, so narrowing on it narrows `record`. `TEvent` is the shape the
+event was read in, so an `IndexedSignetMiscEvent` keeps its indexer
+cursor across the decode. Everything here is UNAUTHENTICATED: each record
+type's own doc names its authenticity check. A shared `requestId` links
+nothing by itself: events grouped by it are a request, signature and
+attestation lifecycle only once the request is read from the caller's own
+ledger with `lookupSignetRequestAt` and each post verifies against it.
+
+```ts
+type DecodedSignetEventNamed<
+  TName extends SignetEventName,
+  TEvent extends SignetMiscEvent = SignetMiscEvent,
+> = {
+  [Name in TName]: {
+    /** The event kind: the discriminant `record` narrows on. */
+    name: Name;
+    /** The request id the post declares it concerns. Routing data only. */
+    requestId: RequestIdHex;
+    /** The posted record, decoded. */
+    record: SignetEventRecords[Name];
+    /** The event as its source served it: the undecoded payload, and the cursor when indexed. */
+    source: TEvent;
+  };
+}[TName];
+```
+
+### `DecodedSignetEvent`
+
+A signet event of any kind in decoded form: see `DecodedSignetEventNamed`.
+
+```ts
+type DecodedSignetEvent<TEvent extends SignetMiscEvent = SignetMiscEvent> =
+  DecodedSignetEventNamed<SignetEventName, TEvent>;
+```
+
+### `decodeSignetEventNamed`
+
+Decode `event` as the signet event kind `name`, or skip it when it carries
+another name. The name is checked BEFORE the payload is touched, which is
+what a reader of one kind needs: the signet contracts are unauthenticated,
+so anyone can emit an undecodable event of another kind, and that must not
+fail a read that never asked for it.
+
+- **param** `event`: The signet event as its source served it.
+- **param** `name`: The event kind to decode.
+- **returns**: The decoded event, or `undefined` when `event` is not a `name` event.
+- **throws**: When `event` is a `name` event whose payload does not decode (see the payload decoder of that kind).
+
+```ts
+function decodeSignetEventNamed<
+  TName extends SignetEventName,
+  TEvent extends SignetMiscEvent,
+>(event: TEvent, name: TName): DecodedSignetEventNamed<TName, TEvent> | undefined
+```
+
+### `decodeSignetEvent`
+
+Decode `event` by whichever signet event name it carries. What to do with
+an event that is not a signet event, or that does not decode, is the
+caller's policy: a responder skips both, an explorer shows both.
+
+WARNING: this THROWS on input anyone can put on chain. A signet contract
+is unauthenticated, so a `SignBidirectionalEvent` with an unsupported
+version or a zero path depth costs its sender one transaction. A loop over
+a live stream must catch, or use `tryDecodeSignetEvent`.
+
+- **param** `event`: The signet event as its source served it.
+- **returns**: The decoded event, or `undefined` when `event`'s name is not a `SignetEventName`.
+- **throws**: When the named kind's payload does not decode.
+
+```ts
+function decodeSignetEvent<TEvent extends SignetMiscEvent>(
+  event: TEvent,
+): DecodedSignetEvent<TEvent> | undefined
+```
+
+### `SignetEventDecodeResult`
+
+The outcome of `tryDecodeSignetEvent` on a signet event: the decoded
+event, or the event that did not decode beside the decoder's reason.
+
+```ts
+type SignetEventDecodeResult<TEvent extends SignetMiscEvent = SignetMiscEvent> =
+  | {
+      /** The payload decoded. */
+      ok: true;
+      /** The decoded event. */
+      event: DecodedSignetEvent<TEvent>;
+    }
+  | {
+      /** The payload did not decode. */
+      ok: false;
+      /** The event as its source served it. */
+      source: TEvent;
+      /** The payload decoder's error message. */
+      reason: string;
+    };
+```
+
+### `tryDecodeSignetEvent`
+
+`decodeSignetEvent` without the throw: an undecodable payload comes
+back as a result to inspect. It reports the failure and leaves the policy
+(skip it, show it, count it) to the caller.
+
+- **param** `event`: The signet event as its source served it.
+- **returns**: The decode result, or `undefined` when `event`'s name is not a `SignetEventName`.
+
+```ts
+function tryDecodeSignetEvent<TEvent extends SignetMiscEvent>(
+  event: TEvent,
+): SignetEventDecodeResult<TEvent> | undefined
+```
+
+### `signetEventRecordsOf`
+
+The records of kind `name` that declare `requestId`, out of decoded events
+already in hand, in the order given. The routing step of every per-request
+read: it selects by the UNAUTHENTICATED declared id and verifies nothing.
+
+- **param** `events`: Decoded signet events of any kinds.
+- **param** `name`: The event kind to keep.
+- **param** `requestId`: The request id the kept events must declare.
+- **returns**: The kept events' records.
+
+```ts
+function signetEventRecordsOf<TName extends SignetEventName>(
+  events: readonly DecodedSignetEvent[],
+  name: TName,
+  requestId: RequestIdHex,
+): SignetEventRecords[TName][]
+```
+
+## `signet-evtype2tx-record-decoding.ts`
+
+### `decodeEvmType2SignBidirectionalEvent`
+
+Decode a stored evmType2 request record in one pass, refusing a cell whose
+declared widths are not a signet record's. Measures the capacity
+instantiation from the declared alignment widths (the schema widths from
+the last two atoms' DECLARED lengths), instantiates the descriptor once
+and decodes once. Does NOT verify the record against the id it is filed
+under, and does NOT check the `txParamType` tag: the dispatching caller
+does.
+
+- **param** `cell`: The record cell as stored (value atoms plus alignment).
+- **param** `what`: Error-message subject.
+- **returns**: The decoded record.
+- **throws**: If the cell is not a decodable evmType2 request record.
+
+```ts
+function decodeEvmType2SignBidirectionalEvent(
+  cell: AlignedValue,
+  what: string,
+): SignBidirectionalEvent
+```
+
+## `signet-evtype2tx-requests.ts`
+
+### `EvmCalldata`
+
+ABI calldata as a 4-byte selector + 32-byte word slots (Compact:
+`EvmCalldata<#maxWords>`). Every stored byte is ABI-READY: words are
+big-endian broadcast-form ABI words, and the calldata the MPC signs is
+`selector || words[0..noWords]` VERBATIM (see `assembleCalldata`).
+
+```ts
+interface EvmCalldata {
+  /** The literal first 4 calldata bytes (as broadcast). */
+  selector: Uint8Array;
+  /** How many leading {@link words} are real (Compact `noWords: Uint<16>`). */
+  noWords: bigint;
+  /**
+   * ABI-ready big-endian 32-byte word slots, stored exactly as broadcast.
+   * Capacity is the contract's `#maxWords` (vault: 2).
+   */
+  words: Uint8Array[];
+}
+```
+
+### `EvmAccessListEntry`
+
+One EIP-2930 access-list entry (Compact:
+`EvmAccessListEntry<#maxStorageKeys>`).
+
+```ts
+interface EvmAccessListEntry {
+  /** The pre-declared contract address, 20 display-order bytes. */
+  address: Uint8Array;
+  /** How many leading {@link storageKeys} are real. */
+  storageKeyCount: bigint;
+  /** Raw 32-byte storage keys, copied verbatim into the transaction. */
+  storageKeys: Uint8Array[];
+}
+```
+
+### `EvmType2TxParams`
+
+The EVM transaction to be signed, decomposed into typed fields (Compact:
+`EvmType2TxParams<#maxCalldataWords, #maxAccessListEntries,
+#maxStorageKeysPerEntry>`, EIP-1559). Compact `Bytes\<N>` fields arrive as
+N-byte `Uint8Array`s, `Uint<N>` as `bigint`. Vector capacities are each
+contract's compile-time throttle, and the runtime counts say how many
+leading slots are real.
+
+```ts
+interface EvmType2TxParams {
+  /** EIP-155 chain id of the network the signed transaction is valid on. */
+  chainId: bigint;
+  /** Account nonce of the MPC-derived sender address. */
+  nonce: bigint;
+  /** Max priority fee per gas, wei. */
+  maxPriorityFeePerGas: bigint;
+  /** Max total fee per gas, wei. */
+  maxFeePerGas: bigint;
+  /** Gas ceiling for the call. */
+  gasLimit: bigint;
+  /** Recipient (e.g. the ERC20 contract), 20 bytes. */
+  to: Uint8Array;
+  /** ETH sent with the call, wei. */
+  value: bigint;
+  /** Call data: `is_some: false` means a plain ETH transfer (`0x` data). */
+  calldata: Maybe<EvmCalldata>;
+  /** How many leading {@link accessList} entries are real. */
+  accessListEntryCount: bigint;
+  /** EIP-2930 access list slots (capacity = contract's throttle). */
+  accessList: EvmAccessListEntry[];
+}
+```
+
+### `numericAbiWord`
+
+The ABI word for a numeric value: the value as a 32-byte BIG-ENDIAN
+integer, exactly as broadcast. TS mirror of Signet.compact's
+`numericAbiWord` circuit (lockstep-tested against the compiled circuit).
+For off-chain word builders (UIs, expected-record builders, tests).
+
+- **param** `value`: The word's numeric value (e.g. an amount).
+- **returns**: The ABI-ready 32-byte word to store in an `EvmCalldata` word.
+- **throws**: If the value is negative or does not fit 32 bytes.
+
+```ts
+function numericAbiWord(value: bigint): Uint8Array
+```
+
+### `evmAddressAbiWord`
+
+The ABI word for an EVM address: 12 zero bytes, then the 20 display-order
+address bytes, exactly as broadcast. TS mirror of Signet.compact's
+`evmAddressAbiWord` circuit (lockstep-tested against the compiled circuit).
+
+- **param** `address`: The 20-byte address in display order.
+- **returns**: The ABI-ready 32-byte word to store in an `EvmCalldata` word.
+- **throws**: If the address is not exactly 20 bytes.
+
+```ts
+function evmAddressAbiWord(address: Uint8Array): Uint8Array
+```
+
+### `boolAbiWord`
+
+The ABI word for a Boolean: 31 zero bytes, then 0x01 (true) or 0x00
+(false). TS mirror of Signet.compact's `boolAbiWord` circuit
+(lockstep-tested against the compiled circuit).
+
+- **param** `value`: The word's Boolean value.
+- **returns**: The ABI-ready 32-byte word.
+
+```ts
+function boolAbiWord(value: boolean): Uint8Array
+```
+
+### `abiWordToUint128`
+
+Read a numeric ABI word back into a bigint: the big-endian reading of bytes
+16..31, with the leading 16 bytes required to be zero. TS mirror of
+Signet.compact's `abiWordToUint128` circuit, canonicality check included.
+
+- **param** `word`: The ABI-ready 32-byte word.
+- **returns**: The word's numeric value.
+- **throws**: If the word is not 32 bytes or its leading half is nonzero.
+
+```ts
+function abiWordToUint128(word: Uint8Array): bigint
+```
+
+### `abiWordToBool`
+
+Read a Boolean ABI word back into a boolean: the first 31 bytes must be
+zero and the last byte 0 or 1. TS mirror of Signet.compact's
+`abiWordToBool` circuit, canonicality check included.
+
+- **param** `word`: The ABI-ready 32-byte word.
+- **returns**: The word's Boolean value.
+- **throws**: If the word is not 32 bytes or is not a canonical Boolean.
+
+```ts
+function abiWordToBool(word: Uint8Array): boolean
+```
+
+### `calculateEvmType2TxParamsDigest`
+
+Digest of an `EvmType2TxParams` over the bytes that reach the signed
+transaction, the TS twin of the `calculateEvmType2TxParamsDigestV1` circuit
+(lockstep-tested against its fixed-width oracles): the scalar fields, then
+the calldata words, access-list entries and storage keys up to their
+declared counts, each count hashed beside its entries. Slots past a count
+are skipped and an absent calldata contributes only its absence, so one
+transaction has one digest whatever the capacities and whatever bytes sit
+in unused slots. This is what `calculateRequestId` hashes in place of
+the parameters.
+
+- **param** `txParams`: The transaction decomposition to digest, at any capacity.
+- **returns**: The 32-byte digest.
+- **throws**: When a count exceeds its capacity.
+
+```ts
+function calculateEvmType2TxParamsDigest(txParams: EvmType2TxParams): Uint8Array
+```
+
+### `assembleCalldata`
+
+Assemble the raw calldata a request's words describe:
+`data = selector || words[0..noWords]`, VERBATIM (see `EvmCalldata`).
+Slots past `noWords` are unused capacity and are dropped.
+
+- **param** `calldata`: The request's calldata field.
+- **returns**: Hex calldata for the transaction (`"0x"` when absent).
+
+```ts
+function assembleCalldata(calldata: Maybe<EvmCalldata>): string
+```
+
+### `signBidirectionalEventToUnsignedEvmTransaction`
+
+Rebuild the unsigned EIP-1559 transaction a request record describes,
+byte-identical to the one the MPC assembles and signs. The canonical
+request-to-transaction transform: response-side verification and
+`signBidirectionalEventToSignedEvmTransaction` both go through it.
+A count past its stored slots is not refused here, only by `calculateEvmType2TxParamsDigest`.
+
+- **param** `request`: The on-ledger request record.
+- **returns**: The unsigned ethers transaction (`unsignedHash` is the digest the MPC signs).
+
+```ts
+function signBidirectionalEventToUnsignedEvmTransaction(
+  request: SignBidirectionalEvent,
+): Transaction
+```
+
+### `signBidirectionalEventToSignedEvmTransaction`
+
+Assemble the broadcast-ready signed EIP-1559 transaction for a request from
+its MPC signature response: rebuild the exact unsigned transaction the MPC
+signed (see `signBidirectionalEventToUnsignedEvmTransaction`) and
+attach the signature. Does NOT check that the signature recovers to the
+requester's derived address: the response events are unauthenticated, so
+verify first with `verifyEvmSignatureRespondedEvent`.
+
+- **param** `request`: The on-ledger request record.
+- **param** `response`: The posted signature record answering it.
+- **returns**: The signed ethers transaction: `serialized` is the raw payload for `eth_sendRawTransaction`, `hash` its on-chain hash, `from` the recovered sender.
+- **throws**: If the response is not a decodable signature.
+
+```ts
+function signBidirectionalEventToSignedEvmTransaction(
+  request: SignBidirectionalEvent,
+  response: SignatureRespondedEvent,
+): Transaction
+```
+
+## `signet-request-id.ts`
+
+### `calculateRequestId`
+
+Canonical id of a signet request: the transientHash (Poseidon) of the
+record's `RequestIdPreimage` prefixed with `HashDomain.requestId`,
+with the transaction entering as its decomposition's digest
+(`calculateEvmType2TxParamsDigest` for evmType2), so the id ignores
+the record's capacities and unused slots.
+
+- **param** `request`: The full event record (contract-shaped, all slots).
+- **returns**: The 32-byte request id, the record's ledger map key.
+- **throws**: If the record's `txParamType` names a decomposition this computation has no digest for, or a count overruns its capacity.
+
+```ts
+function calculateRequestId(request: AnySignBidirectionalEvent): RequestId
+```
+
+## `signet-request-response-reader.ts`
+
+### `SignetPublicStateSource`
+
+The least of midnight-js's `PublicDataProvider` the reader needs: a
+contract's serialized state by address. Declared structurally so tests can
+satisfy it with a plain stub. Any full `PublicDataProvider`
+(e.g. `indexerPublicDataProvider`) is assignable to it.
+
+```ts
+interface SignetPublicStateSource {
+  /**
+   * Retrieve the on-chain state of a contract at the latest block.
+   *
+   * @param contractAddress - The contract address to query.
+   * @returns The read, whose `contractState` is a ledger-9 contract state, or
+   *   `null` when the address holds no contract.
+   */
+  queryContractState(
+    contractAddress: Parameters<PublicDataProvider["queryContractState"]>[0],
+  ): Promise<{ readonly contractState: SerializedContractState } | null>;
+}
+```
+
+### `SignetRequestResponseReaderConfig`
+
+Everything a `SignetRequestResponseReader` needs to operate.
+
+```ts
+interface SignetRequestResponseReaderConfig {
+  /** Address of the signet-compliant requester contract (e.g. the vault). */
+  readonly requesterContractAddress: string;
+  /**
+   * Resolved ledger-tree path of the requester contract's request index: the
+   * same path the contract packs as `requestsPath` in its notifications
+   * (`[4]` for a flat contract's field 4, longer once chunking applies).
+   */
+  readonly requesterRequestsPath: readonly number[];
+  /**
+   * Address of the signet responder contract, which emits the MPC's
+   * responses (see `getResponderContractAddress`).
+   */
+  readonly responderContractAddress: string;
+  /** Source of raw contract state, e.g. midnight-js's `indexerPublicDataProvider`. */
+  readonly publicDataProvider: SignetPublicStateSource;
+  /**
+   * Source of the responder contract's emitted events. Read a live indexer
+   * with `signetEventSourceFromIndexer`.
+   */
+  readonly eventSource: SignetEventSource;
+  /**
+   * Inclusive lowest Midnight block the reader scans for responses. Omit to
+   * scan the whole history. Responses are emitted after their request, so
+   * the tip taken BEFORE submitting the first request is safe for a fresh
+   * client. It must not exceed the block of the oldest request whose
+   * responses are still wanted: a value too high hides them without error.
+   */
+  readonly responderEventsFromBlock?: number;
+}
+```
+
+### `SignatureResponseVerdict`
+
+The verdict on one emitted response, in emission order.
+
+```ts
+interface SignatureResponseVerdict {
+  /** 0-based position of the post among the request's signature-response events. */
+  index: bigint;
+  /** The posted signature record, verbatim. */
+  response: SignatureRespondedEvent;
+  /** Recovered signer address, absent when the signature did not decode. */
+  signer?: string;
+  /** Why the post was rejected, absent when the post is valid. */
+  rejectedReason?: string;
+}
+```
+
+### `VerifiedSignatureResponseResult`
+
+Result of `SignetRequestResponseReader`.
+
+```ts
+interface VerifiedSignatureResponseResult {
+  /**
+   * The first valid response (lowest index), or `undefined` when no valid
+   * response has been posted yet: poll again.
+   */
+  verified?: SignatureRespondedEvent;
+  /** One verdict per post, emission order. */
+  verdicts: SignatureResponseVerdict[];
+}
+```
+
+### `findVerifiedRespondBidirectionalEvent`
+
+`SignetRequestResponseReader.getVerifiedRespondBidirectionalEvent` over
+decoded events already in hand: no walk of the responder contract's event
+history, and no ledger read either, since the attestation verifies against
+the output and the response key alone.
+
+- **param** `requestId`: The request id the posts must declare and the attestation must commit to.
+- **param** `serializedOutput`: The serialised execution output the attestation must commit to, exact unpadded bytes.
+- **param** `mpcResponseKey`: The MPC response key the requesting contract pinned at deploy (see `deriveMidnightResponseKey`).
+- **param** `events`: Decoded signet events of any kinds and request ids, in emission order. Only attestations declaring `requestId` are judged.
+- **returns**: The first verifying post, or `undefined` when none attests this output.
+
+```ts
+function findVerifiedRespondBidirectionalEvent(
+  requestId: RequestIdHex,
+  serializedOutput: Uint8Array,
+  mpcResponseKey: Secp256k1Point,
+  events: readonly DecodedSignetEvent[],
+): RespondBidirectionalEvent | undefined
+```
+
+### `SignetRequestResponseReader`
+
+Reader over one requester contract / responder contract pair. Construct once
+per pair and reuse: fetched request records are cached, so repeated
+verification calls cost one event query each.
+
+```ts
+class SignetRequestResponseReader
+```
+
+#### `SignetRequestResponseReader.constructor`
+
+- **param** `config`: The contract pair, state source and event source to read through.
+
+```ts
+constructor(config: SignetRequestResponseReaderConfig)
+```
+
+#### `SignetRequestResponseReader.getSignatureRequest`
+
+Fetch the request record for `requestId` from the requester contract's
+request index. Cached after the first fetch.
+
+- **param** `requestId`: The request id to look up.
+- **returns**: The stored request record.
+- **throws**: When the requester contract has no state, its state does not decode as a ledger-9 contract state, or it holds no request under `requestId` at the configured index path.
+
+```ts
+async getSignatureRequest(requestId: RequestIdHex): Promise<AnySignBidirectionalEvent>
+```
+
+#### `SignetRequestResponseReader.getEvmType2SignatureRequest`
+
+- **param** `requestId`: The request id to look up
+- **returns**: The stored evmType2 request record
+- **throws**: When the request cannot be fetched (see `getSignatureRequest`) or carries another decomposition
+
+```ts
+async getEvmType2SignatureRequest(requestId: RequestIdHex): Promise<SignBidirectionalEvent>
+```
+
+#### `SignetRequestResponseReader.getTronSignatureRequest`
+
+- **param** `requestId`: The request id to look up
+- **returns**: The stored Tron request record
+- **throws**: When the request cannot be fetched (see `getSignatureRequest`) or carries another decomposition
+
+```ts
+async getTronSignatureRequest(
+    requestId: RequestIdHex,
+  ): Promise<SignBidirectionalEvent<TronTxParams>>
+```
+
+#### `SignetRequestResponseReader.getSignatureRespondedEvents`
+
+Fetch every decodable signature response posted under `requestId`, in
+emission order. UNVERIFIED: any post may still be garbage, sift with
+`getVerifiedSignatureRespondedEvent` first.
+
+- **param** `requestId`: The request id the posts must declare.
+- **returns**: The request's posted records, oldest first, empty when none yet.
+
+```ts
+async getSignatureRespondedEvents(requestId: RequestIdHex): Promise<SignatureRespondedEvent[]>
+```
+
+#### `SignetRequestResponseReader.getVerifiedSignatureRespondedEvent`
+
+Fetch the signature responses posted under `requestId` and verify each
+against the evmType2 request: a valid post's signature recovers to
+`expectedSigner` over the signing hash of the request's transaction. The
+first valid post wins, and every candidate gets a verdict.
+
+- **param** `requestId`: The request id to fetch a verified response for.
+- **param** `expectedSigner`: The EVM address (0x hex, any case) the genuine response must be signed by: the requester's MPC-derived address.
+- **returns**: The first valid response (if any) plus per-post verdicts.
+- **throws**: When the requester contract has no state, the request is not on its ledger, the request is not an evmType2 record, or `expectedSigner` is not an EVM address.
+
+```ts
+async getVerifiedSignatureRespondedEvent(
+    requestId: RequestIdHex,
+    expectedSigner: string,
+  ): Promise<VerifiedSignatureResponseResult>
+```
+
+#### `SignetRequestResponseReader.getVerifiedTronSignatureRespondedEvent`
+
+- **param** `requestId`: The Tron request id to fetch a verified response for
+- **param** `mpcRootPublicKey`: The MPC root public key of the record's `keyVersion`; the expected owner is derived from it and the record's `sender` and `path`
+- **returns**: The first valid response (if any) plus per-post verdicts, signers in base58
+- **throws**: When the requester contract has no state, the request is not on its ledger, the request is not a Tron record, or the key does not parse
+
+```ts
+async getVerifiedTronSignatureRespondedEvent(
+    requestId: RequestIdHex,
+    mpcRootPublicKey: string,
+  ): Promise<VerifiedSignatureResponseResult>
+```
+
+#### `SignetRequestResponseReader.verifySignatureRespondedEvents`
+
+`getVerifiedSignatureRespondedEvent` over decoded events already in
+hand: the one ledger read for the request (cached), and no walk of the
+responder contract's event history. For a consumer that streamed and decoded
+the history once and verifies many requests against it.
+
+- **param** `requestId`: The evmType2 request id to verify responses for.
+- **param** `expectedSigner`: The EVM address (0x hex, any case) the genuine response must be signed by: the requester's MPC-derived address.
+- **param** `events`: Decoded signet events of any kinds and request ids, in emission order. Only signature responses declaring `requestId` are judged.
+- **returns**: The first valid response (if any) plus per-post verdicts.
+- **throws**: When the requester contract has no state, the request is not on its ledger, the request is not an evmType2 record, or `expectedSigner` is not an EVM address.
+
+```ts
+async verifySignatureRespondedEvents(
+    requestId: RequestIdHex,
+    expectedSigner: string,
+    events: readonly DecodedSignetEvent[],
+  ): Promise<VerifiedSignatureResponseResult>
+```
+
+#### `SignetRequestResponseReader.verifyTronSignatureRespondedEvents`
+
+- **param** `requestId`: The Tron request id to verify responses for
+- **param** `mpcRootPublicKey`: The MPC root public key of the record's `keyVersion`
+- **param** `events`: Decoded signet events of any kinds and request ids, in emission order
+- **returns**: The first valid response (if any) plus per-post verdicts, signers in base58
+- **throws**: When the requester contract has no state, the request is not on its ledger, the request is not a Tron record, or the key does not parse
+
+```ts
+async verifyTronSignatureRespondedEvents(
+    requestId: RequestIdHex,
+    mpcRootPublicKey: string,
+    events: readonly DecodedSignetEvent[],
+  ): Promise<VerifiedSignatureResponseResult>
+```
+
+#### `SignetRequestResponseReader.getUnsignedEvmTransaction`
+
+Rebuild the unsigned EIP-1559 transaction for `requestId`: the exact
+transaction the MPC signs, from the request record alone (fetched via
+`getSignatureRequest`, cached).
+
+- **param** `requestId`: The request id whose transaction to rebuild.
+- **returns**: The unsigned ethers transaction (`unsignedHash` is the MPC's signing digest).
+- **throws**: When the requester contract has no state, holds no request under `requestId`, or the request is not an evmType2 record.
+
+```ts
+async getUnsignedEvmTransaction(requestId: RequestIdHex): Promise<Transaction>
+```
+
+#### `SignetRequestResponseReader.getSignedEvmTransaction`
+
+Assemble the broadcast-ready signed EIP-1559 transaction for
+`requestId`, attaching the first VERIFIED response signed by
+`expectedSigner` (see `getVerifiedSignatureRespondedEvent`).
+Unverified posts are never attached.
+
+- **param** `requestId`: The request id to produce a signed transaction for.
+- **param** `expectedSigner`: The EVM address (0x hex, any case) the genuine response must be signed by: the requester's MPC-derived address.
+- **returns**: The signed ethers transaction (`serialized` is the payload for `eth_sendRawTransaction`), or `undefined` when no valid response has been posted yet: poll again.
+- **throws**: When the requester contract has no state, the request is not on its ledger, or the request is not an evmType2 record.
+
+```ts
+async getSignedEvmTransaction(
+    requestId: RequestIdHex,
+    expectedSigner: string,
+  ): Promise<Transaction | undefined>
+```
+
+#### `SignetRequestResponseReader.getSignedTronTransaction`
+
+- **param** `requestId`: The request id to produce a signed transaction for
+- **param** `mpcRootPublicKey`: The MPC root public key of the record's `keyVersion` (e.g. `getMpcRootPublicKey(network)`); the owner is derived from it and the record's `sender` and `path`
+- **returns**: The signed protobuf `Transaction` bytes, or `undefined` when no valid response has been posted yet
+- **throws**: When the requester contract has no state, the request is not on its ledger, the request is not a Tron record, or the key does not parse
+
+```ts
+async getSignedTronTransaction(
+    requestId: RequestIdHex,
+    mpcRootPublicKey: string,
+  ): Promise<Uint8Array | undefined>
+```
+
+#### `SignetRequestResponseReader.getRespondBidirectionalEvents`
+
+Fetch every decodable respond-bidirectional response posted under
+`requestId`, in emission order. UNVERIFIED: any post may still be
+garbage, sift with `getVerifiedRespondBidirectionalEvent` (or
+in-circuit at claim time) first.
+
+- **param** `requestId`: The request id the posts must declare.
+- **returns**: The request's posted records, oldest first, empty when none yet.
+
+```ts
+async getRespondBidirectionalEvents(
+    requestId: RequestIdHex,
+  ): Promise<RespondBidirectionalEvent[]>
+```
+
+#### `SignetRequestResponseReader.getVerifiedRespondBidirectionalEvent`
+
+Fetch the respond-bidirectional posts declared under `requestId` and
+return the first (oldest) one whose signature verifies against
+`mpcResponseKey`, provided its attested width and output hash match
+`serializedOutput`: the off-chain twin of the check the client contract
+runs in-circuit. The output must be the exact unpadded bytes the
+attestation commits to, so a post that verifies here is the post that
+proves at claim time.
+
+- **param** `requestId`: The request id the posts must declare and the attestation must commit to.
+- **param** `serializedOutput`: The serialised execution output the attestation must commit to, exact unpadded bytes.
+- **param** `mpcResponseKey`: The MPC response key the requesting contract pinned at deploy (see `deriveMidnightResponseKey`).
+- **returns**: The first verifying post, or `undefined` when none has been posted yet (poll again) or none attests this output.
+
+```ts
+async getVerifiedRespondBidirectionalEvent(
+    requestId: RequestIdHex,
+    serializedOutput: Uint8Array,
+    mpcResponseKey: Secp256k1Point,
+  ): Promise<RespondBidirectionalEvent | undefined>
+```
+
+## `signet-requests.ts`
+
+### `contractAddressFromHex`
+
+Parse a contract address from its hex rendering (optional `0x`/`0X`
+prefix): the form the deploy flow prints, the environment carries and the
+published per-network table stores. The inverse of rendering
+`ContractAddress.bytes` with `bytesToHex`.
+
+- **param** `hex`: The 32-byte contract address in hex.
+- **returns**: The typed contract address.
+- **throws**: If the string is not exactly 32 bytes of hex.
+
+```ts
+function contractAddressFromHex(hex: string): ContractAddress
+```
+
+### `RequestId`
+
+32-byte signet request id (Compact: `new type RequestId = Bytes<32>`).
+Chain-agnostic opaque key, minted by `calculateRequestId`.
+
+```ts
+type RequestId = Uint8Array;
+```
+
+### `TxParamType`
+
+Which transaction-param decomposition a request carries (Compact:
+`enum TxParamType`), as the generated code represents enums: a `number`
+holding the 0-based variant index. Exported as a `const` object so the
+values stay structurally `number`.
+
+```ts
+const TxParamType = {
+  /** `EvmType2TxParams` (signet-evtype2tx-requests.ts): an EIP-1559 EVM transaction. */
+  evmType2: 0,
+  tron: 1,
+} as const;
+```
+
+### `MPCSignatureAlgorithm`
+
+Which signature algorithm the MPC uses (Compact:
+`enum MPCSignatureAlgorithm`), 0-based variant index.
+
+```ts
+const MPCSignatureAlgorithm = {
+  /** ECDSA over secp256k1. */
+  ecdsa: 0,
+  /** Never emitted: the >= 2 variants padding. */
+  reserved: 1,
+} as const;
+```
+
+### `MPCDestination`
+
+The MPC destination field (Compact: `enum MPCDestination`), 0-based
+variant index. Reserved for future use.
+
+```ts
+const MPCDestination = {
+  /** The only currently-valid value. */
+  unused: 0,
+  /** Never emitted: the >= 2 variants padding. */
+  reserved: 1,
+} as const;
+```
+
+### `RequestIdPreimage`
+
+The fields of a `SignBidirectionalEvent` that mint its
+`RequestId` (Compact: `RequestIdPreimageV1`), in Compact declaration
+order: the key version and the requesting contract, the path and
+algorithm (with those two, the signing key), the transaction-parameter type
+tag, a digest of the transaction and its execution destination. The transaction enters as the
+digest its decomposition's own function computes over the used entries
+only, so the id is the same whatever capacities the requester compiled its
+struct with and whatever bytes sit in unused slots. The serialisation
+schemas and the reserved MPC parameters stay out.
+
+```ts
+interface RequestIdPreimage {
+  /** MPC root-key version to derive from (>= 1). */
+  keyVersion: bigint;
+  /** Address of the client contract that stores this event (`kernel.self()`). */
+  sender: ContractAddress;
+  /** Key-derivation path: 32 opaque bytes of the client contract's choosing. */
+  path: Uint8Array;
+  /** An {@link MPCSignatureAlgorithm} value. */
+  algo: number;
+  /** A {@link TxParamType} value tagging the txParams decomposition. */
+  txParamType: number;
+  /** The 32-byte digest of the transaction decomposition over its used entries. */
+  txParamsDigest: Uint8Array;
+  /** Execution destination: the target chain in CAIP-2 form (https://chainagnostic.org/CAIPs/caip-2), zero-padded, 64 bytes. */
+  executionDest: Uint8Array;
+}
+```
+
+### `SignBidirectionalEvent`
+
+Canonical signet request record (Compact:
+`SignBidirectionalEventV1<TxParams, #LenOutputDeserialization,
+#LenRespondSerialization>`), stored per `RequestId` in a requesting
+contract's `SignBidirectionalEventMapV1`, in Compact declaration order. The
+`RequestIdPreimage` fields come first and mint its id, the
+protocol-only fields follow, and the schema fields carry their
+contract-declared byte widths in their array lengths.
+
+```ts
+interface SignBidirectionalEvent<TxParams = EvmType2TxParams> {
+  /** MPC root-key version to derive from (>= 1). */
+  keyVersion: bigint;
+  /** Address of the client contract that stores this event (`kernel.self()`). */
+  sender: ContractAddress;
+  /** Key-derivation path: 32 opaque bytes of the client contract's choosing. */
+  path: Uint8Array;
+  /** An {@link MPCSignatureAlgorithm} value. */
+  algo: number;
+  /** A {@link TxParamType} value tagging the txParams decomposition. */
+  txParamType: number;
+  /** The transaction decomposition. */
+  txParams: TxParams;
+  /** Execution destination: the target chain in CAIP-2 form (https://chainagnostic.org/CAIPs/caip-2), zero-padded, 64 bytes. */
+  executionDest: Uint8Array;
+  /** An {@link MPCDestination} value: the signature destination, reserved. */
+  signatureDest: number;
+  /** Extra MPC parameters: 64 opaque bytes, reserved, zero-filled. */
+  params: Uint8Array;
+  /** MPC output_deserialization_schema (target chain -> MPC), contract-declared width. */
+  outputDeserializationSchema: Uint8Array;
+  /** Reserved and ignored by the MPC, contract-declared width (zero in the V1 helper). */
+  respondSerializationSchema: Uint8Array;
+}
+```
+
+### `AnySignBidirectionalEvent`
+
+```ts
+type AnySignBidirectionalEvent =
+  SignBidirectionalEvent | SignBidirectionalEvent<TronTxParams>;
+```
+
+### `isEvmType2SignBidirectionalEvent`
+
+- **param** `request`: The request record
+- **returns**: `true` iff the record is tagged `TxParamType.evmType2`
+
+```ts
+function isEvmType2SignBidirectionalEvent(
+  request: AnySignBidirectionalEvent,
+): request is SignBidirectionalEvent
+```
+
+### `isTronSignBidirectionalEvent`
+
+- **param** `request`: The request record
+- **returns**: `true` iff the record is tagged `TxParamType.tron`
+
+```ts
+function isTronSignBidirectionalEvent(
+  request: AnySignBidirectionalEvent,
+): request is SignBidirectionalEvent<TronTxParams>
+```
+
+### `SignBidirectionalEventLedgerMap`
+
+The generated ledger shape of a `SignBidirectionalEventMapV1`: what a
+contract's `ledger(state).signBidirectionalEventMap` provides. Structural,
+so any contract exposing such a map satisfies it.
+
+```ts
+interface SignBidirectionalEventLedgerMap extends Iterable<
+  [RequestId, SignBidirectionalEvent]
+> {
+  /** @returns `true` when the index holds no requests. */
+  isEmpty(): boolean;
+  /** @returns Number of requests in the index. */
+  size(): bigint;
+  /**
+   * @param requestId - 32-byte request id to probe.
+   * @returns `true` when the index holds an entry for `requestId`.
+   */
+  member(requestId: RequestId): boolean;
+  /**
+   * @param requestId - 32-byte request id to fetch.
+   * @returns The stored request record. Throws when absent: guard with
+   *   {@link member} first.
+   */
+  lookup(requestId: RequestId): SignBidirectionalEvent;
+}
+```
+
+### `RequestIdHex`
+
+64-char lowercase hex rendering of a `RequestId`: THE
+representation of a request id everywhere in TypeScript, with raw
+`RequestId` bytes appearing only at the Compact boundary. Branded
+so an arbitrary string cannot pose as a request id: mint one with
+`requestIdHex` (from ledger bytes) or `parseRequestIdHex`
+(from user input), and go back to bytes with `requestIdBytes`.
+
+```ts
+type RequestIdHex = string & {
+  readonly [requestIdHexBrand]: true;
+};
+```
+
+### `SignBidirectionalEventIndex`
+
+Plain-JS index parsed out of the ledger, keyed by hex request id.
+
+```ts
+type SignBidirectionalEventIndex = Map<RequestIdHex, AnySignBidirectionalEvent>;
+```
+
+### `requestIdHex`
+
+Render a request id in its canonical TS form (see `RequestIdHex`).
+
+- **param** `requestId`: 32-byte request id.
+- **returns**: The branded 64-char lowercase hex string, no `0x` prefix.
+
+```ts
+function requestIdHex(requestId: RequestId): RequestIdHex
+```
+
+### `parseRequestIdHex`
+
+Validate and normalise an untrusted string (CLI argument, config value)
+into a `RequestIdHex`: strips an optional `0x` prefix and
+lowercases.
+
+- **param** `value`: The candidate request id string.
+- **returns**: The branded, normalised request id hex.
+- **throws**: If the value is not 64 hex chars after normalisation.
+
+```ts
+function parseRequestIdHex(value: string): RequestIdHex
+```
+
+### `requestIdBytes`
+
+Decode a request id back to its 32 raw bytes for the Compact boundary
+(compiled-circuit calls, ledger lookups).
+
+- **param** `id`: The request id in canonical hex form.
+- **returns**: The 32-byte request id.
+
+```ts
+function requestIdBytes(id: RequestIdHex): RequestId
+```
+
+### `PATH_BYTES`
+
+Byte width of the path field (Compact `Bytes<32>`): 32 opaque bytes of the
+client contract's choosing.
+
+```ts
+const PATH_BYTES = 32;
+```
+
+### `toSignBidirectionalEventIndex`
+
+Parse the on-ledger request map into a plain-JS index keyed by hex
+request id.
+
+- **param** `ledgerIndex`: Iterable of `[requestId, request]` entries, e.g. a contract's `ledger(state).signBidirectionalEventMap` (any `SignBidirectionalEventLedgerMap`).
+- **returns**: A new `Map` from `requestIdHex` key to request record.
+
+```ts
+function toSignBidirectionalEventIndex(
+  ledgerIndex: Iterable<[RequestId, AnySignBidirectionalEvent]>,
+): SignBidirectionalEventIndex
+```
+
+## `signet-tron-record-decoding.ts`
+
+### `decodeTronSignBidirectionalEvent`
+
+- **param** `cell`: The record cell as stored (value atoms plus alignment)
+- **param** `what`: Error-message subject
+- **returns**: The decoded record
+- **throws**: If the cell is not a decodable Tron request record
+
+```ts
+function decodeTronSignBidirectionalEvent(
+  cell: AlignedValue,
+  what: string,
+): SignBidirectionalEvent<TronTxParams>
+```
+
+## `signet-tron-requests.ts`
+
+### `TRON_CAIP2_ID`
+
+```ts
+const TRON_CAIP2_ID = "tron:mainnet";
+```
+
+### `TronTxParams`
+
+```ts
+interface TronTxParams {
+  refBlockBytes: Uint8Array;
+  refBlockHash: Uint8Array;
+  timestamp: bigint;
+  expiration: bigint;
+  feeLimit: bigint;
+  contractAddress: Uint8Array;
+  callValue: bigint;
+  calldata: Maybe<EvmCalldata>;
+}
+```
+
+### `tronTxParamsDescriptor`
+
+- **param** `maxCalldataWords`: Calldata word capacity
+- **returns**: The tx-params descriptor
+
+```ts
+function tronTxParamsDescriptor(maxCalldataWords: number): CompactType<TronTxParams>
+```
+
+### `tronSignBidirectionalEventDescriptor`
+
+- **param** `maxCalldataWords`: Calldata word capacity
+- **param** `lenOutputDeserialization`: Declared byte width of `outputDeserializationSchema` (Compact `#LenOutputDeserialization`)
+- **param** `lenRespondSerialization`: Declared byte width of `respondSerializationSchema` (Compact `#LenRespondSerialization`)
+- **returns**: The event record descriptor
+
+```ts
+function tronSignBidirectionalEventDescriptor(
+  maxCalldataWords: number,
+  lenOutputDeserialization: number,
+  lenRespondSerialization: number,
+): CompactType<SignBidirectionalEvent<TronTxParams>>
+```
+
+### `calculateTronTxParamsDigest`
+
+- **param** `txParams`: The transaction decomposition to digest, at any capacity
+- **returns**: The 32-byte digest
+- **throws**: When the calldata word count exceeds its capacity
+
+```ts
+function calculateTronTxParamsDigest(txParams: TronTxParams): Uint8Array
+```
+
+## `tron-transactions.ts`
+
+### `tronAddressFromEvm`
+
+- **param** `evm`: The 20-byte EVM address, as bytes or hex (optional `0x`, any case)
+- **returns**: The 21-byte Tron address
+- **throws**: If the input is not exactly 20 bytes
+
+```ts
+function tronAddressFromEvm(evm: string | Uint8Array): Uint8Array
+```
+
+### `tronAddressToBase58`
+
+- **param** `address`: The 21-byte, `0x41`-prefixed Tron address
+- **returns**: The base58check text
+- **throws**: If the address has the wrong length or prefix
+
+```ts
+function tronAddressToBase58(address: Uint8Array): string
+```
+
+### `tronAddressFromBase58`
+
+- **param** `text`: The base58check text (`T…`)
+- **returns**: The 21-byte Tron address
+- **throws**: If the text is not base58, not 25 bytes, fails its checksum, does not carry the `0x41` prefix or is not the canonical spelling of its bytes
+
+```ts
+function tronAddressFromBase58(text: string): Uint8Array
+```
+
+### `TronAddress`
+
+```ts
+interface TronAddress {
+  bytes: Uint8Array;
+  base58: string;
+}
+```
+
+### `deriveTronAddress`
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key, in any spelling `parseSecp256k1PublicKey` accepts
+- **param** `contractAddress`: The Midnight contract address the request originates from (`0x` prefix optional, case-insensitive)
+- **param** `path`: The derivation path string
+- **returns**: The derived address in both forms
+
+```ts
+function deriveTronAddress(
+  mpcSecp256k1PublicKey: string,
+  contractAddress: string,
+  path: string,
+): TronAddress
+```
+
+### `deriveSignBidirectionalEventSignerTronAddress`
+
+- **param** `mpcSecp256k1PublicKey`: The MPC root secp256k1 public key of the record's `keyVersion`, in any spelling `parseSecp256k1PublicKey` accepts
+- **param** `request`: The on-ledger request record, or its `sender` and `path`
+- **returns**: The Tron address the MPC signs that request's transaction from, in both forms
+
+```ts
+function deriveSignBidirectionalEventSignerTronAddress(
+  mpcSecp256k1PublicKey: string,
+  request: SignBidirectionalEventKeySelector,
+): TronAddress
+```
+
+### `buildTronRawTransaction`
+
+- **param** `params`: The request's transaction parameters
+- **param** `owner`: The 21-byte Tron address of the request signing key (see `deriveTronAddress`)
+- **returns**: The raw transaction bytes
+- **throws**: If a field cannot be represented
+
+```ts
+function buildTronRawTransaction(params: TronTxParams, owner: Uint8Array): Uint8Array
+```
+
+### `tronTransactionId`
+
+- **param** `raw`: The raw transaction bytes (`buildTronRawTransaction`)
+- **returns**: The 32-byte transaction id
+
+```ts
+function tronTransactionId(raw: Uint8Array): Uint8Array
+```
+
+### `buildSignedTronTransaction`
+
+- **param** `raw`: The raw transaction bytes (`buildTronRawTransaction`)
+- **param** `signature`: The signature as the MPC posts it
+- **returns**: The signed transaction bytes
+- **throws**: If the signature is malformed (see `mpcSignatureToEcdsaSignature`)
+
+```ts
+function buildSignedTronTransaction(raw: Uint8Array, signature: MpcSignature): Uint8Array
+```
+
+## `url-redaction.ts`
+
+### `redactUrlQuery`
+
+A URL with every query parameter value masked, for logs and error
+messages: a hosted Midnight endpoint carries its access token in the query
+string (Blockfrost's `project_id`).
+
+- **param** `url`: The URL to render.
+- **returns**: The URL with each query value replaced by `REDACTED`, or `url` unchanged when it has no query string or does not parse as a URL.
+
+```ts
+function redactUrlQuery(url: string): string
+```
+
+## `ecdsa-attestation.ts`
+
+### `SECP256K1_ORDER`
+
+secp256k1 curve (group) order n.
+
+```ts
+const SECP256K1_ORDER = secp256k1.Point.Fn.ORDER;
+```
+
+### `signatureRespondedEventToSignature`
+
+Decode a posted response signature record into an ethers
+`Signature`. Ethers' `r` is the ECDSA scalar (`bigR.x` reduced mod
+the curve order), not the raw coordinate.
+
+- **param** `response`: The posted signature record.
+- **returns**: The ethers signature.
+- **throws**: If the record is malformed (see `mpcSignatureToEcdsaSignature`).
+
+```ts
+function signatureRespondedEventToSignature(response: SignatureRespondedEvent): Signature
+```
+
+### `parseSecp256k1PublicKey`
+
+Parse a secp256k1 public key into the Compact runtime's `Secp256k1Point`
+shape: how deploys receive the MPC response key to pin. Accepts every
+spelling a key is published in: SEC1 hex, compressed (`02`/`03`) or
+uncompressed (`04`) with an optional `0x`, and NEAR's `secp256k1:<base58>`
+(what signet.js and the MPC operators publish). The point is checked to
+lie on the curve.
+
+- **param** `value`: The public key in any accepted spelling.
+- **returns**: The parsed point.
+- **throws**: If the value is not a valid secp256k1 public key in any accepted spelling.
+
+```ts
+function parseSecp256k1PublicKey(value: string): Secp256k1Point
+```
+
+### `formatSecp256k1PublicKey`
+
+Format a secp256k1 public key point as uncompressed SEC1 hex with a `0x`
+prefix, the canonical spelling this package publishes and prints keys in:
+the round-trip inverse of `parseSecp256k1PublicKey`, for handing a
+key to deploys via env/config.
+
+- **param** `point`: The point to format.
+- **returns**: The `0x04…` uncompressed SEC1 hex string.
+
+```ts
+function formatSecp256k1PublicKey(point: Secp256k1Point): string
+```
+
+### `normaliseSecp256k1PublicKey`
+
+Canonicalise a public key given in any accepted spelling (see
+`parseSecp256k1PublicKey`) to the `0x04…` uncompressed SEC1 hex of
+`formatSecp256k1PublicKey`: what to write into configuration and
+print, so one spelling reaches every derivation.
+
+- **param** `value`: The public key in any accepted spelling.
+- **returns**: The same key as `0x04…` uncompressed SEC1 hex, lowercase.
+- **throws**: If the value is not a valid secp256k1 public key in any accepted spelling.
+
+```ts
+function normaliseSecp256k1PublicKey(value: string): string
+```
+
+### `calculateAttestedOutputHash`
+
+The hash of a serialised execution output that the attestation digest
+commits to: `upgradeFromTransient(transientHash([HashDomain.attestedOutput, serializedOutput]))`.
+TS twin of the size-generic Compact circuit `calculateAttestedOutputHashV1`.
+The hash does not commit to the output's width (outputs that differ only
+in trailing zero bytes hash alike), so the attestation commits to the
+width separately and a verifier checks both.
+
+- **param** `serializedOutput`: The serialised execution output, exact unpadded bytes.
+- **returns**: The 32-byte output hash.
+
+```ts
+function calculateAttestedOutputHash(serializedOutput: Uint8Array): Uint8Array
+```
+
+### `verifyAttestedOutput`
+
+Whether `serializedOutput` is the output an attestation declares: its width
+is `attestedOutputLength` and its `calculateAttestedOutputHash` is
+`attestedOutputHash`. TS twin of the size-generic Compact circuit
+`verifyAttestedOutputV1`. Both checks are needed, as the hash alone does not
+commit to the width. Proves nothing about the attestation itself: the length
+and hash must come from a post that passed
+`verifyRespondBidirectionalAttestation`.
+
+- **param** `serializedOutput`: The serialised execution output, exact unpadded bytes.
+- **param** `attestedOutputLength`: The attested output width, in bytes.
+- **param** `attestedOutputHash`: The attested 32-byte output hash.
+- **returns**: Whether the output is the attested one.
+
+```ts
+function verifyAttestedOutput(
+  serializedOutput: Uint8Array,
+  attestedOutputLength: bigint,
+  attestedOutputHash: Uint8Array,
+): boolean
+```
+
+### `respondBidirectionalEventToCircuitInput`
+
+Produce the circuit-input form of a posted respond-bidirectional
+attestation: `signature.bigR.x` and `signature.s` byte-reversed into
+little-endian, everything else verbatim. The in-circuit
+`verifyRespondBidirectionalEventV1` reads those two scalars through
+little-endian casts (the reversal is free off-chain and costly
+in-circuit), while the wire and ledger records stay big-endian: pass every
+event through this exactly once, at the circuit call. A record passed
+without the flip fails verification, never falsely accepts.
+
+- **param** `event`: The posted record as read off the ledger (big-endian).
+- **returns**: The record in circuit-input form.
+- **throws**: If a signature component is not exactly 32 bytes.
+
+```ts
+function respondBidirectionalEventToCircuitInput(
+  event: RespondBidirectionalEvent,
+): RespondBidirectionalEvent
+```
+
+### `verifyRespondBidirectionalAttestation`
+
+Off-chain twin of the in-circuit `verifyRespondBidirectionalAttestationV1`:
+checks a posted respond-bidirectional attestation's signature against the
+contract's pinned MPC response key, over the request id, block height,
+output kind, output length and output hash the post declares, without the
+output. A post this accepts is an outcome the MPC attested for the request
+it names; the output it attests is checked by `verifyAttestedOutput`.
+Takes the record as read off the ledger (big-endian). Malformed records
+return `false` rather than throwing.
+
+- **param** `respondBidirectionalEvent`: The posted record to check, as read off the ledger.
+- **param** `mpcResponseKey`: The response key the requesting contract pinned (see `deriveMidnightResponseKey`).
+- **returns**: Whether the post is a genuine attestation for the request it names.
+
+```ts
+function verifyRespondBidirectionalAttestation(
+  respondBidirectionalEvent: RespondBidirectionalEvent,
+  mpcResponseKey: Secp256k1Point,
+): boolean
+```
+
+### `verifyRespondBidirectionalEvent`
+
+Off-chain twin of the in-circuit `verifyRespondBidirectionalEventV1`: checks
+that `serializedOutput` is the output a posted respond-bidirectional
+attestation declares (`verifyAttestedOutput`) and
+that the post's signature verifies (`verifyRespondBidirectionalAttestation`).
+Clients run it to sift candidate posts before calling a contract: a post
+this accepts verifies in-circuit (once flipped to circuit-input form, see
+`respondBidirectionalEventToCircuitInput`). Takes the record as read
+off the ledger (big-endian). Malformed records return `false` rather than
+throwing.
+
+- **param** `serializedOutput`: The serialised execution output, exact unpadded bytes.
+- **param** `respondBidirectionalEvent`: The posted record to check, as read off the ledger.
+- **param** `mpcResponseKey`: The response key the requesting contract pinned (see `deriveMidnightResponseKey`).
+- **returns**: Whether the post is a genuine attestation of that output for the request it names.
+
+```ts
+function verifyRespondBidirectionalEvent(
+  serializedOutput: Uint8Array,
+  respondBidirectionalEvent: RespondBidirectionalEvent,
+  mpcResponseKey: Secp256k1Point,
+): boolean
+```

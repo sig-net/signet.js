@@ -1,0 +1,32 @@
+# Building the dApp
+
+The contract is half of an integration. In the [Sign Bidirectional Protocol Flow](/midnight/protocol-flow) the MPC signs and attests, and everything else off chain is the dApp's: it starts the interaction, relays the signed transaction to the foreign chain, recovers the execution output and submits the attestation back to the contract.
+
+## What the dApp is responsible for
+
+- **Relaying.** The MPC never broadcasts. The dApp reads the MPC's signature from the Signet responder, checks it is by the requested signer, assembles the signed transaction and submits it to the foreign chain (steps **2.** and **3.** of the [Runtime](/midnight/integrator-guide#runtime) steps).
+- **Recovering the output.** The output itself never travels on chain. The dApp reads it from a node of its own choosing or from the MPC's output cache, and serialises it exactly as the MPC did (see [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation)).
+- **Completing.** The dApp submits the attestation and the serialised output to the completing circuit, under every output kind: a `failed` or `unviable` request still has to be settled (see [Handling Failure](/midnight/protocol-flow#handling-failure)).
+- **Keeping one reader.** A client keeps one `SignetRequestResponseReader` for its life and polls through it, bounded by the block its oldest pending request was submitted in (see [Bounding the event scan](/midnight/integrator-guide#bounding-the-event-scan)).
+
+Relaying needs no permission. The responder's event log is unauthenticated and the output is untrusted until the contract verifies it in-circuit, so any party can relay, and a wrong or forged output merely fails to verify. Who may complete is the contract's decision: the ERC20 vault lets only the caller who made a request settle it.
+
+## Who holds what
+
+The [full stack demo](https://github.com/sig-net/full-stack-demo) splits the work so that the user's wallet keeps every key and a backend carries the long and fragile parts:
+
+| Component      | Owns                                                                                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wallet         | Every key. Coin selection, DUST fee payment, signatures. Shows the approval prompt.                                                                                         |
+| UI             | The wallet connection, the user's application secret and the contract's private state. Starts each operation and passes transactions between the backend and the wallet.    |
+| Backend        | Building and proving contract calls, submitting to the node, waiting for inclusion, retrying and recording outcomes.                                                        |
+| Relayer wallet | A backend-owned wallet with its own DUST. Pays for and submits the permissionless circuits, and polls the Signet responder for the MPC's events. Never touches a user call. |
+| Proof server   | Proves contract calls. Holds no keys.                                                                                                                                       |
+
+A backend that builds and proves a call sees its witness values. In the ERC20 vault the witness is the caller's secret, and that secret is all the vault checks when it settles a request. Keeping the wallet on the user's side protects the user's coins. It does not, by itself, protect the user's position in the vault from the backend. Decide where proving runs with that in mind, and see the [Privacy Model](/privacy) for what the secret protects.
+
+## Working examples
+
+- The ERC20 vault's [integration tests](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples/erc20-vault/integration-tests) drive every flow from a script: the shortest complete client to read.
+- The flow walkthroughs ([deposit](/midnight/erc20-vault/deposit), [withdraw](/midnight/erc20-vault/withdraw), [swap](/midnight/erc20-vault/swap), [supply](/midnight/erc20-vault/supply), [redeem](/midnight/erc20-vault/redeem)) show which party makes each call.
+- The [full stack demo](https://github.com/sig-net/full-stack-demo) is a web application over the vault, running at [demo.sig.network](https://demo.sig.network).

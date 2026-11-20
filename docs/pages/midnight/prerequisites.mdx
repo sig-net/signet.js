@@ -1,0 +1,33 @@
+{/* Imported from sig-net/midnight-integration README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# Prerequisites
+
+| Prerequisite | Version | Check With | Where to Get It |
+| ------- | ------| ------  |----------- |
+| Node | ≥ 22.13 (24 recommended) | `node --version` | [nodejs.org](https://nodejs.org) or your version manager (nvm, fnm, …) |
+| Yarn 4 (via Corepack) | 4.x | `corepack enable && yarn --version` | Corepack ships with Node, and the repo's `packageManager` field pins the Yarn version |
+| Compact toolchain | compiler 0.36.0 | `compact compile --version` → `0.36.0` | Install the `compact` launcher per [Midnight's docs](https://docs.midnight.network/), then `compact update 0.36.0` (compiler builds live at [LFDT-Minokawa/compact releases](https://github.com/LFDT-Minokawa/compact/releases)) |
+| Rust (via rustup) | pinned per crate in `rust-toolchain.toml` | `cargo --version` | [rustup.rs](https://rustup.rs); `yarn compile:zk` builds signet-responder's zk bundle with it |
+| A docker environment | any recent engine | `docker --version` | [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS/Windows) or your distro's engine, with **≥ 16 GB RAM allocated** (see note) |
+| Docker Compose v2 | ≥ 2.x | `docker compose version` | Included with Docker Desktop (plugin package on Linux) |
+
+**NOTE:** the compiler is part of the pinned ledger-9 matched set (compiler, node, indexer, proof server). Compile your own contracts with exactly that release: the Compact runtime accepts a cross-contract callee only when its compiled verifier keys match the keys deployed on chain.
+
+**NOTE:** the Midnight proof server is quite heavy. It is recommended that you allocate at least 16 GB of RAM to your docker environment, otherwise expect to have to restart the tests as the proof server hangs.
+
+## Matched Set
+
+These versions move together. Bumping one alone produces a stack that compiles but does not interoperate, and the failure is usually silent: a responder that does not recognise a request simply never answers it.
+
+| Component | Version | Pinned in |
+| ------- | ------ | ------ |
+| `@sig-net/*` npm packages | 0.27.0-rc.3 | [`packages/*/package.json`](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages) |
+| fakenet MPC responder | `ghcr.io/sig-net/fakenet:0.41.0` | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| Compact compiler | 0.36.0 | [`.github/workflows/ci.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/ci.yml), [`.github/workflows/publish.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/publish.yml), [`.github/workflows/deploy.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/deploy.yml) |
+| Midnight node | 2.1.101 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| Midnight indexer | 4.4.101 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| Midnight proof server | 9.0.1 | [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml) |
+| `@midnightntwrk/ledger-v9` | 1.0.1 | [`package.json`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/package.json) resolutions |
+| MinoCrab | `sig-net/minocrab` rev `b41babe`, with the `midnight-*` crates it locks (`midnight-ledger-v9` 1.0.1, `midnight-zkir` 3.2.0) | [`packages/signet-responder/minocrab/Cargo.toml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/signet-responder/minocrab/Cargo.toml) |
+
+**NOTE:** each fakenet release names the `@sig-net` version it was built against ([`fakenet-v*` tags](https://github.com/sig-net/solana-signet-program/tags)). The real-EVM integration flow reads the responder's output cache simulation on port 3040 (mapped by [`docker-compose.yaml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/docker-compose.yaml)), the fakenet twin of the MPC's output storage bucket (see [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation)).

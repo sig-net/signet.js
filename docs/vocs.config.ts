@@ -17,6 +17,8 @@ export default defineConfig({
   title: 'Sig Network',
   description:
     'Manage and use cryptographic key(s) across multiple chains or multiple contexts, with on-chain-enforced conditions',
+  // Shiki bundles no Compact grammar, and TypeScript's is the closest it has.
+  codeHighlight: { langAlias: { compact: 'typescript' } },
   twoslash: {
     twoslashOptions: {
       vfsRoot: repoRoot,
@@ -42,224 +44,85 @@ export default defineConfig({
   iconUrl: `${basePath}signet-logo.png`,
   sidebar: [
     {
-      text: 'Introduction',
+      text: 'Midnight',
       items: [
-        { text: 'Introduction to Chain Signatures', link: '/' },
+        { text: 'Overview', link: '/' },
+        { text: 'Quickstart', link: '/quickstart' },
         {
-          text: 'Signet.js Quickstart',
-          link: '/introduction/signet-quick-start',
+          text: 'Sign Bidirectional Protocol Flow',
+          link: '/midnight/protocol-flow',
         },
-      ],
-    },
-    {
-      text: 'Architecture',
-      items: [
-        {
-          text: 'Sign Bidirectional Flow',
-          link: '/architecture/sign-bidirectional',
-        },
-      ],
-    },
-    {
-      text: 'Primitives',
-      items: [
-        { text: 'Contract Addresses', link: '/primitives/contract-addresses' },
-        {
-          text: 'Chain Adapter Interface',
-          link: '/primitives/chain-adapter-interface',
-        },
-        {
-          text: 'Chain Contract Interfaces',
-          link: '/primitives/chain-contract-interface',
-        },
+        { text: 'Integrator Guide', link: '/midnight/integrator-guide' },
+        { text: 'Building the dApp', link: '/building-the-dapp' },
+        { text: 'Privacy Model', link: '/privacy' },
       ],
     },
     {
       text: 'Examples',
       items: [
         {
-          text: 'Holding Ethereum assets from Solana',
-          link: '/examples/cross-chain-deposit',
+          text: 'Midnight Contracts Calling Foreign Chains',
+          link: '/midnight/examples',
         },
         {
-          text: 'Staking on Ethereum from Solana',
-          link: '/examples/solana-stake-ethereum',
-        },
-        {
-          text: 'What you can build',
-          link: '/examples/what-you-can-build',
+          text: 'ERC20 Vault',
+          link: '/midnight/erc20-vault',
+          items: [
+            { text: 'Deposit', link: '/midnight/erc20-vault/deposit' },
+            { text: 'Withdraw', link: '/midnight/erc20-vault/withdraw' },
+            { text: 'Swap', link: '/midnight/erc20-vault/swap' },
+            { text: 'Supply', link: '/midnight/erc20-vault/supply' },
+            { text: 'Redeem', link: '/midnight/erc20-vault/redeem' },
+            {
+              text: 'Contention handling',
+              link: '/midnight/erc20-vault/contention-handling',
+            },
+          ],
         },
       ],
     },
     {
-      text: 'Contract API Reference',
+      text: 'Packages',
       items: [
+        { text: 'Packages', link: '/midnight/packages' },
+        { text: '@sig-net/midnight', link: '/midnight/packages/midnight' },
         {
-          text: 'EVM Contract',
-          items: [
-            {
-              text: 'Functions',
-              link: '/contract-api/evm/functions',
-            },
-            {
-              text: 'Events',
-              link: '/contract-api/evm/events',
-            },
-            {
-              text: 'Types',
-              link: '/contract-api/evm/types',
-            },
-          ],
+          text: '@sig-net/midnight-signer',
+          link: '/midnight/packages/midnight-signer',
         },
         {
-          text: 'Solana Program (Rust Docs)',
-          link: '/contract-api/solana',
+          text: '@sig-net/midnight-responder',
+          link: '/midnight/packages/midnight-responder',
         },
         {
-          text: 'Canton Signer (Daml Docs)',
-          link: '/contract-api/canton',
+          text: '@sig-net/midnight-contract-deploy',
+          link: '/midnight/packages/midnight-contract-deploy',
+        },
+        {
+          text: '@sig-net/midnight-serde',
+          link: '/midnight/packages/midnight-serde',
+        },
+        {
+          text: 'signet-midnight-serde',
+          link: '/midnight/packages/signet-midnight-serde',
         },
       ],
     },
     {
-      text: 'Signet.js SDK Reference',
+      text: 'Reference',
       items: [
+        { text: 'Networks and Addresses', link: '/networks' },
         {
-          text: 'Chain Adapters',
-          items: [
-            {
-              text: 'EVM Chains',
-              items: [
-                { text: 'Overview', link: '/signetjs/chain-adapters/evm' },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chain-adapters/evm/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chain-adapters/evm/finalize-transaction-signing',
-                },
-                {
-                  text: 'prepareMessageForSigning',
-                  link: '/signetjs/chain-adapters/evm/prepare-message-for-signing',
-                },
-                {
-                  text: 'finalizeMessageSigning',
-                  link: '/signetjs/chain-adapters/evm/finalize-message-signing',
-                },
-                {
-                  text: 'prepareTypedDataForSigning',
-                  link: '/signetjs/chain-adapters/evm/prepare-typed-data-for-signing',
-                },
-                {
-                  text: 'finalizeTypedDataSigning',
-                  link: '/signetjs/chain-adapters/evm/finalize-typed-data-signing',
-                },
-              ],
-            },
-            {
-              text: 'Bitcoin',
-              items: [
-                { text: 'Overview', link: '/signetjs/chain-adapters/bitcoin' },
-                {
-                  text: 'RPC Adapter',
-                  link: '/signetjs/chain-adapters/bitcoin/btc-rpc-adapter',
-                },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chain-adapters/bitcoin/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chain-adapters/bitcoin/finalize-transaction-signing',
-                },
-              ],
-            },
-            {
-              text: 'Cosmos Chains',
-              items: [
-                { text: 'Overview', link: '/signetjs/chain-adapters/cosmos' },
-                {
-                  text: 'prepareTransactionForSigning',
-                  link: '/signetjs/chain-adapters/cosmos/prepare-transaction-for-signing',
-                },
-                {
-                  text: 'finalizeTransactionSigning',
-                  link: '/signetjs/chain-adapters/cosmos/finalize-transaction-signing',
-                },
-              ],
-            },
-            {
-              text: 'deriveAddressAndPublicKey',
-              link: '/signetjs/chain-adapters/derive-address-and-public-key',
-            },
-            {
-              text: 'getBalance',
-              link: '/signetjs/chain-adapters/get-balance',
-            },
-            {
-              text: 'broadcastTx',
-              link: '/signetjs/chain-adapters/broadcast-tx',
-            },
-          ],
+          text: 'TypeScript Reference',
+          link: '/midnight/typescript-reference',
         },
-        {
-          text: 'Contracts',
-          items: [
-            {
-              text: 'EVM',
-              items: [
-                {
-                  text: 'constructor',
-                  link: '/signetjs/contracts/evm/constructor',
-                },
-                {
-                  text: 'getCurrentSignatureDeposit',
-                  link: '/signetjs/contracts/evm/get-current-signature-deposit',
-                },
-                {
-                  text: 'getDerivedPublicKey',
-                  link: '/signetjs/contracts/evm/get-derived-public-key',
-                },
-                {
-                  text: 'getPublicKey',
-                  link: '/signetjs/contracts/evm/get-public-key',
-                },
-                {
-                  text: 'getLatestKeyVersion',
-                  link: '/signetjs/contracts/evm/get-latest-key-version',
-                },
-                { text: 'sign', link: '/signetjs/contracts/evm/sign' },
-              ],
-            },
-            {
-              text: 'Solana',
-              items: [
-                {
-                  text: 'constructor',
-                  link: '/signetjs/contracts/solana/constructor',
-                },
-                {
-                  text: 'getCurrentSignatureDeposit',
-                  link: '/signetjs/contracts/solana/get-current-signature-deposit',
-                },
-                {
-                  text: 'getDerivedPublicKey',
-                  link: '/signetjs/contracts/solana/get-derived-public-key',
-                },
-                {
-                  text: 'getPublicKey',
-                  link: '/signetjs/contracts/solana/get-public-key',
-                },
-                {
-                  text: 'waitForEvent',
-                  link: '/signetjs/contracts/solana/wait-for-event',
-                },
-                { text: 'sign', link: '/signetjs/contracts/solana/sign' },
-              ],
-            },
-          ],
-        },
+      ],
+    },
+    {
+      text: 'Contributing',
+      items: [
+        { text: 'Contributor Guide', link: '/midnight/contributor-guide' },
+        { text: 'Prerequisites', link: '/midnight/prerequisites' },
       ],
     },
   ],

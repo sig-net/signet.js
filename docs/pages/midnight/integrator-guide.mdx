@@ -1,0 +1,545 @@
+{/* Imported from sig-net/midnight-integration README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# Integrator Guide
+
+A signet-compliant client contract:
+
+- it stores its requests in a public `SignBidirectionalEventMapV1` in its own ledger
+- it pins its counterparties: the Signet signer and its own MPC response key
+- it submits signature requests
+- it verifies execution responses in-circuit
+- it records the target-chain height known when each request is made and accepts only responses above that height
+
+Integrating a contract on Midnight with the Sig Network MPC consists of:
+
+- 4 once-off **setup** steps
+- 5 per-request **runtime** steps that drive the full sign bidirectional flow
+
+## Setup
+
+Set up your contract for integration with the Sig Network MPC's sign bidirectional flow. This basic example targets one target chain, Ethereum (here on Sepolia), so it uses one `lastSeen` height. This is the highest target-chain height the contract has accepted in an attestation, initially zero, not a height supplied by the client. A contract supporting multiple target chains needs a separate `lastSeen` per chain.
+
+> **⚠️ WARNING:** For clarity, the Setup and Runtime steps read and write `lastSeen` naively directly from the circuits every user calls. This naive approach is taken for demonstration purposes. Do not ship it: every request and every attestation reads the single `lastSeen` value, and attestations write it. On Midnight a transaction that reads a value fails if that value changes before the transaction lands, so only one attestation can be processed at a time, and every other request or attestation in flight at that moment fails and must be proven again. Under load, or against someone deliberately sending attestations as fast as they can, users' requests and attestations keep failing and may never land. Ship the buffer-and-flush pattern in [Preventing Contention on `lastSeen`](/midnight/integrator-guide#preventing-contention-on-lastseen) instead, as the ERC20 vault example does.
+
+1. Add the protocol library to your project:
+   ```sh
+   yarn add @sig-net/midnight   # or: npm install @sig-net/midnight
+   ```
+
+2. Import the Signet module at the top of your contract (resolved through `node_modules` via `COMPACT_PATH`):
+   ```compact
+   import "@sig-net/midnight/src/Signet";
+   ```
+
+   Then tell the compact compiler about the npm packages with its `COMPACT_PATH` environment variable at compile time:
+   ```sh
+   COMPACT_PATH=node_modules compact compile src/my-contract.compact src/managed/my-contract
+   ```
+
+   The Compact toolchain requirements in [Prerequisites](/midnight/prerequisites) apply to integrators too: compile with the pinned compiler version (currently `compact update 0.36.0`).
+
+3. Declare the required Sig Network protocol state in your ledger (plus recommended deployer identity and initialisation state). The event map can sit at ANY ledger field. Each notification call your contract makes passes the stored request's id beside a notification that carries the map's resolved ledger-tree path (see [The Request Map's Ledger-Tree Path](/midnight/integrator-guide#the-request-maps-ledger-tree-path)), and the MPC looks the authenticated request up there by that id.
+
+   ```compact
+   // Required: Map of SignBidirectionalEvent signature requests, configured by transaction type.
+   // Configured and sized here for an EVM Type 2 transaction with
+   // <1 calldata word, 0 access-list entries, 0 storage keys> and a
+   // 34-byte output deserialisation schema.
+   export ledger signBidirectionalEventMap: SignBidirectionalEventMapV1<EvmType2TxParams<1, 0, 0>, 34>;
+
+   export ledger lastSeen: Uint<64>;
+   // Snapshot lastSeen per request so later responses cannot move its threshold.
+   export ledger heightAtRequest: Map<RequestId, Uint<64>>;
+
+   // Required: The SignetSigner interface, set at deploy.
+   // Used to notify the MPC of events you add to your signBidirectionalEventMap.
+   sealed ledger signetSigner: SignetSigner;
+
+   // Required: This contract's MPC response key, set in step 4.
+   // Used to verify RespondBidirectionalEvents attesting the serialised output of foreign chain execution.
+   export ledger mpcResponseKey: Secp256k1Point;
+
+   // Recommended: used in step 4 to ensure initialisation runs only once.
+   export ledger initialised: Counter;
+
+   // Recommended: set on deploy, used in step 4 to ensure only the deployer may set the mpcResponseKey.
+   sealed ledger deployer: Bytes<32>;
+
+   // Recommended: supplies the deployer's identity secret from private state
+   // off-chain. Only its commitment (below) ever reaches the ledger.
+   witness witnessDeployerSecretKey(): Bytes<32>;
+
+   // Recommended: the deployer identity commitment scheme. Exported so deploy
+   // tooling can compute the constructor argument by calling the compiled circuit.
+   export pure circuit calculateDeployerCommitment(sk: Bytes<32>): Bytes<32> {
+     return upgradeFromTransient(transientHash<Vector<2, Bytes<32>>>([pad(32, "my-contract:deployer:"), sk]));
+   }
+
+   // Required: set signet signer and (recommended) deployer commitment on deployment.
+   constructor(signetSigner: SignetSigner, deployerCommitment: Bytes<32>) {
+     signetSigner = disclose(signetSigner);
+     deployer = disclose(deployerCommitment);
+     lastSeen = 0;
+   }
+   ```
+
+4. Set the contract's MPC response key once, right after deploy. Deriving this key requires the address of the contract, which only exists after deploy (see [Response Key](/midnight/protocol-flow#response-key)):
+
+   ```compact
+   export circuit initialise(responseKey: Secp256k1Point): [] {
+     // Recommended: confirm that only the deployer may initialise, and only once:
+     assert(deployer == calculateDeployerCommitment(witnessDeployerSecretKey()), "Not the deployer");
+     assert(initialised == 0, "Already initialised");
+     assert(responseKey != default<Secp256k1Point>, "Response key must not be the identity point");
+     initialised.increment(1);
+
+     // Required: set MPC response key for verification of RespondBidirectionalEvents
+     mpcResponseKey = disclose(responseKey);
+   }
+   ```
+
+## The Request Map's Ledger-Tree Path
+
+Each notification must tell the MPC where your `signBidirectionalEventMap` sits in your contract's compiled on-chain state, so the MPC can read the authenticated request out of raw contract state. The location is a path in the state tree, passed to `constructSignBidirectionalEventNotificationV1` as two arguments:
+
+- `requestsPathDepth`: the number of meaningful entries in the path (1 to 4).
+- `requestsPath`: the path itself, zero padded to 4 entries.
+
+The path shape comes from how compactc lays out state. The compiler packs a contract's public ledger fields into a tree whose array nodes hold at most 15 entries. With 15 or fewer fields, field N sits directly in the root array, at path `[N]` (depth 1). With more than 15 fields, the compiler groups the fields into segments of at most 15 (the remainder segment first) and the root array holds the segments. Each grouping adds one level to the tree and one entry to every field's path. A 20-field contract splits 5 + 15: field 4 sits at `[0, 4]` and field 19 sits at `[1, 14]` (depth 2).
+
+Do not derive the path by hand: the compiler records it in your compiled artifacts. Compile your contract, then look up your map's `"index"` in `managed/<contract>/compiler/contract-info.json` (a bare number `4` means path `[4]`). The generated `managed/<contract>/contract/index.js` accessors walk the same indices, for example `state.asArray()[1].asArray()[14]` for a map recorded at `[1, 14]`. That path packs as `requestsPathDepth = 2` and `requestsPath = [1, 14, 0, 0]`.
+
+The two caller contracts in the `sig-net/midnight-integration` repository are worked examples of each case:
+
+- [`packages/test-caller-contract`](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/test-caller-contract): the flat case, where its 9-field ledger stores the bool-schema request map at field 3 and a second map at field 6, so notifications carry depth `1` and path `[3, 0, 0, 0]` or `[6, 0, 0, 0]`.
+- [`packages/test-caller-contract-20-field`](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/test-caller-contract-20-field): the chunked case, where its 20 fields split 5 + 15, so the map at field 19 packs as depth `2` and path `[1, 14, 0, 0]`.
+
+## Runtime
+
+Each interaction with your contract that executes a transaction on a foreign chain runs these 5 steps.
+
+Steps 1 and 5 are circuits on your contract, and steps 2 to 4 are off-chain client code built on the utilities in `@sig-net/midnight`.
+
+The off-chain steps share one `SignetRequestResponseReader` over your contract / Signet responder pair, and the expected signer of the requested transaction (the key the MPC derives for your contract and the request's path, see [Derived Keys](/midnight/protocol-flow#derived-keys)):
+
+```ts
+import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
+import {
+   asciiPadded,
+   bytesToHex,
+   deriveEvmAddress,
+   respondBidirectionalEventToCircuitInput,
+   signetEventSourceFromIndexer,
+   SignetRequestResponseReader,
+} from "@sig-net/midnight";
+
+// Provider to index Midnight Blockchain
+const publicDataProvider = indexerPublicDataProvider({
+   queryURL: indexerUrl,
+   subscriptionURL: indexerWsUrl
+});
+
+// SignetRequestResponseReader to poll for Signed Transactions and Signed RespondBidirectionalEvents
+const reader = new SignetRequestResponseReader({
+   // Address of YOUR deployed contract
+   requesterContractAddress: myContractAddress,
+
+   // signBidirectionalEventMap's ledger-tree path (see The Request Map's Ledger-Tree Path)
+   requesterRequestsPath: [0],
+
+   // Address of the Signet responder contract, which emits the MPC's responses
+   responderContractAddress,
+
+   // Raw contract state reads (your contract's request map)
+   publicDataProvider,
+
+   // The MPC's responses are read from the contract events the Signet
+   // responder emits, queried from the same indexer
+   eventSource: signetEventSourceFromIndexer({ queryUrl: indexerUrl }),
+
+   // Lowest Midnight block to scan for responses: the tip, taken BEFORE
+   // the first request is submitted (see "Bounding the event scan" below)
+   responderEventsFromBlock: (await publicDataProvider.queryBlock())?.height,
+});
+
+// The path argument is the MPC's rendering of the exact 32 path bytes the
+// contract stores in its requests, here pad(32, "my-path") (see Derived Keys).
+const expectedSigner = deriveEvmAddress(
+   mpcRootPublicKey,
+   myContractAddress,
+   bytesToHex(asciiPadded("my-path", 32)),
+);
+```
+
+#### Bounding the event scan
+
+`responderEventsFromBlock` bounds the event scan the reader runs on every poll, which otherwise walks the Signet responder's whole history. Responses are emitted after their request, so it must not exceed the block in which the oldest request you still expect responses for was submitted: a fresh client takes the tip before its first request, a client resuming earlier requests uses the oldest pending request's block or omits the field. A value too high does not fail, it hides responses. Direct consumers of `streamSignetEvents` pass the same bound as `{ fromBlock }`.
+
+> **mpcRootPublicKey** is the root public key of the MPC network. On a local stack there is no fixed value: the `sig-net/midnight-integration` [integration-test setup](https://github.com/sig-net/midnight-integration/tree/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/integration-tests) generates a fresh `MPC_ROOT_KEY`, prints it during setup and appends it to the `.env` at the root of that repository. For the public networks (preview, preprod, mainnet) the fixed values are published in `@sig-net/midnight` via `getMpcRootPublicKey`, as `0x04…` uncompressed SEC1 hex. Every key entry point (`deriveEvmAddress`, `deriveMidnightResponseKey`, `parseSecp256k1PublicKey`) also accepts NEAR's `secp256k1:<base58>` spelling, the one signet.js and the MPC operators currently publish keys in, and `normaliseSecp256k1PublicKey` converts any spelling to the canonical one.
+>
+> **responderContractAddress** is the address of the deployed Signet responder contract. On a local stack the same setup deploys a fresh responder, prints the address as `MIDNIGHT_RESPONDER_CONTRACT_ADDRESS` and appends it to `.env`. For the public networks the addresses are published in `@sig-net/midnight` via `getResponderContractAddress` (placeholders until each deployment lands).
+
+1. Store a signature request and notify the MPC via cross contract call. Build (or overwrite) every part of the transaction your contract enforces in-circuit, calldata above all (see [EVM Type 2 Transactions and ABI Calldata Words](/midnight/integrator-guide#evm-type-2-transactions-and-abi-calldata-words)). Never pass caller input through unchecked:
+
+   ```compact
+   assert(initialised == 1, "Not initialised");
+
+   // Construct SignBidirectionalEvent signature request and calculate its RequestId
+   const request = constructSignBidirectionalEventV1<EvmType2TxParams<1, 0, 0>, 34>(/* ... */);
+   const requestId = disclose(calculateEvmType2RequestIdV1<1, 0, 0, 34>(request));
+
+   // One lastSeen value is safe only when every request targets this chain.
+   assert(request.executionDest == ethereumCaip2Id(), "Expected Ethereum target");
+   assert(request.txParams.chainId == 11155111, "Expected Sepolia chain id");
+   assert(!signBidirectionalEventMap.member(requestId), "Request already outstanding");
+   signBidirectionalEventMap.insert(requestId, disclose(request));
+   // ⚠️ Naive: this reads the shared lastSeen cell (see Preventing Contention on lastSeen).
+   heightAtRequest.insert(requestId, lastSeen);
+
+   // Notify the MPC of the SignBidirectionalEvent and the location of your signBidirectionalEventMap.
+   // The map is at ledger field 0 (Setup step 3), so its path is [0] at depth 1
+   // (see The Request Map's Ledger-Tree Path).
+   signetSigner.signBidirectional(
+      requestId,
+      constructSignBidirectionalEventNotificationV1(
+         kernel.self(),
+         1 as Uint<8>,                        // requestsPathDepth
+         [0, 0, 0, 0] as Vector<4, Uint<8>>,  // requestsPath, zero padded
+      ),
+   );
+   ```
+
+   **NOTE:** Return `requestId` from this circuit call so the client can use it in the next steps. You can also compute it off-chain with the `calculateRequestId` TS twin. Both give the raw 32 bytes, and the reader methods below take the id as hex, so convert it once with `requestIdHex(requestId)` from `@sig-net/midnight` and pass that value as `requestId` in steps 2 to 4.
+
+2. Poll the Signet responder for the MPC's signature response. The responder emits each response as a contract event that carries the request id it answers beside the signature. The id is unauthenticated routing data: it scopes the read to your request's posts and proves nothing. The event log is unauthenticated (anyone can post under any id), so use the verifying getter. It only returns a post whose signature recovers to `expectedSigner` over the signing hash of the requested transaction:
+
+   ```ts
+   const { verified } = await reader.getVerifiedSignatureRespondedEvent(requestId, expectedSigner);
+   // verified === undefined: no valid response posted yet, poll again.
+   ```
+
+3. Construct the signed transaction and submit it to the foreign chain. The reader rebuilds the transaction from the request record on your ledger and attaches the verified MPC signature:
+
+   ```ts
+   import { JsonRpcProvider } from "ethers";
+
+   const signedTx = await reader.getSignedEvmTransaction(requestId, expectedSigner);
+   if (signedTx === undefined) throw new Error("no valid response posted yet, poll again");
+   await new JsonRpcProvider(foreignChainRpcUrl).broadcastTransaction(signedTx.serialized);
+   ```
+
+4. Poll the Signet responder for the MPC's attestation of the remote execution output. The MPC posts it once the transaction is in a final block on the foreign chain (for `unviable`, once another signet request's transaction from the same account with the same nonce is), and the responder emits it as a contract event that carries the request id, the attested block height, the output kind, the output's byte width and hash, the attestation digest and the MPC's signature. The serialised output itself travels off chain (you broadcast the transaction in step 3, so you can read its result). The event log is unauthenticated, so use the verifying getter, as in step 2. It reads your request's posts by id, checks the output that you present against the width and hash each post declares, recomputes the digest, and only returns a post whose signature verifies against the response key of your contract.
+
+   ```ts
+   const respondBidirectionalEvent = await reader.getVerifiedRespondBidirectionalEvent(
+      requestId,
+      serializedOutput,
+      mpcResponseKey,
+   );
+   // undefined: no attestation of that output posted yet, poll again.
+   ```
+
+5. Deliver the response and the serialised output to your contract, which checks the output against the posted width and hash, recomputes the attestation digest, verifies the event in-circuit against the response key pinned in Setup step 4, and consumes the request the event names. The digest binds that request id, so consume it from the verified event and never an id taken from elsewhere. The wire event carries `bigR.x` and `s` big-endian and the circuit reads them little-endian, so hand the circuit the flipped record:
+
+   ```ts
+   const circuitInput = respondBidirectionalEventToCircuitInput(respondBidirectionalEvent);
+   ```
+
+   Verify the signature before trusting the height. Compare it with the `heightAtRequest` snapshot from step 1, then advance `lastSeen` without ever decreasing it. Complete the checks, remove the request and run your application logic in the same transaction so a failure rolls back all of them.
+
+   The width argument is the exact width your output schema derives under the mapping in [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation) (a single `bool` is 1 byte, a `uint256` 32):
+
+   ```compact
+   assert(initialised == 1, "Not initialised");
+   assert(
+      verifyRespondBidirectionalEventV1<1>(serializedOutput, respondBidirectionalEvent, mpcResponseKey),
+      "Invalid attestation or output"
+   );
+   const requestId = disclose(respondBidirectionalEvent.requestId);
+   const height = disclose(respondBidirectionalEvent.blockHeight);
+   assert(signBidirectionalEventMap.member(requestId), "Request not found");
+   assert(height > heightAtRequest.lookup(requestId), "Response is not above request height");
+
+   // Responses can arrive out of order, so keep the highest accepted height.
+   // ⚠️ Naive: this reads and writes the shared lastSeen cell (see Preventing Contention on lastSeen).
+   if (height > lastSeen) {
+      lastSeen = height;
+   }
+   signBidirectionalEventMap.remove(requestId);
+   heightAtRequest.remove(requestId);
+
+   // Run your application handler here, in the same transaction.
+   ```
+
+   For example, a request made when `lastSeen` is 100 records `heightAtRequest[requestId] = 100`. Its response must attest a height above 100. If another response advances `lastSeen` to 120 first, this request can still accept height 110, and `lastSeen` stays 120. Comparing against the current `lastSeen` would incorrectly reject that response.
+
+   **⚠️ WARNING:** Steps 1 and 5 as written both read the single `lastSeen` value and step 5 writes it, the naive form the WARNING under [Setup](/midnight/integrator-guide#setup) describes: ship the buffer-and-flush form in [Preventing Contention on `lastSeen`](/midnight/integrator-guide#preventing-contention-on-lastseen) instead.
+
+   Apply the same height check, maximum update and request cleanup to `failed` and `unviable` responses, verifying their empty output at width 0. Route on the verified kind: see [Handling Failure](/midnight/protocol-flow#handling-failure).
+
+   Preserve `lastSeen`, `heightAtRequest` and outstanding requests across upgrades. The SDK verification circuit authenticates the response but the integrating contract maintains and checks these records. See [the protocol's library rules](https://github.com/sig-net/mpc/blob/develop/doc/bidirectional-calls.md#41-library-inside-the-application-contract).
+
+## Preventing Contention on `lastSeen`
+
+The Runtime steps above handle `lastSeen` naively, with the consequences the WARNING under [Setup](/midnight/integrator-guide#setup) states. This section describes a general fix, a buffer-and-flush pattern, in sketch form. The ERC20 cross chain vault in [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples/tree/main/examples/erc20-vault) integrates the full pattern, where it handles contention on `lastSeen` and on the vault account's EVM nonce assignment alike. Its [contention handling](/midnight/erc20-vault/contention-handling) document is the complete reference.
+
+The problem in detail. A Midnight transaction is proven against the ledger state its prover saw, and every value it read must still hold when it reaches the chain. Step 1 reads `lastSeen` to snapshot it into `heightAtRequest`, and step 5 reads it and may update it to raise it. So every response that updates `lastSeen` invalidates every request and every response proven against the previous value, and each of those must be re-proven and resubmitted. Step 5 is the expensive one to re-prove, as `verifyRespondBidirectionalEventV1` runs an ECDSA verification in-circuit. A stale read in the transaction's guaranteed section rejects the transaction without a fee, one in the fallible section lands as a failure and still pays. Ordinary concurrent use produces this on its own, and anyone can turn it into a denial of service by delivering responses that advance `lastSeen` as fast as they can prove them, so that honest requests and settlements are rejected again on every retry and never land.
+
+Two transactions conflict only when one writes a value the other read. Two that touch different keys of the same map never conflict, and a `Counter.increment` reads nothing. The pattern below lets the circuits users call read and write only entries keyed by their own request id, and gives `lastSeen` exactly one reader and writer after the constructor: a permissionless `flushQueue` circuit that moves entries between buffers. All contention is concentrated in the flush, where it is cheap to handle. A flush carries no user funds or secrets, anyone may submit one, and one that loses a race against another flush is rebuilt from the new state and resubmitted. The price of a lost race is the losing flush's fee.
+
+Requests and attestations each pass through a buffer the user circuits write to and a buffer only the flush inserts into. Replace the `lastSeen` and `heightAtRequest` declarations of Setup step 3 with:
+
+```compact
+// Only flushQueue reads or writes lastSeen after the constructor.
+export ledger lastSeen: Uint<64>;
+
+// Requests wait here, keyed by request id, until a flush snapshots lastSeen for them
+// and a send moves them into signBidirectionalEventMap.
+export ledger inputRequestBuffer: Map<RequestId, SignBidirectionalEventV1<EvmType2TxParams<1, 0, 0>, 34, 0>>;
+
+// lastSeen at the moment the flush accepted the request: written only by the flush,
+// and present only for flushed requests.
+export ledger heightAtRequest: Map<RequestId, Uint<64>>;
+
+export struct AttestationRecord {
+  blockHeight: Uint<64>;
+  outputKind: OutputKind;
+  serializedOutputLength: Uint<64>;
+  outputHash: Bytes<32>;
+}
+// Verified attestations wait here until a flush folds their height into lastSeen.
+export ledger inputAttestationBuffer: Map<RequestId, AttestationRecord>;
+export ledger outputAttestationBuffer: Map<RequestId, AttestationRecord>;
+```
+
+Runtime step 1 splits in two. The request circuit only queues, so the only shared value it reads is `initialised`, which nothing writes after `initialise`. Its `lastSeen` snapshot must be taken before the MPC learns of the request, otherwise a response could land at a height the snapshot later overtakes, so the notification moves into a send circuit that runs after the flush. The send stores the request in `signBidirectionalEventMap` and notifies in the same circuit, as the partial-success rule in [Sign Bidirectional Event Discovery & Verification](/midnight/protocol-flow#sign-bidirectional-event-discovery--verification) requires:
+
+```compact
+// Step 1a: queue. Build and check the request exactly as in step 1, then store it.
+export circuit queueRequest(/* ... */): [] {
+  assert(initialised == 1, "Not initialised");
+  const request = constructSignBidirectionalEventV1<EvmType2TxParams<1, 0, 0>, 34>(/* ... */);
+  const requestId = disclose(calculateEvmType2RequestIdV1<1, 0, 0, 34>(request));
+  assert(!inputRequestBuffer.member(requestId), "Request already queued");
+  assert(!signBidirectionalEventMap.member(requestId), "Request already outstanding");
+  inputRequestBuffer.insert(requestId, disclose(request));
+}
+
+// flushQueue runs here, in its own transaction (see below): it snapshots lastSeen into
+// heightAtRequest for the queued request.
+
+// Step 1b: send, callable by anyone once the flush has snapshotted the request. Storing
+// the request and notifying happen in this one circuit.
+export circuit sendRequest(requestId: RequestId): [] {
+  assert(initialised == 1, "Not initialised");
+  const id = disclose(requestId);
+  assert(heightAtRequest.member(id), "Request not flushed");
+  assert(inputRequestBuffer.member(id), "Request already sent");
+  signBidirectionalEventMap.insert(id, inputRequestBuffer.lookup(id));
+  inputRequestBuffer.remove(id);
+  signetSigner.signBidirectional(
+    id,
+    constructSignBidirectionalEventNotificationV1(kernel.self(), 1 as Uint<8>, [0, 0, 0, 0] as Vector<4, Uint<8>>),
+  );
+}
+```
+
+Runtime step 5 splits the same way. Verification runs when the attestation is queued, so a stale or forged attestation never reaches the flush, and the application logic runs at completion, once the flush has folded the height. The queue circuit verifies the signature over the attestation alone with `verifyRespondBidirectionalAttestationV1` and stores the output length and hash the attestation declares, so one queue circuit serves every output width and completion checks the output presented to it with `verifyAttestedOutputV1` at its own width, without re-verifying the signature:
+
+```compact
+// Step 5a: verify and queue the attestation.
+export circuit queueAttestation(respondBidirectionalEvent: RespondBidirectionalEventV1): [] {
+  assert(initialised == 1, "Not initialised");
+  const attestation = disclose(respondBidirectionalEvent);
+  assert(
+    verifyRespondBidirectionalAttestationV1(attestation, mpcResponseKey),
+    "Invalid attestation signature"
+  );
+  assert(signBidirectionalEventMap.member(attestation.requestId), "Request not sent");
+  assert(attestation.blockHeight > heightAtRequest.lookup(attestation.requestId), "Response is not above request height");
+  assert(!inputAttestationBuffer.member(attestation.requestId), "Attestation already queued");
+  assert(!outputAttestationBuffer.member(attestation.requestId), "Attestation already flushed");
+  inputAttestationBuffer.insert(attestation.requestId, AttestationRecord {
+    blockHeight: attestation.blockHeight,
+    outputKind: attestation.outputKind,
+    serializedOutputLength: attestation.serializedOutputLength,
+    outputHash: attestation.outputHash,
+  });
+}
+
+// flushQueue runs here, in its own transaction (see below): it moves the record into
+// outputAttestationBuffer and folds its block height into lastSeen.
+
+// Step 5b: complete, once the flush has folded the attestation's height. Callable by
+// anyone here: a real contract adds an ownership check (see the vault).
+export circuit complete(requestId: RequestId, serializedOutput: Bytes<1>): [] {
+  assert(initialised == 1, "Not initialised");
+  const id = disclose(requestId);
+  assert(outputAttestationBuffer.member(id), "Attestation not flushed");
+  const record = outputAttestationBuffer.lookup(id);
+  assert(record.blockHeight > heightAtRequest.lookup(id), "Response is not above request height");
+  signBidirectionalEventMap.remove(id);
+  heightAtRequest.remove(id);
+  outputAttestationBuffer.remove(id);
+
+  // Route on the verified kind (see Handling Failure). A failed or unviable attestation
+  // declares an empty output, so it is checked at width 0.
+  if (record.outputKind == OutputKind.executed) {
+    assert(
+      verifyAttestedOutputV1<1>(disclose(serializedOutput), record.serializedOutputLength, record.outputHash),
+      "Output does not match the attestation"
+    );
+    // Run your success handler here.
+  } else {
+    assert(
+      verifyAttestedOutputV1<0>(default<Bytes<0>>, record.serializedOutputLength, record.outputHash),
+      "Output does not match the attestation"
+    );
+    // Run your failure handler here.
+  }
+}
+```
+
+The flush is the only circuit left that touches `lastSeen`. It takes a fixed vector of slots, each naming a channel and a request id, so a flush with fewer waiting items is still a valid call. Slots run in order, so a request slot placed after an attestation slot sees that attestation's height in its snapshot:
+
+```compact
+export enum FlushChannel { empty, request, attestation }
+export struct FlushSlot {
+  channel: FlushChannel;
+  requestId: RequestId;
+}
+
+// Permissionless. The only reader and writer of lastSeen after the constructor.
+export circuit flushQueue(slots: Vector<10, FlushSlot>): [] {
+  for (const slot of slots) {
+    const s = disclose(slot);
+    if (s.channel == FlushChannel.request) {
+      assert(inputRequestBuffer.member(s.requestId), "Request not queued");
+      assert(!heightAtRequest.member(s.requestId), "Request already flushed");
+      heightAtRequest.insert(s.requestId, lastSeen);
+    } else if (s.channel == FlushChannel.attestation) {
+      assert(inputAttestationBuffer.member(s.requestId), "Attestation not queued");
+      const record = inputAttestationBuffer.lookup(s.requestId);
+      inputAttestationBuffer.remove(s.requestId);
+      lastSeen = record.blockHeight > lastSeen ? record.blockHeight : lastSeen;
+      outputAttestationBuffer.insert(s.requestId, record);
+    }
+  }
+}
+```
+
+A flush fails only on the items its caller names, and a failed flush commits nothing, so what one user queues can never fail another user's flush. Two flushes built against the same state conflict when they share an item or when one raises `lastSeen` and the other read it. One lands, the other is rebuilt from the new state and resubmitted, and only the flusher ever retries. Submit the flush with its transcript in the fallible section: the wallet's fee payment pushes even a one-item flush past the guaranteed section's cheap-rejection budget, and a lost race then lands as a failure that pays its fee, the whole cost of losing.
+
+A round trip is six Midnight transactions, with the two flushes the only ones that touch `lastSeen`:
+
+```
+1. queueRequest(...)               user    inputRequestBuffer.insert(requestId, request)
+            |
+            v
+2. flushQueue([request slot])      anyone  heightAtRequest.insert(requestId, lastSeen)      <- reads lastSeen
+            |
+            v
+3. sendRequest(requestId)          anyone  inputRequestBuffer -> signBidirectionalEventMap
+            |                              signetSigner.signBidirectional(...)
+            |
+            .  MPC signs, the transaction executes on the target chain, the MPC attests it
+            |
+            v
+4. queueAttestation(event)         anyone  verify signature, request sent, blockHeight > heightAtRequest
+            |                              inputAttestationBuffer.insert(requestId, record)
+            v
+5. flushQueue([attestation slot])  anyone  inputAttestationBuffer -> outputAttestationBuffer
+            |                              lastSeen = max(lastSeen, record.blockHeight)       <- writes lastSeen
+            v
+6. complete(requestId, output)     anyone  blockHeight > heightAtRequest, remove the request, its snapshot
+                                           and the record, check the output at the kind's width, run the handler
+```
+
+Users' own transactions never fail because of each other or because of a flush, and the ordering keeps the height check sound: a request's bound is taken when it is flushed, and an attestation is consumed only after its height is folded. The sketches leave out the ownership commitment and the one-size buffer entry a real contract wants. The ERC20 vault implements all of it: [`erc20-vault.compact`](https://github.com/sig-net/midnight-examples/blob/main/examples/erc20-vault/contract/src/erc20-vault.compact) is the contract and [`vault-queue.ts`](https://github.com/sig-net/midnight-examples/blob/main/examples/erc20-vault/contract/src/vault-queue.ts) the client side of the flush, with the retry loop and the fallible-section submission.
+
+## EVM Type 2 Transactions and ABI Calldata Words
+
+An `EvmType2TxParams` request decomposes the EVM transaction into typed fields, so your contract can enforce each field in-circuit. Its optional `calldata` is an `EvmCalldata<maxWords>`: the 4-byte function selector plus a list of 32-byte ABI words, per the [Solidity ABI spec](https://docs.soliditylang.org/en/latest/abi-spec.html). Slots past `noWords` are unused capacity and never reach the transaction.
+
+The request names its target network in two fields, for two different readers:
+
+- **`txParams.chainId`** is the EIP-155 chain id the signed transaction is valid on: `11155111` for Sepolia, `31337` for a bare local anvil. It is the only field that differs between Ethereum networks.
+- **`executionDest`** is the MPC's routing key for the target chain, in CAIP-2 form, zero-padded to 64 bytes (a CAIP-2 id is at most 41). For Ethereum it is `eip155:1` on every Ethereum network, whichever one (mainnet, Sepolia or a local anvil) the MPC deployment watches. Build it with the module's `ethereumCaip2Id()` circuit (`pureCircuits.ethereumCaip2Id()` off chain). The MPC routes on that exact string and rejects the request for any other value, the network's own CAIP-2 id (`eip155:11155111`) included, so never derive it from the chain id.
+
+`ethereumCaip2Id()` is for Ethereum targets only. Another EVM chain, such as BNB Smart Chain (`eip155:56`), is a separate chain to the MPC, never one of Ethereum's networks.
+
+The request id does not hash the parameters struct itself. It hashes the digest `calculateEvmType2TxParamsDigestV1` computes over the bytes that reach the signed transaction: the scalar fields, then the calldata words, access-list entries and storage keys up to their declared counts, each count hashed beside its entries. Slots past a count never enter, and an absent calldata contributes only its absence, so one transaction has one request id whatever capacities your contract compiled its struct with and whatever bytes sit in unused slots. The counts must fit their capacities. The TS twin `calculateEvmType2TxParamsDigest` is what `calculateRequestId` hashes off chain.
+
+Every word must be stored in canonical ABI form (big-endian). The MPC signs a transaction whose calldata is exactly `selector || words[0..noWords]`, byte for byte. A word stored in any other form becomes a signed transaction that calls the foreign contract with garbage arguments. Compact's integer casts are little-endian, so do not hand-roll the byte order. Build every word with the module's helper circuits, and read words back with the matching readers.
+
+| Solidity type | Build with | Read back with |
+|---|---|---|
+| `address` | `evmAddressAbiWord(addr: Bytes<20>)` | |
+| unsigned integers up to `uint128` (amounts, ids) | `numericAbiWord(value: Uint<128>)` | `abiWordToUint128(word)` |
+| `bool` | `boolAbiWord(value: Boolean)` | `abiWordToBool(word)` |
+
+### Example: An ERC20 Transfer
+
+`transfer(address,uint256)`, selector `0xa9059cbb`, takes an address word and a numeric word:
+
+```compact
+const calldata = EvmCalldata<2> {
+  selector: Bytes[0xa9, 0x05, 0x9c, 0xbb],
+  noWords: 2 as Uint<16>,
+  words: [
+    evmAddressAbiWord(recipient),  // address argument (Bytes<20>)
+    numericAbiWord(amount)         // uint256 argument (from a Uint<128>)
+  ]
+};
+```
+
+### Example: A Bool Argument, and Decoding a Bool Result
+
+`setApprovalForAll(address,bool)`, selector `0xa22cb465`:
+
+```compact
+const calldata = EvmCalldata<2> {
+  selector: Bytes[0xa2, 0x2c, 0xb4, 0x65],
+  noWords: 2 as Uint<16>,
+  words: [
+    evmAddressAbiWord(operator),
+    boolAbiWord(true)
+  ]
+};
+```
+
+The readers run the same rules in the other direction. They reject any non-canonical word outright (no silent truncation or coercion).
+
+The builders and readers apply to CALLDATA words only. The serialised output a settle circuit verifies (the explicit `serializedOutput` argument `verifyRespondBidirectionalEventV1` checks against the attested width and hash) is NOT ABI words. It is the Borsh serialisation the MPC derives from the request's output schema under the mapping in [Output Recovery and Serialisation](/midnight/protocol-flow#output-recovery-and-serialisation): a `bool` is 1 byte, a `uint256` is its value as 32 little-endian bytes, a `bytesN` is N bytes. The circuit reads it with a single stdlib `deserialize<T, N>` call, where `T` is a struct that mirrors the schema field for field in the mapped Compact types and `N` is the sum of their widths. For an ERC20 `transfer`'s `bool` return under a one-field bool schema:
+
+```compact
+struct TransferResult {
+  success: Boolean;
+}
+
+const result = deserialize<TransferResult, 1>(serializedOutput);
+assert(result.success, "Remote transfer failed");
+```
+
+**Numeric outputs:** a `uint256` output reaches the circuit whole, as `Bytes<32>` holding the value little-endian. Nothing narrows it off chain. To use it as a number, narrow it in-circuit with `checkedTruncationU128`, which reads the low 16 bytes as a `Uint<128>` and aborts unless the high 16 are zero:
+
+```compact
+struct CheckAndDoubleResult {
+  success: Boolean;
+  amount: Bytes<32>;
+}
+
+const result = deserialize<CheckAndDoubleResult, 33>(serializedOutput);
+assert(result.success, "Remote call reported failure");
+const amount = checkedTruncationU128(result.amount);
+```
+
+An attested amount at or above 2^128 therefore fails the settle circuit, with a valid signature, at the narrowing: decide in your contract whether that is the outcome you want before choosing `Uint<128>` as the stored type. Off chain, the number is the 32 bytes read little-endian (`bytesToBigint` in `@sig-net/midnight`), not the ABI word.
+
+`checkedTruncationU128` is cheap: measured on the pinned compiler with `zkir-v3 mock-compile -v`, narrowing a bare `Bytes<32>` and writing the result costs 167 rows at k=9, against 4,552 for a byte-by-byte fold and 9,583 for a stdlib `deserialize` split. Inside the test caller's `verifyCheckAndDoubleResponse` the circuit is dominated by signature verification and sits at k=17.
+
+The same builders and readers exist as TypeScript twins under identical names, for composing expected words off-chain (UIs, expected-record builders, tests). The `@sig-net/midnight` test suite keeps them in lockstep with the compiled circuits.
+
+## More Examples
+
+For full integration examples (such as an ERC20 cross chain vault) see the [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples) repository.

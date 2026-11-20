@@ -1,0 +1,123 @@
+{/* Imported from sig-net/midnight-integration README.md at c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# Contributor Guide
+
+First install the [Prerequisites](/midnight/prerequisites), then get set up for contributing by getting both test layers green: the offline unit tests, then the end to end integration suites.
+
+Every change must also pass the linter and the formatter, which CI enforces on every pull request. One ESLint flat config (`eslint.config.js`) and one Prettier config (`.prettierrc.json`) at the repo root cover all packages, so there is nothing to configure per package. In VS Code, install the two recommended extensions the editor offers on first open (`dbaeumer.vscode-eslint` and `esbenp.prettier-vscode`) and both run on save.
+
+## Compiling, Building and Running Unit Tests
+
+Packages can be compiled (with or without generating zk keys), built and unit tested either independently or together. Only the packages with contracts that run in integration tests have a zk compile option. Unit tests run offline against a simulated Midnight runtime. One package needs zk output: the test caller's unit tests read the signet signer's and the test caller's own verifier keys, so run `yarn compile:zk` before them. 
+
+From the root of the repository:
+
+```sh
+# Install all dependencies for all workspace members once to start.
+# Run this from the repository root.
+yarn install
+
+## --- Compile, build or test: All Packages (whole workspace, from repository root) ---
+
+# Quick compile: all packages (checks syntax and generates circuits)
+# Runs the compact compiler for each package without generating zk keys (compiler output in the package's src/managed/, or managed/ for midnight-serde-conformance)
+yarn compile
+
+# Full compile: everything 'yarn compile' does, plus zk keys
+# Runs 'yarn compile' for all packages, then each package's :zk option: the compact compiler with zk keys,
+# or for signet-responder its MinoCrab zk bundle (needs Rust)
+# (compiler output in the package's src/managed/). On its own it leaves the whole workspace ready to build and deploy.
+yarn compile:zk
+
+# Test: all packages (unit tests: offline simulator-only)
+# Requires 'yarn compile:zk' (a superset of 'yarn compile'): the test caller's unit tests read zk verifier keys.
+yarn test
+
+# Build: all packages
+# Requires 'yarn compile:zk': packages that ship zk keys refuse to build
+# without them.
+yarn build
+
+## --- Linting and formatting: All packages (whole workspace, from repository root) ---
+
+# Check formatting (Prettier). Needs nothing compiled.
+yarn format:check
+yarn format        # rewrite files in place
+
+# Lint (ESLint + typescript-eslint, type-aware).
+# Requires 'yarn compile': the rules read the generated src/managed/ types,
+# the same reason 'yarn build' needs it.
+yarn lint
+yarn lint:fix      # apply every autofix
+
+## --- Compile, build or test a single package independently ---
+
+# The @sig-net/midnight-signer package:
+yarn compile:signet-signer
+yarn compile:signet-signer:zk  # generates signet-signer zk keys
+yarn test:signet-signer        # requires 'yarn compile:signet-midnight' and 'yarn compile:signet-signer'
+yarn build:signet-signer       # requires 'yarn compile:signet-midnight' and 'yarn compile:signet-signer:zk'
+
+# The @sig-net/midnight-responder package:
+yarn compile:signet-responder
+yarn compile:signet-responder:zk  # builds the MinoCrab zk bundle (needs Rust, see Prerequisites)
+yarn test:signet-responder        # requires 'yarn compile:signet-midnight' and 'yarn compile:signet-responder'
+yarn build:signet-responder       # requires 'yarn compile:signet-midnight' and 'yarn compile:signet-responder:zk'
+
+# The @sig-net/midnight SDK package:
+yarn compile:signet-midnight  # NOTE: no :zk option
+yarn test:signet-midnight     # requires 'yarn compile:signet-midnight'
+yarn build:signet-midnight    # requires 'yarn compile:signet-midnight'
+```
+
+> **NOTE:** A build error about missing prover keys (for example "no prover keys in src/managed/keys") means the package has no zk keys: run `yarn compile:zk` (or the associated `compile:...:zk` script) to generate them. A plain `yarn compile` deletes the keys of every package it recompiles, so run the zk compile again after it, before `yarn test` as well.
+
+## Integration Tests
+
+Three end to end suites run against the local docker stack. The generic suite drives the smallest possible client (the test caller [contract](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/packages/test-caller-contract/src/test-caller-contract.compact)) through the protocol: submit a signature request, get discovered via the signet signer's notification events, receive the MPC signature and check it against the caller's derived account, then verify in-circuit a respond-bidirectional attestation that the suite signs itself with the caller's response key, derived from the setup's MPC root key. The real-EVM suite carries on past signing: it broadcasts the signed call to the local anvil chain, lets the fakenet observe the mined execution and post its attestation, recomputes the attested bytes from the mined call's trace, checks the fakenet's output cache holds the same bytes, picks the attestation that verifies over them, and settles it in-circuit, for an executed call, a reverted one (`failed`) and a request whose nonce another transaction took (`unviable`). The Tron suite does the same on a local Tron chain (TRE): it broadcasts the MPC-signed `TriggerSmartContract` call, lets the fakenet watch the solidified receipt, and settles the attested verdict in-circuit for an executed call, a reverted one (`failed`) and a request that expired unbroadcast (`unviable`). A Tron request carries the same bool output schema as the EVM requests, so the Tron suite also rebuilds the attested byte from the receipt's `contractResult` with `evmTraceOutputFromTronReceipt`. Get them running locally:
+
+1. Ensure you have all of the [prerequisites](/midnight/prerequisites) installed.
+2. From the repository root, install workspace dependencies, select the required Compact toolchain explicitly, and compile:
+   ```sh
+   corepack enable
+   yarn install
+   compact update 0.36.0        # Exact version required.
+                                # A bare `compact update` installs the
+                                # latest stable, whatever it is.
+   yarn compile
+   ```
+3. Start the local stack (Midnight node, indexer, proof server, anvil EVM, TRE Tron) with `docker compose up -d`. The fakenet MPC responder is started automatically by the test setup once the signet signer and the responder are deployed.
+4. Run the suites and watch them go. The first run can take **~10–25 minutes** (it generates zk proving keys for every contract, deploys them and hands off to the fakenet responder, all automatically, no `.env` inserts needed):
+   ```sh
+   yarn test:integration-tests                          # all three suites, requires 'yarn compile'
+   yarn test:integration-tests:signet-caller-e2e        # generic caller flow only, requires 'yarn compile'
+   yarn test:integration-tests:signet-caller-evm-e2e    # real-EVM flow only, requires 'yarn compile'
+   yarn test:integration-tests:signet-caller-tron-e2e   # Tron flow only, requires 'yarn compile'
+   ```
+   Whichever selection you run, the setup pipeline runs first (narrowing the selection never skips setup). Green looks like every test in the selected flow files passing. Afterwards, save the printed `MIDNIGHT_CALLER_CONTRACT_ADDRESS` into `.env` so the next run skips compile and deploy (~2 minutes). The signet signer and responder addresses are appended to `.env` automatically.
+
+**TIP:** If you are using Claude Code you can ask it to do all of this for you using this [skill](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.claude/skills/e2e/SKILL.md), for example:
+```
+Use your /e2e skill to get the integration suite running for me, from fresh clone to green. Recover the run yourself if anything fails along the way.
+```
+
+**NOTE:** The most common reason that a run fails is the proof server hanging or crashing when it exhausts memory on a proving leg. This most often presents as the test failing with `connect ECONNREFUSED 127.0.0.1:6300`, with `docker ps -a` showing the proof server container as `Exited (137)`, i.e. OOM-killed. If this happens, restart the proof server and rerun. With the contract addresses kept in `.env` the rerun skips straight to the flow.
+
+## Releases and Contract Deployment
+
+> **NOTE:** this release and deployment process is a draft under discussion. Expect it to change.
+
+The signet signer and the signet responder are deployed with **no contract maintenance authority**: the deploy flow samples the maintenance key and drops it (see [`.github/workflows/deploy.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/deploy.yml), which deploys one of them per run), so a deployed contract can never be upgraded. Every deployment creates a fresh, permanent contract at a new address, and that address reaches integrators only through the SDK: the deploy workflow opens a pull request that records it in the per-network table behind `getSignerContractAddress` or `getResponderContractAddress` in `@sig-net/midnight`, a human reviews it, and the next version bump release publishes it. A new responder address changes no client contract, as clients read it from the SDK. A new signet signer address has these consequences:
+
+- **preview, preprod:** client contracts redeploy against the new signet signer address. The MPC stops monitoring the old address.
+- **mainnet:** client contracts upgrade their signet signer reference to the new address. The MPC keeps monitoring the old address for an announced period.
+
+The flow from a change to a release:
+
+1. Every pull request merges to `dev`.
+2. Release candidates are tagged from `dev` as `v*.*.*-rc.N`, each with an associated GitHub release. The tag push runs [`.github/workflows/publish.yml`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/publish.yml), which publishes the `@sig-net/*` packages to npm under the `rc` dist-tag.
+   - When the release carries a concrete contract change, the [`deploy`](https://github.com/sig-net/midnight-integration/blob/c9ab0d638532cbb14ff3c330d60a25bb3c8a1c53/.github/workflows/deploy.yml) workflow is dispatched by hand with that tag as its `tag` input, once per changed contract, to preview and preprod. A new signet signer address makes dependent contracts redeploy, and a new responder address reaches clients through the SDK release that records it.
+   - Every other release candidate is an SDK-only npm publish.
+3. `dev` merges to `main`, and a stable `v*.*.*` tag is made from `main` with an associated GitHub release. The publish workflow publishes the packages to npm under `latest`, and the deploy workflow is dispatched with that tag once per changed contract. A new signet signer address makes dependent contracts redeploy (on mainnet, by upgrading their signet signer reference as above), and a new responder address reaches clients through the SDK.
+
+Two guards in the workflows back this flow: a stable tag must point at a commit on `main` (both workflows refuse one that does not), and the deploy workflow refuses a prerelease tag for mainnet.

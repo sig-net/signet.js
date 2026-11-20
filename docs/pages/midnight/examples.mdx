@@ -1,0 +1,190 @@
+{/* Imported from sig-net/midnight-examples README.md at acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3 by docs/scripts/import-midnight-docs.mjs. Edit it there. */}
+
+# Midnight Contracts Calling Foreign Chains with Sig Network
+
+> **Night Mode for other blockchains.** Midnight contracts act on foreign chains through the Sig Network MPC, bringing Midnight's privacy to applications already deployed elsewhere. The first example is an ERC20 vault that holds, swaps and lends tokens on an EVM chain.
+
+This project is built on the Midnight Network.
+
+The [`sig-net/midnight-examples`](https://github.com/sig-net/midnight-examples) repository holds experimental example contracts for Midnight. They use the Sig Network [Distributed MPC](https://github.com/sig-net/mpc) to execute arbitrary transactions on foreign blockchains, through the [Sign Bidirectional Protocol Flow](/midnight/examples#sign-bidirectional-protocol-flow).
+
+The examples demonstrate how to integrate using the following packages:
+- [`@sig-net/midnight`](https://www.npmjs.com/package/@sig-net/midnight): the
+  client-agnostic protocol library (the shared Compact modules, state readers,
+  event decoders, request feed and crypto helpers).
+- [`@sig-net/midnight-contract`](https://www.npmjs.com/package/@sig-net/midnight-contract):
+  the central Signet singleton contract.
+- [`@sig-net/midnight-contract-deploy`](https://www.npmjs.com/package/@sig-net/midnight-contract-deploy):
+  deploy tooling for that contract plus generic Midnight deploy and wallet
+  plumbing. Used here by the test harness to deploy the singleton for the
+  local e2e stack.
+
+## Reading Guide
+- Start by reading the [Sign Bidirectional Protocol Flow](/midnight/examples#sign-bidirectional-protocol-flow) to understand the fundamentals of the cross chain protocol.
+- Then go through the [Integrator Guide](/midnight/examples#integrator-guide) to see how to wire your own applications with Sig Network to make cross chain calls.
+- Or jump straight into complete [Examples](/midnight/examples#examples) to see applications of the protocol.
+
+If you are looking for the parts of the Sig Network stack that these examples are built upon, visit:
+- [Midnight Integration Protocol and SDK Repository](https://github.com/sig-net/midnight-integration)
+- [Sig Network Distributed MPC Repository](https://github.com/sig-net/mpc)
+
+# Examples
+
+Each example is a directory under [`examples/`](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/examples) holding up to three packages, split by what the code is: `contract` (required), plus `deploy` and `integration-tests` as warranted.
+
+The examples are what integrators read and copy. Shared repo-private plumbing lives under [`packages/`](https://github.com/sig-net/midnight-examples/tree/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/packages): `lib` holds the runtime helpers the examples import (wallets, providers, transaction build and submit), and `test-harness` the test-only utilities behind the e2e suites (stack bring-up, wallet funding, the setup pipeline).
+
+> ## ⚠️ CAUTION ⚠️
+>
+> These are example applications for educational and experimental purposes.
+> Use at your own risk and expect rapid iteration.
+
+| Example | What it demonstrates | Flow walkthroughs |
+|---|---|---|
+| [ERC20 Vault](/midnight/erc20-vault) | A Midnight vault holding, swapping (Uniswap) and lending (Aave) ERC20 tokens on an EVM chain. | [deposit](/midnight/erc20-vault/deposit), [withdraw](/midnight/erc20-vault/withdraw), [swap](/midnight/erc20-vault/swap), [supply](/midnight/erc20-vault/supply), [redeem](/midnight/erc20-vault/redeem) |
+
+# Sign Bidirectional Protocol Flow
+
+This Sig Network Protocol Flow brings foreign blockchain assets and functionality to contracts on Midnight. Contracts record signature requests that the Sig Network MPC signs. dApps relay signed transactions to foreign chains and the MPC attests their execution outcomes back to Midnight. Then contracts complete cross chain interactions with in-circuit validation of the MPC foreign execution attestation.
+
+The protocol is best understood in 5 steps:
+
+![The sign bidirectional protocol flow: five steps between a dApp, contracts on Midnight, the Sig Network MPC and a foreign blockchain](https://raw.githubusercontent.com/sig-net/midnight-examples/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/docs/sign-bidirectional-flow.drawio.png)
+
+1. A user interacts with a dApp, which starts a cross chain interaction by calling a circuit on a contract on Midnight that has integrated with Sig Network.
+2. The MPC network, watching for events on the Singleton contract, picks up the emitted **SignBidirectionalEvent** (which carries the **SignBidirectionalEventNotification**) and honours the signature request it points to.
+3. The integrating dApp, watching for events on the Singleton contract, picks up the emitted **SignatureRespondedEvent** and relays the fully signed transaction to the foreign chain.
+4. The MPC network observes the outcome of the signed transaction in final blocks of the foreign blockchain and posts an attestation thereof back to Midnight.
+5. The integrating dApp collects the execution output and its attestation and submits both back to the integrating contract, completing the cross chain interaction.
+
+Consult the [protocol documentation in the Midnight integration repository](/midnight/protocol-flow) for a more detailed description of the protocol including:
+
+- MPC key derivation and signing
+- MPC discovery and verification of the Sign Bidirectional Event signature requests
+- MPC & Client foreign transaction execution output recovery (including failed transaction flow)
+- MPC foreign transaction execution attestation
+- Handling foreign transaction execution failure
+
+# Integrator Guide
+
+Integrating a contract on Midnight with the Sig Network MPC requires 4 once-off setup
+steps and 5 per-request runtime steps.
+
+Setup entails:
+1. Installing `@sig-net/midnight` into your project.
+2. Importing the Signet Compact module into your contract.
+3. Declaring the required protocol state in your ledger: the `SignBidirectionalEventMapV1` your requests live in, the `SignetSigner` singleton reference your circuits invoke via cross contract call to notify the MPC of requests, the `mpcResponseKey` your circuits verify attestations against, and the highest target-chain height the contract has accepted (`lastSeen`) together with the height recorded for each request when it is made.
+4. Setting the contract's own `mpcResponseKey` with an initialisation circuit call after deploy (its derivation takes the contract's address as input, which exists only once the contract is deployed).
+
+At runtime you integrate the [Sign Bidirectional Protocol Flow above](/midnight/examples#sign-bidirectional-protocol-flow):
+- **Steps 1** and **5** are circuits on your contract.
+- **Steps 2** and **4** are performed by the MPC. **Step 3**, and the watching for the MPC's posts from steps 2 and 4, are off-chain client/dApp/relayer code built on the readers and helpers in `@sig-net/midnight`.
+
+Consult the [Integrator Guide documentation](/midnight/integrator-guide) in the Midnight integration repository for a more detailed description of how to integrate.
+
+# Contributor Guide
+
+First install the [Prerequisites](/midnight/examples#prerequisites), then get set up for contributing by getting both test layers green: the offline unit tests, then the end to end integration suites.
+
+Every change must also pass the linter and the formatter, which CI enforces on every pull request. One ESLint flat config (`eslint.config.js`) and one Prettier config (`.prettierrc.json`) at the repo root cover all packages, so there is nothing to configure per package. In VS Code, install the two recommended extensions the editor offers on first open (`dbaeumer.vscode-eslint` and `esbenp.prettier-vscode`) and both run on save.
+
+## Compiling, Building and Running Unit Tests
+
+Packages can be compiled (with or without generating zk keys), built and unit tested either independently or together. Only contract packages have a compile step, and only they have a zk compile option. Unit tests run offline against a simulated Midnight runtime, so zk keys are not needed before running them.
+
+From the root of the repository:
+
+```sh
+# Install all dependencies for all workspace members once to start.
+# Run this from the repository root.
+yarn install
+
+## --- Compile, build or test: All packages (whole workspace, from repository root) ---
+
+# Quick compile: all packages (checks syntax and generates circuits)
+# Runs the compact compiler for each package without generating zk keys (compiler output in the package's src/managed/)
+yarn compile
+
+# Longer compile: all packages that require zk keys (checks syntax, generates circuits and zk keys)
+# Runs the compact compiler with zk keys for each package that has a :zk option (compiler output in the package's src/managed/)
+yarn compile:zk
+
+# Test: all packages (offline unit tests, typechecking is 'yarn build')
+# Requires 'yarn compile' to have been run (zk keys not required for unit testing).
+yarn test
+
+# Build: all packages (typecheck)
+# Requires 'yarn compile' to have been run (packages typecheck against the
+# compiler's generated src/managed/ output, no zk keys required).
+yarn build
+
+## --- Linting and formatting: All packages (whole workspace, from repository root) ---
+
+# Check formatting (Prettier). Needs nothing compiled.
+yarn format:check
+yarn format        # rewrite files in place
+
+# Lint (ESLint + typescript-eslint, type-aware).
+# Requires 'yarn compile': the rules read the generated src/managed/ types,
+# the same reason 'yarn build' needs it.
+yarn lint
+yarn lint:fix      # apply every autofix
+
+## --- Compile, build or test a single example independently ---
+
+# The erc20-vault example (contract + deploy + integration-tests packages):
+yarn compile:erc20-vault
+yarn compile:erc20-vault:zk  # generates the vault contract's zk keys
+yarn test:erc20-vault        # requires at least 'yarn compile:erc20-vault'
+yarn build:erc20-vault       # requires 'yarn compile:erc20-vault'
+
+# The erc20-vault example can also be deployed and initialised. Unlike the
+# offline commands above, these need a full local stack running and a
+# populated .env: see the 'Integration Tests' section below for that setup.
+yarn deploy:erc20-vault             # deploy a vault, requires 'yarn compile:erc20-vault:zk'
+yarn deploy-initialise:erc20-vault  # deploy + the deployer-gated initialise and allowed ERC20s (remote networks)
+yarn initialise:erc20-vault         # initialise an already-deployed vault (recovers a half-done run)
+yarn add-allowed-tokens:erc20-vault # allow the ERC20s EVM_ALLOWED_TOKENS lists on an initialised vault
+```
+
+Scripts targeting a particular example carry that example's directory name in full (e.g. `compile:erc20-vault`), so every example gains the same family of scripts. The task prefix decides which of the example's packages run: `test:` and `build:` fan out over every package the example has, `compile:` reaches only its contract package, and `deploy:` or `deploy-initialise:` only its deploy package.
+
+## Integration Tests
+
+The e2e integration test suites need a local stack of services. To bring it up:
+
+1. Populate a minimal `.env` file at the root of the repository with at least the `SEPOLIA_FORK_RPC_URL` variable, an archive-capable Sepolia RPC (see [`.env.example`](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/.env.example)).
+2. Run `docker compose up -d` from the root of the repository.
+
+With the stack running, each example's e2e suite runs from the root:
+
+```sh
+# --- The erc20-vault example ---
+# The first run's setup pipeline generates the vault's zk proving keys itself
+# (~10 min), so there is no need to run 'yarn compile:erc20-vault:zk' first.
+yarn test:erc20-vault:e2e                              # every spec in the suite
+yarn test:erc20-vault:e2e tests/happy-day-e2e.test.ts  # one spec file
+```
+
+For more detail on the ERC20 vault example and on running its e2e suite (a fresh-clone walkthrough, expected timings and failure recovery), see the [ERC20 Vault README](/midnight/erc20-vault).
+
+# Prerequisites
+
+| Prerequisite | Version | Check With | Where to Get It |
+| ------- | ------| ------  |----------- |
+| Node | ≥ 22 | `node --version` | [nodejs.org](https://nodejs.org) or your version manager (nvm, fnm, …) |
+| Yarn 4 (via Corepack) | 4.x | `corepack enable && yarn --version` | Corepack ships with Node. The repo's `packageManager` field pins the Yarn version |
+| Compact toolchain | compiler 0.33.0-rc.2, invoked with `--feature-zkir-v3` (see note) | `compact compile --version` → `0.33.0` | Install the `compact` launcher per [Midnight's docs](https://docs.midnight.network/), then `compact update 0.33.0-rc.2` (compiler builds live at [LFDT-Minokawa/compact releases](https://github.com/LFDT-Minokawa/compact/releases)). If the launcher refuses the rc version, use the direct-download recipe in [.github/workflows/example-test.yaml](https://github.com/sig-net/midnight-examples/blob/acbdf742f075cdcb2b80ae9ab35e8b9cc0103fc3/.github/workflows/example-test.yaml) |
+| A docker environment | any recent engine | `docker --version` | [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS/Windows) or your distro's engine, with **≥ 16 GB RAM allocated** (see note) |
+| Docker Compose v2 | ≥ 2.x | `docker compose version` | Included with Docker Desktop, plugin package on Linux |
+
+**NOTE:** every `compact compile` against this stack must pass the
+`--feature-zkir-v3` flag: it is part of the pinned ledger-9 matched set
+(compiler, node, indexer, proof server), and output compiled without it is not
+compatible with that stack. The `sig-net/midnight-examples` compile scripts already pass it.
+Integrators compiling their own contracts must pass it themselves, as shown in
+the [Integrator Guide](/midnight/integrator-guide).
+
+**NOTE:** the Midnight proof server is quite heavy. Allocate at least 16 GB of
+RAM to your docker environment, otherwise expect to restart the tests multiple
+times as the proof server hangs.
